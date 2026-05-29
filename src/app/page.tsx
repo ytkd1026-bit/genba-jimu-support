@@ -1,65 +1,166 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const mainButtons = [
+  {
+    label: "新規案件登録",
+    desc: "現調・見積・請求までまとめる",
+    icon: "📋",
+    href: "/projects/new",
+  },
+  {
+    label: "スケジュール",
+    desc: "現調・施工・請求忘れを防ぐ",
+    icon: "📅",
+    href: null,
+  },
+  {
+    label: "使い方を見る",
+    desc: "スマホだけで始める手順",
+    icon: "📖",
+    href: null,
+  },
+  {
+    label: "テンプレ集",
+    desc: "見積・請求・LINE文をコピペ",
+    icon: "📄",
+    href: null,
+  },
+];
+
+const recentCases = [
+  { name: "〇〇マンション クロス貼替", status: "見積中" },
+  { name: "△△邸 CF貼替", status: "請求待ち" },
+];
+
+const weeklySchedule = [
+  { day: "月曜", task: "現調" },
+  { day: "水曜", task: "材料発注" },
+  { day: "金曜", task: "請求書送付" },
+];
+
+const unprocessed = [
+  { label: "見積未提出", count: 2 },
+  { label: "請求待ち", count: 1 },
+];
+
+const monthlySummary = [
+  { label: "売上", amount: "450,000円" },
+  { label: "支出", amount: "180,000円" },
+  { label: "粗利", amount: "270,000円" },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-[#fdf8f2]">
+      <div className="mx-auto max-w-md px-4 py-3 sm:max-w-lg">
+
+        {/* ヘッダー */}
+        <header className="mb-3 text-center">
+          <h1 className="text-2xl font-bold text-stone-800 tracking-wide">
+            現場の事務サポ
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-0.5 text-sm text-stone-500">
+            見積・材料・請求・予定を、スマホでひとまとめ。
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </header>
+
+        {/* メインボタン 2×2 */}
+        <section className="mb-3 grid grid-cols-2 gap-2.5">
+          {mainButtons.map((btn) => {
+            const inner = (
+              <>
+                <span className="text-2xl leading-none">{btn.icon}</span>
+                <span className="text-sm font-bold">{btn.label}</span>
+                <span className="text-center text-xs text-amber-100 leading-tight">
+                  {btn.desc}
+                </span>
+              </>
+            );
+            const cls =
+              "flex min-h-[76px] w-full flex-col items-center justify-center gap-0.5 rounded-2xl bg-[#8B4A3C] px-3 py-3 text-white shadow-sm active:opacity-80";
+            return btn.href ? (
+              <Link key={btn.label} href={btn.href} className={cls}>
+                {inner}
+              </Link>
+            ) : (
+              <button key={btn.label} type="button" className={cls}>
+                {inner}
+              </button>
+            );
+          })}
+        </section>
+
+        {/* 情報カード一覧 */}
+        <section className="space-y-2.5">
+
+          {/* 最近の案件 */}
+          <div className="rounded-2xl bg-white p-3 shadow-sm">
+            <h2 className="mb-2 border-b border-stone-100 pb-1.5 text-sm font-bold text-stone-700">
+              最近の案件
+            </h2>
+            <ul className="space-y-1.5">
+              {recentCases.map((c) => (
+                <li key={c.name} className="flex items-center justify-between text-sm">
+                  <span className="text-stone-800">{c.name}</span>
+                  <span className="ml-2 shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                    {c.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 今週の予定 */}
+          <div className="rounded-2xl bg-white p-3 shadow-sm">
+            <h2 className="mb-2 border-b border-stone-100 pb-1.5 text-sm font-bold text-stone-700">
+              今週の予定
+            </h2>
+            <ul className="space-y-1.5">
+              {weeklySchedule.map((s) => (
+                <li key={s.day} className="flex items-center gap-3 text-sm">
+                  <span className="w-10 shrink-0 text-xs font-bold text-[#8B4A3C]">
+                    {s.day}
+                  </span>
+                  <span className="text-stone-800">{s.task}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 未処理 */}
+          <div className="rounded-2xl bg-[#fff8f5] p-3 shadow-sm ring-1 ring-[#8B4A3C]/20">
+            <h2 className="mb-2 border-b border-[#8B4A3C]/15 pb-1.5 text-sm font-bold text-[#8B4A3C]">
+              ⚠️ 未処理
+            </h2>
+            <ul className="space-y-1.5">
+              {unprocessed.map((u) => (
+                <li key={u.label} className="flex items-center justify-between">
+                  <span className="text-sm text-stone-800">{u.label}</span>
+                  <span className="rounded-full bg-[#8B4A3C] px-3 py-0.5 text-sm font-bold text-white">
+                    {u.count}件
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 今月の数字 */}
+          <div className="rounded-2xl bg-white p-3 shadow-sm">
+            <h2 className="mb-2 border-b border-stone-100 pb-1.5 text-sm font-bold text-stone-700">
+              今月の数字
+            </h2>
+            <ul className="space-y-1.5">
+              {monthlySummary.map((m) => (
+                <li key={m.label} className="flex items-center justify-between text-sm">
+                  <span className="text-stone-500">{m.label}</span>
+                  <span className="font-bold text-stone-800">{m.amount}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        </section>
+      </div>
     </div>
   );
 }

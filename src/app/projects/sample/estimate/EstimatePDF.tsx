@@ -1,0 +1,1112 @@
+// 見積書PDF ドキュメントコンポーネント
+// 提出用のみ — 原価・粗利・利益率は一切含まない
+import React from 'react';
+import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+
+// 日本語フォント（jsDelivr CDN 経由）
+// 本番環境では /public/fonts/ にローカルコピーを配置することを推奨
+Font.register({
+  family: 'NotoSansJP',
+  fonts: [
+    {
+      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Regular.woff2',
+      fontWeight: 400,
+    },
+    {
+      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Bold.woff2',
+      fontWeight: 700,
+    },
+  ],
+});
+
+export type EstimatePDFProps = {
+  lines: Array<{
+    id: number;
+    category: string;
+    koujiName: string;
+    koujiContent: string;
+    location1: string;
+    location2: string;
+    qty: string;
+    unit: string;
+    unitPrice: string;
+    note: string;
+  }>;
+  subtotalSum: number;
+  taxSum: number;
+  totalWithTax: number;
+};
+
+function toNum(v: string): number {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function fmtYen(n: number): string {
+  return '¥' + n.toLocaleString('ja-JP');
+}
+
+// PDF出力時のみ特殊単位を安全な文字列に変換する（画面表示は変更しない）
+function safePdfUnit(unit: string): string {
+  return unit
+    .replace(/㎡/g, 'm2')
+    .replace(/㎥/g, 'm3')
+    .replace(/㍍/g, 'm')
+    .replace(/㎞/g, 'km')
+    .replace(/㎝/g, 'cm')
+    .replace(/㎜/g, 'mm')
+    .replace(/㎏/g, 'kg')
+    .replace(/㍑/g, 'L');
+}
+
+const ACCENT = '#8B4A3C';
+const ACCENT_BG = '#fdf0ec';
+const BORDER = '#e2e2e2';
+const GRAY = '#6b7280';
+const ROW_EVEN_BG = '#fdf8f2';
+
+const s = StyleSheet.create({
+  page: {
+    fontFamily: 'NotoSansJP',
+    fontSize: 8,
+    padding: 22,
+    backgroundColor: '#ffffff',
+    color: '#1a1a1a',
+  },
+
+  // ── ヘッダー ──────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1.5,
+    borderBottomColor: ACCENT,
+  },
+  headerLeft: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  docTitle: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: ACCENT,
+    marginBottom: 7,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+  },
+  clientLabel: {
+    width: 52,
+    fontSize: 7,
+    color: GRAY,
+  },
+  clientValueLg: {
+    fontSize: 9,
+    fontWeight: 700,
+  },
+  clientValue: {
+    fontSize: 8,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  docInfoRow: {
+    flexDirection: 'row',
+    marginBottom: 2,
+  },
+  docInfoLabel: {
+    fontSize: 7,
+    color: GRAY,
+    marginRight: 6,
+  },
+  docInfoValue: {
+    fontSize: 7,
+  },
+  totalBox: {
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderRadius: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    minWidth: 90,
+    marginTop: 4,
+  },
+  totalBoxLabel: {
+    fontSize: 7,
+    color: ACCENT,
+    marginBottom: 3,
+  },
+  totalBoxAmount: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: ACCENT,
+  },
+
+  // ── 明細テーブル ──────────────────────────────────
+  table: {
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: ACCENT,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  tableRowEven: {
+    backgroundColor: ROW_EVEN_BG,
+  },
+  // ヘッダーセル
+  th: {
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    fontSize: 7,
+    fontWeight: 700,
+    color: '#ffffff',
+    borderRightWidth: 0.5,
+    borderRightColor: 'rgba(255,255,255,0.25)',
+  },
+  // データセル
+  td: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: BORDER,
+    flexWrap: 'wrap',
+  },
+  tdR: {  // right-align
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: BORDER,
+    textAlign: 'right',
+  },
+  tdC: {  // center-align
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: BORDER,
+    textAlign: 'center',
+  },
+
+  // 列幅（合計 = 100%）
+  cCat:   { width: '9%' },   // 項目
+  cName:  { width: '11%' },  // 工事名
+  cDesc:  { width: '24%' },  // 工事内容
+  cLoc:   { width: '11%' },  // 施工箇所
+  cQty:   { width: '5%' },   // 数量
+  cUnit:  { width: '5%' },   // 単位
+  cPrice: { width: '9%' },   // 単価
+  cSub:   { width: '9%' },   // 小計
+  cTax:   { width: '9%' },   // 消費税
+  cNote:  { width: '8%' },   // 備考
+
+  // ── 合計 ──────────────────────────────────────────
+  summaryOuter: {
+    alignItems: 'flex-end',
+  },
+  summaryBox: {
+    width: 200,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  summaryRowTotal: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: ACCENT_BG,
+  },
+  summaryLabel: {
+    flex: 1,
+    fontSize: 8,
+    color: GRAY,
+  },
+  summaryAmt: {
+    fontSize: 8,
+    textAlign: 'right',
+    minWidth: 72,
+  },
+  summaryLabelBold: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: 700,
+    color: ACCENT,
+  },
+  summaryAmtBold: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: ACCENT,
+    textAlign: 'right',
+    minWidth: 72,
+  },
+});
+
+function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: EstimatePDFProps) {
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={s.page}>
+
+        {/* ─── ヘッダー ─────────────────────────── */}
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <Text style={s.docTitle}>見積明細書</Text>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>提出先</Text>
+              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>案件名</Text>
+              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>現場住所</Text>
+              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+            </View>
+          </View>
+          <View style={s.headerRight}>
+            <View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>見積番号</Text>
+                <Text style={s.docInfoValue}>EST-0001</Text>
+              </View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>作成日</Text>
+                <Text style={s.docInfoValue}>2026/05/30</Text>
+              </View>
+            </View>
+            <View style={s.totalBox}>
+              <Text style={s.totalBoxLabel}>税込見積金額</Text>
+              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ─── 明細表 ──────────────────────────── */}
+        <View style={s.table}>
+          {/* ヘッダー行 */}
+          <View style={s.tableHeaderRow}>
+            <Text style={[s.th, s.cCat]}>項目</Text>
+            <Text style={[s.th, s.cName]}>工事名</Text>
+            <Text style={[s.th, s.cDesc]}>工事内容</Text>
+            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
+            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
+            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
+            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
+            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
+            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
+            <Text style={[s.th, s.cNote]}>備考</Text>
+          </View>
+
+          {/* データ行 */}
+          {lines.map((line, i) => {
+            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
+            const tax = Math.floor(subtotal * 0.1);
+            const location =
+              line.location1 && line.location2
+                ? `${line.location1} / ${line.location2}`
+                : line.location1 || line.location2 || '';
+            const rowStyle = i % 2 === 1
+              ? [s.tableRow, s.tableRowEven]
+              : s.tableRow;
+
+            return (
+              <View key={line.id} style={rowStyle}>
+                <Text style={[s.td, s.cCat]}>{line.category}</Text>
+                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
+                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
+                <Text style={[s.td, s.cLoc]}>{location}</Text>
+                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
+                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
+                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
+                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
+                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
+                <Text style={[s.td, s.cNote]}>{line.note}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ─── 合計 ─────────────────────────────── */}
+        <View style={s.summaryOuter}>
+          <View style={s.summaryBox}>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>小計合計</Text>
+              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
+            </View>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>消費税（10%）</Text>
+              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
+            </View>
+            <View style={s.summaryRowTotal}>
+              <Text style={s.summaryLabelBold}>税込合計</Text>
+              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+      </Page>
+    </Document>
+  );
+}
+
+// ページコンポーネントから動的importで呼び出すファクトリ関数
+export function makeEstimatePDF(props: EstimatePDFProps): React.ReactElement {
+  return <EstimatePDFDocument {...props} />;
+}
+
+// ─── 発注確認欄スタイル ───────────────────────────────────────
+const o = StyleSheet.create({
+  page: {
+    fontFamily: 'NotoSansJP',
+    fontSize: 8,
+    padding: 22,
+    backgroundColor: '#ffffff',
+    color: '#1a1a1a',
+  },
+
+  // ── 発注確認セクション ──────────────────────────────────────
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: ACCENT,
+    marginBottom: 4,
+    paddingBottom: 4,
+    borderBottomWidth: 1.5,
+    borderBottomColor: ACCENT,
+  },
+  sectionSubText: {
+    fontSize: 8,
+    color: '#333',
+    marginBottom: 10,
+  },
+
+  // 発注日
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 4,
+  },
+  dateLabel: {
+    fontSize: 8,
+    color: '#333',
+    marginRight: 4,
+  },
+  dateField: {
+    fontSize: 8,
+    width: 32,
+    borderBottomWidth: 1,
+    borderBottomColor: '#555',
+    paddingBottom: 2,
+    textAlign: 'center',
+  },
+  dateSep: {
+    fontSize: 8,
+    marginHorizontal: 2,
+  },
+
+  // 発注者・受注者 2カラム
+  partiesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  partyBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 3,
+    padding: 10,
+  },
+  partyTitle: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: ACCENT,
+    marginBottom: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  partyFieldRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-end',
+  },
+  partyFieldLabel: {
+    fontSize: 7,
+    color: GRAY,
+    width: 60,
+    flexShrink: 0,
+  },
+  partyFieldLine: {
+    flex: 1,
+    borderBottomWidth: 0.8,
+    borderBottomColor: '#888',
+    paddingBottom: 2,
+    minHeight: 14,
+  },
+  // 署名欄（高さを確保）
+  signLabel: {
+    fontSize: 7,
+    color: GRAY,
+    marginBottom: 4,
+  },
+  signBox: {
+    borderWidth: 0.8,
+    borderColor: '#aaa',
+    borderRadius: 2,
+    height: 52,
+    backgroundColor: '#fafafa',
+    justifyContent: 'flex-end',
+    padding: 4,
+  },
+  signBoxHint: {
+    fontSize: 6,
+    color: '#ccc',
+    textAlign: 'right',
+  },
+
+  // 発注条件
+  conditionsSection: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  conditionsTitle: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: '#444',
+    marginBottom: 4,
+  },
+  conditionsText: {
+    fontSize: 6.5,
+    color: '#555',
+    lineHeight: 1.6,
+  },
+});
+
+// ─── 見積書兼注文書 PDF コンポーネント ───────────────────────
+function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: EstimatePDFProps) {
+  return (
+    <Document>
+      {/* ─── 1ページ目：見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
+      <Page size="A4" orientation="landscape" style={s.page}>
+
+        {/* ヘッダー */}
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <Text style={s.docTitle}>見積書兼注文書</Text>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>提出先</Text>
+              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>案件名</Text>
+              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>現場住所</Text>
+              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+            </View>
+          </View>
+          <View style={s.headerRight}>
+            <View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>見積番号</Text>
+                <Text style={s.docInfoValue}>EST-0001</Text>
+              </View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>作成日</Text>
+                <Text style={s.docInfoValue}>2026/05/30</Text>
+              </View>
+            </View>
+            <View style={s.totalBox}>
+              <Text style={s.totalBoxLabel}>税込見積金額</Text>
+              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 明細表 */}
+        <View style={s.table}>
+          <View style={s.tableHeaderRow}>
+            <Text style={[s.th, s.cCat]}>項目</Text>
+            <Text style={[s.th, s.cName]}>工事名</Text>
+            <Text style={[s.th, s.cDesc]}>工事内容</Text>
+            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
+            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
+            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
+            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
+            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
+            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
+            <Text style={[s.th, s.cNote]}>備考</Text>
+          </View>
+          {lines.map((line, i) => {
+            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
+            const tax = Math.floor(subtotal * 0.1);
+            const location =
+              line.location1 && line.location2
+                ? `${line.location1} / ${line.location2}`
+                : line.location1 || line.location2 || '';
+            const rowStyle = i % 2 === 1 ? [s.tableRow, s.tableRowEven] : s.tableRow;
+            return (
+              <View key={line.id} style={rowStyle}>
+                <Text style={[s.td, s.cCat]}>{line.category}</Text>
+                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
+                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
+                <Text style={[s.td, s.cLoc]}>{location}</Text>
+                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
+                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
+                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
+                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
+                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
+                <Text style={[s.td, s.cNote]}>{line.note}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* 合計 */}
+        <View style={s.summaryOuter}>
+          <View style={s.summaryBox}>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>小計合計</Text>
+              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
+            </View>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>消費税（10%）</Text>
+              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
+            </View>
+            <View style={s.summaryRowTotal}>
+              <Text style={s.summaryLabelBold}>税込合計</Text>
+              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+      </Page>
+
+      {/* ─── 2ページ目：発注確認欄 ─── */}
+      <Page size="A4" orientation="landscape" style={o.page}>
+
+        {/* ページ補足ヘッダー */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+          <Text style={{ fontSize: 9, fontWeight: 700, color: ACCENT }}>見積書兼注文書 — 発注確認欄</Text>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Text style={{ fontSize: 7, color: GRAY }}>案件：〇〇マンション クロス貼替</Text>
+            <Text style={{ fontSize: 7, color: GRAY }}>見積番号：EST-0001</Text>
+          </View>
+        </View>
+
+        {/* 発注確認セクション */}
+        <Text style={o.sectionTitle}>発注確認欄</Text>
+        <Text style={o.sectionSubText}>
+          上記見積内容・工事条件・支払条件を確認のうえ、発注します。
+        </Text>
+
+        {/* 発注日 */}
+        <View style={o.dateRow}>
+          <Text style={o.dateLabel}>発注日</Text>
+          <Text style={o.dateField}>{' '}</Text>
+          <Text style={o.dateSep}>年</Text>
+          <Text style={o.dateField}>{' '}</Text>
+          <Text style={o.dateSep}>月</Text>
+          <Text style={o.dateField}>{' '}</Text>
+          <Text style={o.dateSep}>日</Text>
+        </View>
+
+        {/* 発注者・受注者 2カラム */}
+        <View style={o.partiesRow}>
+          {/* 発注者 */}
+          <View style={o.partyBox}>
+            <Text style={o.partyTitle}>発注者</Text>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>住所</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>会社名</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>担当者名</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>電話番号</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <Text style={o.signLabel}>署名または記名押印</Text>
+            <View style={o.signBox}>
+              <Text style={o.signBoxHint}>（署名・押印）</Text>
+            </View>
+          </View>
+
+          {/* 受注者 */}
+          <View style={o.partyBox}>
+            <Text style={o.partyTitle}>受注者</Text>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>屋号</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>代表者</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>電話番号</Text>
+              <View style={o.partyFieldLine} />
+            </View>
+          </View>
+        </View>
+
+        {/* 発注条件 */}
+        <View style={o.conditionsSection}>
+          <Text style={o.conditionsTitle}>発注条件</Text>
+          <Text style={o.conditionsText}>
+            本書に記載の見積内容、工事範囲、金額、支払条件を確認のうえ、発注します。{'\n'}
+            追加工事・仕様変更・下地不良等により本見積範囲外の作業が発生する場合は、別途見積または協議のうえ対応します。{'\n'}
+            材料発注後のキャンセルについては、発注済材料費および手配済費用をご負担いただく場合があります。
+          </Text>
+        </View>
+
+      </Page>
+    </Document>
+  );
+}
+
+// ファクトリ関数（見積書兼注文書PDF）
+export function makeEstimateOrderPDF(props: EstimatePDFProps): React.ReactElement {
+  return <EstimateOrderPDFDocument {...props} />;
+}
+
+// ─── 保存用PDF 型定義 ────────────────────────────────────────
+export type StoragePDFProps = EstimatePDFProps & {
+  costs: Array<{
+    id: number;
+    costCategory: string;
+    targetCategory: string;
+    targetKouji: string;
+    content: string;
+    qty: string;
+    unit: string;
+    costUnitPrice: string;
+    note: string;
+  }>;
+  costSum: number;
+  grossProfit: number;
+  grossMarginRate: number;
+};
+
+// ─── 保存用PDF 内部管理ページ スタイル ───────────────────────
+const p = StyleSheet.create({
+  page: {
+    fontFamily: 'NotoSansJP',
+    fontSize: 8,
+    padding: 22,
+    backgroundColor: '#fffbeb',
+    color: '#1a1a1a',
+  },
+  // 1ページ目（見積明細ページ）の小さな注意文
+  page1Notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderLeftWidth: 3,
+    borderLeftColor: ACCENT,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    borderRadius: 2,
+    gap: 4,
+  },
+  page1NoticeText: {
+    fontSize: 7,
+    color: ACCENT,
+  },
+  // 2ページ目の警告ボックス
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1.5,
+    borderColor: '#d97706',
+    borderRadius: 3,
+    padding: 8,
+    marginBottom: 10,
+  },
+  warningTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#92400e',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: '#7c2d12',
+  },
+  sectionTitle: {
+    fontSize: 9,
+    fontWeight: 700,
+    color: '#92400e',
+    marginBottom: 5,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fcd34d',
+  },
+  table: {
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#92400e',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#fcd34d',
+  },
+  tableRowEven: {
+    backgroundColor: '#fefce8',
+  },
+  th: {
+    paddingVertical: 4,
+    paddingHorizontal: 3,
+    fontSize: 7,
+    fontWeight: 700,
+    color: '#fff',
+    borderRightWidth: 0.5,
+    borderRightColor: 'rgba(255,255,255,0.3)',
+  },
+  td: {
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: '#fcd34d',
+    flexWrap: 'wrap',
+  },
+  tdR: {
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: '#fcd34d',
+    textAlign: 'right',
+  },
+  tdC: {
+    paddingVertical: 3,
+    paddingHorizontal: 3,
+    fontSize: 7,
+    color: '#333',
+    borderRightWidth: 0.5,
+    borderRightColor: '#fcd34d',
+    textAlign: 'center',
+  },
+  summaryOuter: {
+    alignItems: 'flex-end',
+  },
+  summaryBox: {
+    width: 220,
+    borderWidth: 1.5,
+    borderColor: '#d97706',
+    borderRadius: 3,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fcd34d',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  summaryRowBold: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#fef3c7',
+  },
+  summaryLabel: { flex: 1, fontSize: 8, color: '#78350f' },
+  summaryAmt: { fontSize: 8, textAlign: 'right', minWidth: 72, color: '#333' },
+  summaryLabelBold: { flex: 1, fontSize: 9, fontWeight: 700, color: '#92400e' },
+  summaryAmtBold: { fontSize: 10, fontWeight: 700, color: '#92400e', textAlign: 'right', minWidth: 72 },
+});
+
+// ─── 保存用PDF コンポーネント ─────────────────────────────────
+function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate }: StoragePDFProps) {
+  // 工事別利益サマリーの計算
+  const salesByJob = new Map<string, number>();
+  lines.forEach((line) => {
+    const sub = toNum(line.qty) * toNum(line.unitPrice);
+    const key = line.koujiName || '未分類';
+    salesByJob.set(key, (salesByJob.get(key) ?? 0) + sub);
+  });
+
+  const costByJob = new Map<string, number>();
+  costs.forEach((cost) => {
+    const cs = toNum(cost.qty) * toNum(cost.costUnitPrice);
+    costByJob.set(cost.targetKouji, (costByJob.get(cost.targetKouji) ?? 0) + cs);
+  });
+
+  const commonCost = costByJob.get('共通') ?? 0;
+  const jobNames = Array.from(salesByJob.keys());
+  const jobSummary = jobNames.map((name) => {
+    const sales = salesByJob.get(name) ?? 0;
+    const cost = costByJob.get(name) ?? 0;
+    const profit = sales - cost;
+    const margin = sales > 0 ? (profit / sales) * 100 : null;
+    return { name, sales, cost, profit, margin };
+  });
+
+  return (
+    <Document>
+      {/* ─── 1ページ目：提出用見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
+      <Page size="A4" orientation="landscape" style={s.page}>
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <Text style={s.docTitle}>保存用 見積明細</Text>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>提出先</Text>
+              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>案件名</Text>
+              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+            </View>
+            <View style={s.clientRow}>
+              <Text style={s.clientLabel}>現場住所</Text>
+              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+            </View>
+          </View>
+          <View style={s.headerRight}>
+            <View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>見積番号</Text>
+                <Text style={s.docInfoValue}>EST-0001</Text>
+              </View>
+              <View style={s.docInfoRow}>
+                <Text style={s.docInfoLabel}>作成日</Text>
+                <Text style={s.docInfoValue}>2026/05/30</Text>
+              </View>
+            </View>
+            <View style={s.totalBox}>
+              <Text style={s.totalBoxLabel}>税込見積金額</Text>
+              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 1ページ目 注意文：元請けへの誤提出防止 */}
+        <View style={p.page1Notice}>
+          <Text style={p.page1NoticeText}>
+            ⚠ 保存用PDFです。2ページ目に原価・粗利・粗利率を含みます。元請け・施主には提出しないでください。
+          </Text>
+        </View>
+
+        <View style={s.table}>
+          <View style={s.tableHeaderRow}>
+            <Text style={[s.th, s.cCat]}>項目</Text>
+            <Text style={[s.th, s.cName]}>工事名</Text>
+            <Text style={[s.th, s.cDesc]}>工事内容</Text>
+            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
+            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
+            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
+            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
+            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
+            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
+            <Text style={[s.th, s.cNote]}>備考</Text>
+          </View>
+          {lines.map((line, i) => {
+            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
+            const tax = Math.floor(subtotal * 0.1);
+            const location = line.location1 && line.location2
+              ? `${line.location1} / ${line.location2}`
+              : line.location1 || line.location2 || '';
+            const rowStyle = i % 2 === 1 ? [s.tableRow, s.tableRowEven] : s.tableRow;
+            return (
+              <View key={line.id} style={rowStyle}>
+                <Text style={[s.td, s.cCat]}>{line.category}</Text>
+                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
+                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
+                <Text style={[s.td, s.cLoc]}>{location}</Text>
+                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
+                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
+                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
+                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
+                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
+                <Text style={[s.td, s.cNote]}>{line.note}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={s.summaryOuter}>
+          <View style={s.summaryBox}>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>小計合計</Text>
+              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
+            </View>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>消費税（10%）</Text>
+              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
+            </View>
+            <View style={s.summaryRowTotal}>
+              <Text style={s.summaryLabelBold}>税込合計</Text>
+              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
+            </View>
+          </View>
+        </View>
+      </Page>
+
+      {/* ─── 2ページ目：内部管理（黄色背景） ─── */}
+      <Page size="A4" orientation="landscape" style={p.page}>
+
+        {/* 警告ヘッダー */}
+        <View style={p.warningBox}>
+          <Text style={p.warningTitle}>保存用 内部管理</Text>
+          <Text style={p.warningText}>
+            注意：このページは保存用です。原価・粗利・粗利率を含むため、元請け・施主へ提出しないでください。
+          </Text>
+        </View>
+
+        {/* 原価管理表 */}
+        <Text style={p.sectionTitle}>原価管理表</Text>
+        <View style={p.table}>
+          <View style={p.tableHeaderRow}>
+            <Text style={[p.th, { width: '10%' }]}>原価区分</Text>
+            <Text style={[p.th, { width: '11%' }]}>対象項目</Text>
+            <Text style={[p.th, { width: '12%' }]}>対象工事名</Text>
+            <Text style={[p.th, { width: '22%' }]}>内容</Text>
+            <Text style={[p.th, { width: '6%', textAlign: 'right' }]}>数量</Text>
+            <Text style={[p.th, { width: '6%', textAlign: 'center' }]}>単位</Text>
+            <Text style={[p.th, { width: '11%', textAlign: 'right' }]}>原価単価</Text>
+            <Text style={[p.th, { width: '11%', textAlign: 'right' }]}>原価小計</Text>
+            <Text style={[p.th, { width: '11%' }]}>備考</Text>
+          </View>
+          {costs.map((cost, i) => {
+            const cs = toNum(cost.qty) * toNum(cost.costUnitPrice);
+            const rowStyle = i % 2 === 1 ? [p.tableRow, p.tableRowEven] : p.tableRow;
+            return (
+              <View key={cost.id} style={rowStyle}>
+                <Text style={[p.td, { width: '10%' }]}>{cost.costCategory}</Text>
+                <Text style={[p.td, { width: '11%' }]}>{cost.targetCategory}</Text>
+                <Text style={[p.td, { width: '12%' }]}>{cost.targetKouji}</Text>
+                <Text style={[p.td, { width: '22%' }]}>{cost.content}</Text>
+                <Text style={[p.tdR, { width: '6%' }]}>{cost.qty}</Text>
+                <Text style={[p.tdC, { width: '6%' }]}>{safePdfUnit(cost.unit)}</Text>
+                <Text style={[p.tdR, { width: '11%' }]}>{fmtYen(toNum(cost.costUnitPrice))}</Text>
+                <Text style={[p.tdR, { width: '11%' }]}>{fmtYen(cs)}</Text>
+                <Text style={[p.td, { width: '11%' }]}>{cost.note}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* 工事別利益サマリー + 内部管理集計 を横並び */}
+        <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
+
+          {/* 工事別利益サマリー */}
+          <View style={{ flex: 1 }}>
+            <Text style={p.sectionTitle}>工事別利益サマリー</Text>
+            <View style={p.table}>
+              <View style={p.tableHeaderRow}>
+                <Text style={[p.th, { width: '25%' }]}>工事名</Text>
+                <Text style={[p.th, { width: '19%', textAlign: 'right' }]}>売上</Text>
+                <Text style={[p.th, { width: '19%', textAlign: 'right' }]}>原価</Text>
+                <Text style={[p.th, { width: '19%', textAlign: 'right' }]}>粗利</Text>
+                <Text style={[p.th, { width: '18%', textAlign: 'right' }]}>粗利率</Text>
+              </View>
+              {jobSummary.map((row, i) => {
+                const rowStyle = i % 2 === 1 ? [p.tableRow, p.tableRowEven] : p.tableRow;
+                return (
+                  <View key={row.name} style={rowStyle}>
+                    <Text style={[p.td, { width: '25%' }]}>{row.name}</Text>
+                    <Text style={[p.tdR, { width: '19%' }]}>{fmtYen(row.sales)}</Text>
+                    <Text style={[p.tdR, { width: '19%' }]}>{fmtYen(row.cost)}</Text>
+                    <Text style={[p.tdR, { width: '19%' }]}>{fmtYen(row.profit)}</Text>
+                    <Text style={[p.tdR, { width: '18%' }]}>
+                      {row.margin !== null ? row.margin.toFixed(1) + '%' : '—'}
+                    </Text>
+                  </View>
+                );
+              })}
+              {/* 共通原価行 */}
+              {commonCost > 0 && (
+                <View style={[p.tableRow, { backgroundColor: '#fef9c3' }]}>
+                  <Text style={[p.td, { width: '25%' }]}>共通原価</Text>
+                  <Text style={[p.tdR, { width: '19%' }]}>—</Text>
+                  <Text style={[p.tdR, { width: '19%' }]}>{fmtYen(commonCost)}</Text>
+                  <Text style={[p.tdR, { width: '19%' }]}>—</Text>
+                  <Text style={[p.tdR, { width: '18%' }]}>—</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* 内部管理集計 */}
+          <View style={{ width: 200 }}>
+            <Text style={p.sectionTitle}>内部管理集計</Text>
+            <View style={p.summaryBox}>
+              <View style={p.summaryRow}>
+                <Text style={p.summaryLabel}>見積小計合計</Text>
+                <Text style={p.summaryAmt}>{fmtYen(subtotalSum)}</Text>
+              </View>
+              <View style={p.summaryRow}>
+                <Text style={p.summaryLabel}>消費税（10%）</Text>
+                <Text style={p.summaryAmt}>{fmtYen(taxSum)}</Text>
+              </View>
+              <View style={p.summaryRow}>
+                <Text style={p.summaryLabel}>税込合計</Text>
+                <Text style={p.summaryAmt}>{fmtYen(totalWithTax)}</Text>
+              </View>
+              <View style={p.summaryRow}>
+                <Text style={p.summaryLabel}>原価合計</Text>
+                <Text style={p.summaryAmt}>{fmtYen(costSum)}</Text>
+              </View>
+              <View style={p.summaryRow}>
+                <Text style={p.summaryLabel}>粗利</Text>
+                <Text style={p.summaryAmt}>{fmtYen(grossProfit)}</Text>
+              </View>
+              <View style={p.summaryRowBold}>
+                <Text style={p.summaryLabelBold}>粗利率</Text>
+                <Text style={p.summaryAmtBold}>{grossMarginRate.toFixed(1)}%</Text>
+              </View>
+            </View>
+          </View>
+
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+// ファクトリ関数（保存用PDF）
+export function makeStoragePDF(props: StoragePDFProps): React.ReactElement {
+  return <StoragePDFDocument {...props} />;
+}
