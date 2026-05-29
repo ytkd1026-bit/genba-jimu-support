@@ -15,10 +15,10 @@ const projectInfo = [
 
 const workButtons = [
   { label: "見積書を作る", desc: "単価・数量・利益を入力", icon: "📝", href: "/projects/sample/estimate" },
-  { label: "材料計算", desc: "m数・㎡数から必要材料を確認", icon: "📐", href: null },
+  { label: "材料計算", desc: "m数・㎡数から必要材料を確認", icon: "📐", href: "/projects/sample/materials" },
   { label: "原価・利益計算", desc: "人工・材料・経費・粗利を確認", icon: "💰", href: null },
   { label: "稟議書を作る", desc: "元請け提出用の説明資料", icon: "📋", href: null },
-  { label: "請求書を作る", desc: "見積内容から請求書へ", icon: "🧾", href: null },
+  { label: "請求書を作る", desc: "見積内容から請求書へ", icon: "🧾", href: "/projects/sample/invoice" },
   { label: "スケジュールを見る", desc: "現調・施工・請求予定を確認", icon: "📅", href: null },
 ];
 
