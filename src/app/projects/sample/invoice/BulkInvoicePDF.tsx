@@ -386,7 +386,6 @@ function FullPageHeader({
         {/* 中央列：タイトル + 税込請求額 */}
         <View style={s.colCenter}>
           <Text style={s.docTitle}>請求書</Text>
-          <Text style={s.docSubTitle}>得意先別 一括請求書</Text>
           <View style={s.infoRow}>
             <Text style={s.infoLabel}>対象期間</Text>
             <Text style={s.infoValue}>{fmtDate(periodFrom)}〜{fmtDate(periodTo)}</Text>
