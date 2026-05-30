@@ -2,6 +2,17 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import {
+  estimatePdfFileName,
+  estimateOrderPdfFileName,
+  storagePdfFileName,
+} from "@/app/utils/pdfFileName";
+
+// PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
+const PDF_CLIENT_NAME   = "△△工務店";
+const PDF_PROJECT_NAME  = "〇〇マンション クロス貼替";
+const PDF_WORK_CONTENT  = "洋室クロス貼替・洗面所CF貼替";
+const PDF_ESTIMATE_DATE = "2026-05-30";
 
 // 事業者設定との共通キー（settings/company/page.tsx と同じ値を参照）
 const SETTINGS_STORAGE_KEY = "genba_settings";
@@ -328,7 +339,12 @@ export default function EstimatePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
       const blob = await pdf(element).toBlob();
-      await downloadPdf(blob, 'estimate_EST-0001.pdf');
+      await downloadPdf(blob, estimatePdfFileName({
+        clientName:  PDF_CLIENT_NAME,
+        projectName: PDF_PROJECT_NAME,
+        workContent: PDF_WORK_CONTENT,
+        date:        PDF_ESTIMATE_DATE,
+      }));
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
@@ -357,7 +373,12 @@ export default function EstimatePage() {
         companyInfo,
       });
       const blob = await pdf(element).toBlob();
-      await downloadPdf(blob, 'estimate_internal_EST-0001.pdf');
+      await downloadPdf(blob, storagePdfFileName({
+        clientName:  PDF_CLIENT_NAME,
+        projectName: PDF_PROJECT_NAME,
+        workContent: PDF_WORK_CONTENT,
+        date:        PDF_ESTIMATE_DATE,
+      }));
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
@@ -376,7 +397,12 @@ export default function EstimatePage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
       const blob = await pdf(element).toBlob();
-      await downloadPdf(blob, 'estimate_order_EST-0001.pdf');
+      await downloadPdf(blob, estimateOrderPdfFileName({
+        clientName:  PDF_CLIENT_NAME,
+        projectName: PDF_PROJECT_NAME,
+        workContent: PDF_WORK_CONTENT,
+        date:        PDF_ESTIMATE_DATE,
+      }));
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
+import { bulkInvoicePdfFileName } from "@/app/utils/pdfFileName";
 
 // TODO: Supabase連携後は、新規案件登録時の元請情報を customers テーブルに保存し、
 //       projects.customer_id と紐づける。現在は仮データで動作確認中。
@@ -401,7 +402,11 @@ export default function InvoicePage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bulk_invoice_${invoiceNo}.pdf`;
+      a.download = bulkInvoicePdfFileName({
+        clientName:  selectedCustomer.name,
+        periodFrom:  periodFrom,
+        invoiceDate: invoiceDate,
+      });
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

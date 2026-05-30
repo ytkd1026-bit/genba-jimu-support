@@ -114,10 +114,6 @@ export default function SampleProjectPage() {
     }
   }
 
-  function handleSingleInvoice() {
-    alert("単体請求書作成は次工程で追加します。");
-  }
-
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
       <div className="mx-auto max-w-md px-4 py-4 sm:max-w-lg">
@@ -234,13 +230,12 @@ export default function SampleProjectPage() {
 
           {/* 請求・収支ボタン */}
           <div className="space-y-2.5">
-            <button
-              type="button"
-              onClick={handleSingleInvoice}
+            <Link
+              href="/projects/sample/single-invoice"
               className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
             >
               この案件だけ請求書を作る
-            </button>
+            </Link>
             <Link
               href="/projects/sample/invoice"
               className="flex w-full items-center justify-center rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
