@@ -257,6 +257,18 @@ export default function Home() {
             </div>
           </div>
 
+          {/* 未請求一覧へのショートカット */}
+          <Link
+            href="/invoices/unbilled"
+            className="flex items-center justify-between rounded-2xl bg-[#fff8f5] p-3 shadow-sm ring-1 ring-[#8B4A3C]/20 active:opacity-75"
+          >
+            <div>
+              <p className="text-sm font-bold text-[#8B4A3C]">⚠️ 未請求一覧</p>
+              <p className="text-xs text-stone-500">請求漏れを確認・請求書を作る</p>
+            </div>
+            <span className="text-stone-300 text-lg">›</span>
+          </Link>
+
           {/* 進捗管理 */}
           <div className="rounded-2xl bg-white p-3 shadow-sm">
             <h2 className="mb-0.5 border-b border-stone-100 pb-1.5 text-sm font-bold text-stone-700">
