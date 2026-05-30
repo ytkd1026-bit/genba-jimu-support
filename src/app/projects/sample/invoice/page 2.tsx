@@ -42,7 +42,6 @@ type BankInfo = {
 
 // ─── 元請・得意先マスタ（仮） ─────────────────────────────────
 // TODO: Supabase連携後は customers テーブルから取得する
-// TODO: customer.address は元請マスタ customers から取得する
 const CUSTOMERS: Customer[] = [
   {
     id: "customer-1",
@@ -79,10 +78,6 @@ const CUSTOMERS: Customer[] = [
   },
 ];
 
-// ─── 自社情報（仮） ─────────────────────────────────────────
-// TODO: companyInfo は将来的に事業者設定画面から登録・編集できるようにする
-// TODO: インボイス登録番号は事業者設定からPDFへ反映する
-// TODO: 小窓付き封筒の規格に合わせた印刷位置テンプレを追加する
 const COMPANY_INFO = {
   name: "REVO",
   postalCode: "〒590-0000",
@@ -418,14 +413,6 @@ export default function InvoicePage() {
                 <span className="text-sm text-stone-700">{selectedCustomer.contactName}</span>
               </div>
               <div className="flex items-start gap-2 px-3 py-2">
-                <span className="w-20 shrink-0 text-xs text-stone-400 pt-0.5">郵便番号</span>
-                <span className="text-sm text-stone-700">{selectedCustomer.postalCode}</span>
-              </div>
-              <div className="flex items-start gap-2 px-3 py-2">
-                <span className="w-20 shrink-0 text-xs text-stone-400 pt-0.5">住所</span>
-                <span className="text-sm text-stone-700">{selectedCustomer.address}</span>
-              </div>
-              <div className="flex items-start gap-2 px-3 py-2">
                 <span className="w-20 shrink-0 text-xs text-stone-400 pt-0.5">締日</span>
                 <span className="text-sm text-stone-700">{selectedCustomer.closingDay}</span>
               </div>
@@ -522,46 +509,6 @@ export default function InvoicePage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* 請求元情報カード */}
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-            請求元情報（自社）
-          </h2>
-          <div className="rounded-xl border border-stone-100 bg-stone-50 divide-y divide-stone-100">
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">会社名</span>
-              <span className="text-sm font-bold text-stone-800">{COMPANY_INFO.name}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">郵便番号</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.postalCode}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">住所</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.address}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">代表者</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.representative}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">TEL</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.tel}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">MAIL</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.email}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-[#8B4A3C] font-bold pt-0.5">登録番号</span>
-              <span className="text-sm font-bold text-[#8B4A3C]">{COMPANY_INFO.invoiceNumber}</span>
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-stone-400">
-            ※ 自社情報は次工程の事業者設定画面から変更できるようになります。
-          </p>
         </div>
 
         {/* 振込先カード */}
