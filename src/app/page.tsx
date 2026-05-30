@@ -17,7 +17,7 @@ const mainButtons = [
     label: "スケジュール",
     desc: "現調・施工・請求予定を確認",
     icon: "📅",
-    href: null,
+    href: "/schedule",
   },
   {
     label: "月次収支報告",
