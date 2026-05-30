@@ -106,16 +106,34 @@ export default function CompanySettingsPage() {
   function handleSave() {
     try {
       // company と bank をひとつのオブジェクトにまとめてlocalStorageへ保存
+      // 見積PDF・兼注文書PDF・保存用PDF・一括請求PDFで共通参照する
       const payload = { ...company, ...bank };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
-      alert("設定を保存しました。一括請求PDFに反映されます。");
+      alert("事業者設定を保存しました。");
     } catch {
       alert("保存に失敗しました。ブラウザの設定を確認してください。");
     }
   }
 
+  function handleReset() {
+    const ok = confirm(
+      "設定を初期値に戻しますか？\n入力中の内容はすべてデモ値に戻ります。"
+    );
+    if (!ok) return;
+    setCompany(DEFAULT_COMPANY);
+    setBank(DEFAULT_BANK);
+    try {
+      localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    } catch {
+      // 削除失敗は無視
+    }
+    alert("設定を初期値に戻しました。");
+  }
+
   function handlePdfCheck() {
-    alert("PDFへの反映は次工程で追加します。");
+    alert(
+      "見積書PDF・見積書兼注文書PDF・保存用PDF・一括請求PDFに\n事業者設定の値が反映されています。\n\n変更後は「保存する」を押してから各PDFを出力してください。"
+    );
   }
 
   return (
@@ -313,26 +331,32 @@ export default function CompanySettingsPage() {
             </div>
           </div>
 
-          {/* ── PDFへの反映予定 ── */}
+          {/* ── PDF反映状況 ── */}
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <h2 className="mb-1.5 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-              PDFへの反映予定
+              PDFへの反映状況
             </h2>
             <p className="mb-3 text-sm text-stone-500 leading-relaxed">
-              現在は画面上の設定確認のみです。
-              次工程で、見積書PDF・請求書PDF・一括請求PDFへ反映できるようにします。
+              「保存する」を押すと、以下のPDFに自社情報・振込先が反映されます。
             </p>
             <ul className="space-y-1.5">
               {[
-                "見積書PDF",
-                "見積書兼注文書PDF",
-                "保存用PDF",
-                "一括請求書PDF",
-                "単体請求書PDF",
-              ].map((label) => (
-                <li key={label} className="flex items-center gap-2 text-sm text-stone-500">
-                  <span className="text-stone-300">○</span>
-                  {label}
+                { label: "見積書PDF",        done: true },
+                { label: "見積書兼注文書PDF", done: true },
+                { label: "保存用PDF",         done: true },
+                { label: "一括請求書PDF",     done: true },
+                { label: "単体請求書PDF",     done: false },
+              ].map(({ label, done }) => (
+                <li key={label} className="flex items-center gap-2 text-sm">
+                  <span className={done ? "text-green-500" : "text-stone-300"}>
+                    {done ? "✓" : "○"}
+                  </span>
+                  <span className={done ? "text-stone-700" : "text-stone-400"}>
+                    {label}
+                  </span>
+                  {!done && (
+                    <span className="text-xs text-stone-300">（次工程）</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -353,6 +377,13 @@ export default function CompanySettingsPage() {
               className="w-full rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
             >
               PDF反映を確認
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-500 shadow-sm active:opacity-80"
+            >
+              設定を初期値に戻す
             </button>
             <Link
               href="/"
