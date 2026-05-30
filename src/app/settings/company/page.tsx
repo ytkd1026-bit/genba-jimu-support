@@ -1,0 +1,328 @@
+"use client";
+
+// TODO: Supabase連携後、company_settings テーブルに保存する
+// TODO: 見積書PDF、請求書PDF、一括請求PDFへ company_settings を反映する
+// TODO: 振込先は invoice_settings または bank_accounts として分離する可能性あり
+// TODO: インボイス登録番号はPDF出力前に入力チェックする
+// TODO: 複数口座対応は上位プラン機能として検討する
+
+import Link from "next/link";
+import { useState } from "react";
+
+// ─── 定数 ────────────────────────────────────────────────────
+const ACCOUNT_TYPES = ["普通", "当座"] as const;
+type AccountType = typeof ACCOUNT_TYPES[number];
+
+// ─── 型定義 ──────────────────────────────────────────────────
+interface CompanyForm {
+  businessName: string;
+  representative: string;
+  postalCode: string;
+  address: string;
+  tel: string;
+  email: string;
+  invoiceNumber: string;
+}
+
+interface BankForm {
+  bankName: string;
+  branchName: string;
+  accountType: AccountType;
+  accountNumber: string;
+  accountHolder: string;
+}
+
+// ─── スタイル定数 ─────────────────────────────────────────────
+const inputCls =
+  "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
+const selectCls =
+  "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
+const labelCls = "mb-1 block text-sm font-bold text-stone-700";
+
+// ─── コンポーネント ───────────────────────────────────────────
+export default function CompanySettingsPage() {
+  const [company, setCompany] = useState<CompanyForm>({
+    businessName:   "REVO",
+    representative: "山田 太郎",
+    postalCode:     "〒590-0000",
+    address:        "大阪府堺市〇〇区〇〇町",
+    tel:            "090-0000-0000",
+    email:          "example@example.com",
+    invoiceNumber:  "T0000000000000",
+  });
+
+  const [bank, setBank] = useState<BankForm>({
+    bankName:      "〇〇銀行",
+    branchName:    "〇〇支店",
+    accountType:   "普通",
+    accountNumber: "1234567",
+    accountHolder: "ヤマダ タロウ",
+  });
+
+  function handleCompanyChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setCompany((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function handleBankChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
+    setBank((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function handleSave() {
+    alert("事業者設定の保存は次工程で追加します。");
+  }
+
+  function handlePdfCheck() {
+    alert("PDFへの反映は次工程で追加します。");
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fdf8f2]">
+      <div className="mx-auto max-w-md px-4 py-4 sm:max-w-lg">
+
+        {/* ヘッダー */}
+        <header className="mb-4">
+          <Link
+            href="/"
+            className="mb-3 inline-flex items-center gap-1 text-sm text-[#8B4A3C] hover:opacity-75"
+          >
+            ← ホームへ戻る
+          </Link>
+          <h1 className="text-xl font-bold text-stone-800">事業者設定</h1>
+          <p className="mt-1 text-sm text-stone-500">
+            見積書・請求書に表示する自社情報を管理します。
+          </p>
+        </header>
+
+        <div className="space-y-4">
+
+          {/* ── 基本情報 ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
+            <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              基本情報
+            </h2>
+
+            <div>
+              <label htmlFor="businessName" className={labelCls}>屋号・会社名</label>
+              <input
+                id="businessName" name="businessName" type="text"
+                value={company.businessName} onChange={handleCompanyChange}
+                placeholder="例：REVO" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="representative" className={labelCls}>代表者名</label>
+              <input
+                id="representative" name="representative" type="text"
+                value={company.representative} onChange={handleCompanyChange}
+                placeholder="例：山田 太郎" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="postalCode" className={labelCls}>郵便番号</label>
+              <input
+                id="postalCode" name="postalCode" type="text"
+                value={company.postalCode} onChange={handleCompanyChange}
+                placeholder="例：〒590-0000" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="address" className={labelCls}>住所</label>
+              <input
+                id="address" name="address" type="text"
+                value={company.address} onChange={handleCompanyChange}
+                placeholder="例：大阪府堺市〇〇区〇〇町" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="tel" className={labelCls}>TEL</label>
+              <input
+                id="tel" name="tel" type="tel"
+                value={company.tel} onChange={handleCompanyChange}
+                placeholder="例：090-0000-0000" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className={labelCls}>MAIL</label>
+              <input
+                id="email" name="email" type="email"
+                value={company.email} onChange={handleCompanyChange}
+                placeholder="例：example@example.com" className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="invoiceNumber" className={labelCls}>インボイス登録番号</label>
+              <input
+                id="invoiceNumber" name="invoiceNumber" type="text"
+                value={company.invoiceNumber} onChange={handleCompanyChange}
+                placeholder="例：T0000000000000" className={inputCls}
+              />
+              <p className="mt-1 text-xs text-stone-400">
+                「T」から始まる13桁の番号を入力してください。
+              </p>
+            </div>
+          </div>
+
+          {/* ── 書類表示プレビュー ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-1 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              書類表示
+            </h2>
+            <p className="mb-3 text-xs text-stone-400">
+              見積書・請求書に表示する名称を確認します。
+            </p>
+            <div className="rounded-xl border border-stone-100 bg-stone-50 divide-y divide-stone-100">
+              <div className="flex items-start gap-2 px-3 py-2.5">
+                <span className="w-28 shrink-0 text-xs text-stone-400 pt-0.5">書類上の表示名</span>
+                <span className="text-sm font-bold text-stone-800">
+                  {company.businessName || "（未入力）"}
+                </span>
+              </div>
+              <div className="flex items-start gap-2 px-3 py-2.5">
+                <span className="w-28 shrink-0 text-xs text-stone-400 pt-0.5">代表者表示</span>
+                <span className="text-sm text-stone-700">
+                  {company.representative ? `代表　${company.representative}` : "（未入力）"}
+                </span>
+              </div>
+              <div className="flex items-start gap-2 px-3 py-2.5">
+                <span className="w-28 shrink-0 text-xs text-stone-400 pt-0.5">登録番号表示</span>
+                <span className="text-sm font-bold text-[#8B4A3C]">
+                  {company.invoiceNumber ? `登録番号：${company.invoiceNumber}` : "（未入力）"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── インボイス注意カード ── */}
+          <div className="rounded-2xl bg-yellow-50 p-4 shadow-sm ring-1 ring-yellow-200">
+            <h3 className="mb-1.5 text-sm font-bold text-yellow-800">
+              ⚠️ インボイス番号について
+            </h3>
+            <p className="text-sm leading-relaxed text-yellow-700">
+              インボイス登録番号は請求書・見積書に表示される重要な番号です。
+              誤入力があると取引先の経理処理に影響する可能性があります。
+              正式な登録番号を確認して入力してください。
+            </p>
+          </div>
+
+          {/* ── 振込先 ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
+            <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              振込先
+            </h2>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="bankName" className={labelCls}>銀行名</label>
+                <input
+                  id="bankName" name="bankName" type="text"
+                  value={bank.bankName} onChange={handleBankChange}
+                  placeholder="例：〇〇銀行" className={inputCls}
+                />
+              </div>
+              <div>
+                <label htmlFor="branchName" className={labelCls}>支店名</label>
+                <input
+                  id="branchName" name="branchName" type="text"
+                  value={bank.branchName} onChange={handleBankChange}
+                  placeholder="例：〇〇支店" className={inputCls}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="accountType" className={labelCls}>口座種別</label>
+                <select
+                  id="accountType" name="accountType"
+                  value={bank.accountType}
+                  onChange={handleBankChange}
+                  className={selectCls}
+                >
+                  {ACCOUNT_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="accountNumber" className={labelCls}>口座番号</label>
+                <input
+                  id="accountNumber" name="accountNumber"
+                  type="text" inputMode="numeric"
+                  value={bank.accountNumber} onChange={handleBankChange}
+                  placeholder="例：1234567" className={inputCls}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="accountHolder" className={labelCls}>口座名義（カタカナ）</label>
+              <input
+                id="accountHolder" name="accountHolder" type="text"
+                value={bank.accountHolder} onChange={handleBankChange}
+                placeholder="例：ヤマダ タロウ" className={inputCls}
+              />
+            </div>
+          </div>
+
+          {/* ── PDFへの反映予定 ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-1.5 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              PDFへの反映予定
+            </h2>
+            <p className="mb-3 text-sm text-stone-500 leading-relaxed">
+              現在は画面上の設定確認のみです。
+              次工程で、見積書PDF・請求書PDF・一括請求PDFへ反映できるようにします。
+            </p>
+            <ul className="space-y-1.5">
+              {[
+                "見積書PDF",
+                "見積書兼注文書PDF",
+                "保存用PDF",
+                "一括請求書PDF",
+                "単体請求書PDF",
+              ].map((label) => (
+                <li key={label} className="flex items-center gap-2 text-sm text-stone-500">
+                  <span className="text-stone-300">○</span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── ボタン群 ── */}
+          <div className="space-y-3 pb-8 pt-1">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+            >
+              保存する
+            </button>
+            <button
+              type="button"
+              onClick={handlePdfCheck}
+              className="w-full rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
+            >
+              PDF反映を確認
+            </button>
+            <Link
+              href="/"
+              className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
+            >
+              ホームへ戻る
+            </Link>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

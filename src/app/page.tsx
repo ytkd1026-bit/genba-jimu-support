@@ -171,6 +171,23 @@ export default function Home() {
             </ul>
           </div>
 
+          {/* 管理メニュー */}
+          <div className="rounded-2xl bg-white p-3 shadow-sm">
+            <h2 className="mb-2 border-b border-stone-100 pb-1.5 text-xs font-bold text-stone-400 uppercase tracking-wide">
+              管理
+            </h2>
+            <Link
+              href="/settings/company"
+              className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50"
+            >
+              <div>
+                <p className="text-sm font-bold text-stone-700">⚙️ 事業者設定</p>
+                <p className="text-xs text-stone-400">自社情報・振込先・インボイス番号を管理</p>
+              </div>
+              <span className="text-stone-300">›</span>
+            </Link>
+          </div>
+
         </section>
       </div>
     </div>
