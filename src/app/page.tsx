@@ -3,26 +3,38 @@ import Link from "next/link";
 const mainButtons = [
   {
     label: "新規案件登録",
-    desc: "現調・見積・請求までまとめる",
+    desc: "手入力で案件を作る",
     icon: "📋",
     href: "/projects/new",
   },
   {
+    label: "元請書類から案件登録",
+    desc: "PDF・FAX・LINE画像から案件の下書きを作る",
+    icon: "📄",
+    href: "/projects/import",
+  },
+  {
     label: "スケジュール",
-    desc: "現調・施工・請求忘れを防ぐ",
+    desc: "現調・施工・請求予定を確認",
     icon: "📅",
     href: null,
   },
   {
-    label: "使い方を見る",
-    desc: "スマホだけで始める手順",
-    icon: "📖",
-    href: null,
+    label: "月次収支報告",
+    desc: "売上・支出・未請求・未入金を確認",
+    icon: "📊",
+    href: "/reports/monthly",
   },
   {
     label: "テンプレ集",
-    desc: "見積・請求・LINE文をコピペ",
-    icon: "📄",
+    desc: "見積・請求・LINE文面",
+    icon: "📝",
+    href: null,
+  },
+  {
+    label: "使い方を見る",
+    desc: "初めての方はこちら",
+    icon: "📖",
     href: null,
   },
 ];
