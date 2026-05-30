@@ -6,6 +6,11 @@
 // TODO: Googleカレンダー連携を検討する
 // TODO: ホーム画面の「今週の予定」はこの schedule_events から取得する
 
+// TODO: 本実装では施工予定日から3日前を基準に材料発注アラートを出す。
+// TODO: 3日前が土日祝にかかる場合、木曜17:00または金曜09:00に前倒し警告する。
+// TODO: 日本の祝日判定は後工程で holiday-jp 等のライブラリまたは祝日マスタで対応する。
+// TODO: Push通知・LINE通知・メール通知は次工程で対応する。
+
 import Link from "next/link";
 
 // ─── 型定義 ──────────────────────────────────────────────────
@@ -20,16 +25,31 @@ type EventKind =
 
 type EventStatus = "予定" | "未確認" | "要確認" | "未入金" | "完了";
 
+type MaterialOrderStatus = "未発注" | "発注済み";
+type AlertType = "施工3日前" | "土日祝前倒し" | "確認済み";
+
 interface ScheduleEvent {
   id: string;
-  date: string;   // "YYYY/MM/DD"
+  date: string;
   weekday: string;
-  time: string;   // "HH:MM" or "-"
+  time: string;
   kind: EventKind;
   projectName: string;
   clientName: string;
   siteAddress: string;
   status: EventStatus;
+}
+
+interface MaterialAlert {
+  id: string;
+  projectName: string;
+  contractorName: string;
+  constructionDate: string;
+  materialOrderStatus: MaterialOrderStatus;
+  materialDeliveryDate: string;
+  alertType: AlertType;
+  alertDate: string;
+  alertMessage: string;
 }
 
 interface AlertItem {
@@ -44,6 +64,46 @@ const TODAY_EVENTS: { time: string; projectName: string; kind: EventKind }[] = [
   { time: "09:00", projectName: "〇〇マンション クロス貼替", kind: "現調" },
   { time: "13:00", projectName: "△△邸 CF貼替",             kind: "材料発注" },
   { time: "17:00", projectName: "□□店舗 床補修",           kind: "請求" },
+];
+
+// 材料発注アラート仮データ
+// alertType: "施工3日前"     → 施工日3日前で未発注
+// alertType: "土日祝前倒し"  → 土日祝が挟まるため前倒しで警告
+// alertType: "確認済み"      → 発注済み
+const MATERIAL_ALERTS: MaterialAlert[] = [
+  {
+    id: "ma-1",
+    projectName: "〇〇マンション クロス貼替",
+    contractorName: "△△工務店",
+    constructionDate: "2026/06/03",
+    materialOrderStatus: "未発注",
+    materialDeliveryDate: "2026/06/02",
+    alertType: "施工3日前",
+    alertDate: "2026/05/31",
+    alertMessage: "施工日の3日前です。材料発注を確認してください。",
+  },
+  {
+    id: "ma-2",
+    projectName: "△△邸 CF貼替",
+    contractorName: "△△工務店",
+    constructionDate: "2026/06/09",
+    materialOrderStatus: "未発注",
+    materialDeliveryDate: "未定",
+    alertType: "土日祝前倒し",
+    alertDate: "2026/06/06 09:00",
+    alertMessage: "土日を挟むため、金曜9:00までに材料発注を確認してください。",
+  },
+  {
+    id: "ma-3",
+    projectName: "□□店舗 床補修",
+    contractorName: "□□リフォーム",
+    constructionDate: "2026/06/10",
+    materialOrderStatus: "発注済み",
+    materialDeliveryDate: "2026/06/09",
+    alertType: "確認済み",
+    alertDate: "-",
+    alertMessage: "材料発注済みです。搬入予定日を確認してください。",
+  },
 ];
 
 const WEEK_EVENTS: ScheduleEvent[] = [
@@ -94,7 +154,18 @@ const WEEK_EVENTS: ScheduleEvent[] = [
   },
 ];
 
+// 要確認：材料発注アラートの未発注・前倒し分を先頭に追加
 const ALERT_ITEMS: AlertItem[] = [
+  {
+    id: "al-mat-1",
+    projectName: "△△邸 CF貼替",
+    message: "土日を挟むため、金曜9:00までに材料発注を確認してください。",
+  },
+  {
+    id: "al-mat-2",
+    projectName: "〇〇マンション クロス貼替",
+    message: "施工日の3日前です。材料発注を確認してください。",
+  },
   { id: "al-1", projectName: "△△邸 CF貼替",              message: "材料搬入日を確認してください。" },
   { id: "al-2", projectName: "〇〇マンション クロス貼替", message: "注文書返送待ちです。" },
   { id: "al-3", projectName: "△△工務店 5月分一括請求",   message: "2026/06/30 入金予定です。" },
@@ -119,7 +190,26 @@ const STATUS_STYLE: Record<EventStatus, string> = {
   完了:   "bg-green-100 text-green-700",
 };
 
-// ─── コンポーネント ───────────────────────────────────────────
+// 材料アラートカードのスタイル
+function materialAlertCardStyle(alert: MaterialAlert): string {
+  if (alert.alertType === "土日祝前倒し") return "bg-red-50 ring-1 ring-red-300";
+  if (alert.materialOrderStatus === "未発注")  return "bg-amber-50 ring-1 ring-amber-300";
+  return "bg-green-50 ring-1 ring-green-200";
+}
+
+function materialAlertBadgeStyle(alert: MaterialAlert): string {
+  if (alert.alertType === "土日祝前倒し") return "bg-red-100 text-red-800";
+  if (alert.materialOrderStatus === "未発注")  return "bg-amber-100 text-amber-800";
+  return "bg-green-100 text-green-800";
+}
+
+function materialOrderBadgeStyle(status: MaterialOrderStatus): string {
+  return status === "発注済み"
+    ? "bg-green-100 text-green-800"
+    : "bg-red-100 text-red-700";
+}
+
+// ─── ハンドラー ───────────────────────────────────────────────
 
 function handleViewSwitch() {
   alert("表示切替は次工程で追加します。");
@@ -128,6 +218,8 @@ function handleViewSwitch() {
 function handleAddEvent() {
   alert("予定追加機能は次工程で追加します。");
 }
+
+// ─── ページ ───────────────────────────────────────────────────
 
 export default function SchedulePage() {
   return (
@@ -172,6 +264,74 @@ export default function SchedulePage() {
             )}
           </div>
 
+          {/* ── 材料発注アラート ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-0.5 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              🔔 材料発注アラート
+            </h2>
+            <p className="mb-3 text-xs text-stone-400">
+              施工日から逆算して、材料発注の確認が必要な案件を表示します。
+            </p>
+            <div className="space-y-2.5">
+              {MATERIAL_ALERTS.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`rounded-xl p-3 ${materialAlertCardStyle(alert)}`}
+                >
+                  {/* バッジ行 */}
+                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialAlertBadgeStyle(alert)}`}>
+                      {alert.alertType}
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialOrderBadgeStyle(alert.materialOrderStatus)}`}>
+                      {alert.materialOrderStatus}
+                    </span>
+                    {alert.alertDate !== "-" && (
+                      <span className="ml-auto text-xs text-stone-500">
+                        ⏰ {alert.alertDate}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 案件名・元請 */}
+                  <p className="mb-1 text-sm font-bold text-stone-800 leading-tight">
+                    {alert.projectName}
+                  </p>
+                  <p className="mb-0.5 text-xs text-stone-400">{alert.contractorName}</p>
+
+                  {/* 施工日・搬入日 */}
+                  <div className="mb-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-xs text-stone-500">
+                      施工日：{alert.constructionDate}
+                    </span>
+                    <span className="text-xs text-stone-500">
+                      搬入予定：{alert.materialDeliveryDate}
+                    </span>
+                  </div>
+
+                  {/* メッセージ */}
+                  <p className={`mb-2 text-sm font-bold leading-snug ${
+                    alert.alertType === "土日祝前倒し"
+                      ? "text-red-700"
+                      : alert.materialOrderStatus === "未発注"
+                        ? "text-amber-800"
+                        : "text-green-700"
+                  }`}>
+                    {alert.alertMessage}
+                  </p>
+
+                  {/* 案件を見るボタン */}
+                  <Link
+                    href="/projects/sample"
+                    className="inline-flex items-center gap-1 rounded-lg bg-[#8B4A3C]/10 px-3 py-1.5 text-xs font-bold text-[#8B4A3C] active:opacity-70"
+                  >
+                    案件を見る →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* ── 今週の予定 ── */}
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
@@ -183,7 +343,6 @@ export default function SchedulePage() {
                   key={ev.id}
                   className="rounded-xl border border-stone-100 bg-stone-50 p-3"
                 >
-                  {/* 日付・時間・種別・状態 */}
                   <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                     <span className="text-xs font-bold text-stone-500">
                       {ev.date}（{ev.weekday}）
@@ -198,8 +357,6 @@ export default function SchedulePage() {
                       {ev.status}
                     </span>
                   </div>
-
-                  {/* 案件名・元請 */}
                   <p className="mb-0.5 text-sm font-bold text-stone-800 leading-tight">
                     {ev.projectName}
                   </p>
@@ -207,8 +364,6 @@ export default function SchedulePage() {
                   {ev.siteAddress !== "-" && (
                     <p className="text-xs text-stone-400">{ev.siteAddress}</p>
                   )}
-
-                  {/* 案件を見るボタン */}
                   <div className="mt-2">
                     <Link
                       href="/projects/sample"
@@ -222,7 +377,7 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          {/* ── 要確認 ── */}
+          {/* ── 要確認（材料発注アラート含む） ── */}
           <div className="rounded-2xl bg-yellow-50 p-4 shadow-sm ring-1 ring-yellow-200">
             <h2 className="mb-3 border-b border-yellow-200 pb-2 text-sm font-bold text-yellow-800">
               ⚠️ 要確認
@@ -267,6 +422,15 @@ export default function SchedulePage() {
           >
             ＋ 予定を追加
           </button>
+
+          {/* ── 通知機能について ── */}
+          <div className="rounded-2xl bg-stone-50 p-4 shadow-sm ring-1 ring-stone-200">
+            <h3 className="mb-1.5 text-sm font-bold text-stone-600">📵 通知機能について</h3>
+            <p className="text-sm leading-relaxed text-stone-500">
+              現在は画面上の警告表示のみです。
+              今後、LINE通知・メール通知・Googleカレンダー通知に対応予定です。
+            </p>
+          </div>
 
           {/* ── ホームへ戻る ── */}
           <div className="pb-8">
