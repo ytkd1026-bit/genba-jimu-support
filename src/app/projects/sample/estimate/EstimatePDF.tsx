@@ -19,6 +19,20 @@ Font.register({
   ],
 });
 
+// TODO: company settings は将来的に Supabase の company_settings テーブルから取得する
+// TODO: 見積PDF・請求書PDF・注文書PDFは同じ company settings を参照する
+// TODO: localStorage または Supabase 保存後に、設定値を永続化する
+
+export type CompanyInfoForPDF = {
+  name: string;
+  postalCode: string;
+  address: string;
+  representative: string; // "代表　山田 太郎" 形式
+  tel: string;
+  email: string;
+  invoiceNumber: string;
+};
+
 export type EstimatePDFProps = {
   lines: Array<{
     id: number;
@@ -35,6 +49,7 @@ export type EstimatePDFProps = {
   subtotalSum: number;
   taxSum: number;
   totalWithTax: number;
+  companyInfo: CompanyInfoForPDF;
 };
 
 function toNum(v: string): number {
@@ -145,6 +160,36 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: 700,
     color: ACCENT,
+  },
+
+  // 自社情報ブロック（右列）— 原価・粗利は含まない
+  companyBlock: {
+    alignItems: 'flex-end',
+    marginTop: 5,
+    paddingTop: 4,
+    borderTopWidth: 0.5,
+    borderTopColor: BORDER,
+    width: '100%',
+  },
+  companyName: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: '#1a1a1a',
+    textAlign: 'right',
+    marginBottom: 1,
+  },
+  companyRow: {
+    fontSize: 6.5,
+    color: '#444',
+    textAlign: 'right',
+    marginBottom: 0.8,
+  },
+  companyInvoiceNo: {
+    fontSize: 6.5,
+    color: ACCENT,
+    fontWeight: 700,
+    textAlign: 'right',
+    marginTop: 1,
   },
 
   // ── 明細テーブル ──────────────────────────────────
@@ -264,7 +309,7 @@ const s = StyleSheet.create({
   },
 });
 
-function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: EstimatePDFProps) {
+function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo }: EstimatePDFProps) {
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={s.page}>
@@ -296,6 +341,16 @@ function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: Estim
                 <Text style={s.docInfoLabel}>作成日</Text>
                 <Text style={s.docInfoValue}>2026/05/30</Text>
               </View>
+            </View>
+            {/* 自社情報 */}
+            <View style={s.companyBlock}>
+              <Text style={s.companyName}>{companyInfo.name}</Text>
+              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
+              <Text style={s.companyRow}>{companyInfo.address}</Text>
+              <Text style={s.companyRow}>{companyInfo.representative}</Text>
+              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
+              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
+              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
             </View>
             <View style={s.totalBox}>
               <Text style={s.totalBoxLabel}>税込見積金額</Text>
@@ -510,7 +565,7 @@ const o = StyleSheet.create({
 });
 
 // ─── 見積書兼注文書 PDF コンポーネント ───────────────────────
-function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: EstimatePDFProps) {
+function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo }: EstimatePDFProps) {
   return (
     <Document>
       {/* ─── 1ページ目：見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
@@ -543,6 +598,16 @@ function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: 
                 <Text style={s.docInfoLabel}>作成日</Text>
                 <Text style={s.docInfoValue}>2026/05/30</Text>
               </View>
+            </View>
+            {/* 自社情報 */}
+            <View style={s.companyBlock}>
+              <Text style={s.companyName}>{companyInfo.name}</Text>
+              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
+              <Text style={s.companyRow}>{companyInfo.address}</Text>
+              <Text style={s.companyRow}>{companyInfo.representative}</Text>
+              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
+              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
+              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
             </View>
             <View style={s.totalBox}>
               <Text style={s.totalBoxLabel}>税込見積金額</Text>
@@ -666,20 +731,28 @@ function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax }: 
             </View>
           </View>
 
-          {/* 受注者 */}
+          {/* 受注者（自社情報を表示） */}
           <View style={o.partyBox}>
             <Text style={o.partyTitle}>受注者</Text>
             <View style={o.partyFieldRow}>
               <Text style={o.partyFieldLabel}>屋号</Text>
-              <View style={o.partyFieldLine} />
+              <Text style={{ flex: 1, fontSize: 8, fontWeight: 700 }}>{companyInfo.name}</Text>
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>住所</Text>
+              <Text style={{ flex: 1, fontSize: 7.5 }}>{companyInfo.postalCode} {companyInfo.address}</Text>
             </View>
             <View style={o.partyFieldRow}>
               <Text style={o.partyFieldLabel}>代表者</Text>
-              <View style={o.partyFieldLine} />
+              <Text style={{ flex: 1, fontSize: 8 }}>{companyInfo.representative}</Text>
             </View>
             <View style={o.partyFieldRow}>
               <Text style={o.partyFieldLabel}>電話番号</Text>
-              <View style={o.partyFieldLine} />
+              <Text style={{ flex: 1, fontSize: 7.5 }}>{companyInfo.tel}</Text>
+            </View>
+            <View style={o.partyFieldRow}>
+              <Text style={o.partyFieldLabel}>登録番号</Text>
+              <Text style={{ flex: 1, fontSize: 7, color: ACCENT }}>{companyInfo.invoiceNumber}</Text>
             </View>
           </View>
         </View>
@@ -859,7 +932,7 @@ const p = StyleSheet.create({
 });
 
 // ─── 保存用PDF コンポーネント ─────────────────────────────────
-function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate }: StoragePDFProps) {
+function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate, companyInfo }: StoragePDFProps) {
   // 工事別利益サマリーの計算
   const salesByJob = new Map<string, number>();
   lines.forEach((line) => {
@@ -914,6 +987,16 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
                 <Text style={s.docInfoLabel}>作成日</Text>
                 <Text style={s.docInfoValue}>2026/05/30</Text>
               </View>
+            </View>
+            {/* 自社情報 */}
+            <View style={s.companyBlock}>
+              <Text style={s.companyName}>{companyInfo.name}</Text>
+              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
+              <Text style={s.companyRow}>{companyInfo.address}</Text>
+              <Text style={s.companyRow}>{companyInfo.representative}</Text>
+              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
+              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
+              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
             </View>
             <View style={s.totalBox}>
               <Text style={s.totalBoxLabel}>税込見積金額</Text>

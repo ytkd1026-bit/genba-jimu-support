@@ -1,7 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+// 事業者設定との共通キー（settings/company/page.tsx と同じ値を参照）
+const SETTINGS_STORAGE_KEY = "genba_settings";
+
+type CompanyInfoState = {
+  name: string;
+  postalCode: string;
+  address: string;
+  representative: string;
+  tel: string;
+  email: string;
+  invoiceNumber: string;
+};
+
+const DEFAULT_COMPANY_INFO: CompanyInfoState = {
+  name:           "REVO",
+  postalCode:     "〒590-0000",
+  address:        "大阪府堺市〇〇区〇〇町",
+  representative: "代表　山田 太郎",
+  tel:            "090-0000-0000",
+  email:          "example@example.com",
+  invoiceNumber:  "T0000000000000",
+};
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type LineItem = {
@@ -229,6 +252,30 @@ export default function EstimatePage() {
   const [summaryInternalOpen, setSummaryInternalOpen] = useState(false);
   // null = 生成中なし / 'estimate' = 見積書 / 'order' = 見積書兼注文書 / 'storage' = 保存用
   const [pdfLoading, setPdfLoading] = useState<null | 'estimate' | 'order' | 'storage'>(null);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
+
+  // localStorageから事業者設定を読み込む（一括請求PDFと同じ共通キーを使用）
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      const rep = saved.representative
+        ? `代表　${saved.representative}`
+        : DEFAULT_COMPANY_INFO.representative;
+      setCompanyInfo({
+        name:           saved.businessName   ?? DEFAULT_COMPANY_INFO.name,
+        postalCode:     saved.postalCode     ?? DEFAULT_COMPANY_INFO.postalCode,
+        address:        saved.address        ?? DEFAULT_COMPANY_INFO.address,
+        representative: rep,
+        tel:            saved.tel            ?? DEFAULT_COMPANY_INFO.tel,
+        email:          saved.email          ?? DEFAULT_COMPANY_INFO.email,
+        invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY_INFO.invoiceNumber,
+      });
+    } catch {
+      // 読み込み失敗時はデフォルト値のまま
+    }
+  }, []);
 
   function updateLine(id: number, field: keyof LineItem, value: string) { setLines((p) => p.map((l) => l.id === id ? { ...l, [field]: value } : l)); }
   function addLine() { setLines((p) => [...p, emptyLine(nextLineId)]); setNextLineId((n) => n + 1); }
@@ -279,7 +326,7 @@ export default function EstimatePage() {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimatePDF } = await import('./EstimatePDF');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax });
+      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, 'estimate_EST-0001.pdf');
     } catch (err) {
@@ -307,6 +354,7 @@ export default function EstimatePage() {
         costSum,
         grossProfit,
         grossMarginRate,
+        companyInfo,
       });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, 'estimate_internal_EST-0001.pdf');
@@ -326,7 +374,7 @@ export default function EstimatePage() {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimateOrderPDF } = await import('./EstimatePDF');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax });
+      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, 'estimate_order_EST-0001.pdf');
     } catch (err) {
