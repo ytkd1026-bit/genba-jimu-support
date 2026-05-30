@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 // TODO: Supabase連携後は、新規案件登録時の元請情報を customers テーブルに保存し、
 //       projects.customer_id と紐づける。現在は仮データで動作確認中。
@@ -79,11 +79,25 @@ const CUSTOMERS: Customer[] = [
   },
 ];
 
-// ─── 自社情報（仮） ─────────────────────────────────────────
-// TODO: companyInfo は将来的に事業者設定画面から登録・編集できるようにする
-// TODO: インボイス登録番号は事業者設定からPDFへ反映する
+// ─── 自社情報（事業者設定画面と共有） ───────────────────────────
+// 事業者設定画面で保存した内容をlocalStorageから読み込んでPDFへ反映する
+// TODO: Supabase連携後は company_settings テーブルから取得する
 // TODO: 小窓付き封筒の規格に合わせた印刷位置テンプレを追加する
-const COMPANY_INFO = {
+
+// 設定ページと同じキーを参照する
+const SETTINGS_STORAGE_KEY = "genba_settings";
+
+type CompanyInfoState = {
+  name: string;
+  postalCode: string;
+  address: string;
+  representative: string; // "代表　山田 太郎" 形式
+  tel: string;
+  email: string;
+  invoiceNumber: string;
+};
+
+const DEFAULT_COMPANY_INFO: CompanyInfoState = {
   name: "REVO",
   postalCode: "〒590-0000",
   address: "大阪府堺市〇〇区〇〇町",
@@ -261,7 +275,10 @@ export default function InvoicePage() {
   const [periodFrom, setPeriodFrom] = useState("2026-05-01");
   const [periodTo, setPeriodTo] = useState("2026-05-31");
 
-  // 振込先（デモ初期値）
+  // 自社情報（事業者設定からlocalStorage経由で読み込む）
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
+
+  // 振込先（事業者設定からlocalStorage経由で読み込む）
   const [bank, setBank] = useState<BankInfo>({
     bankName: "〇〇銀行",
     branchName: "〇〇支店",
@@ -269,6 +286,38 @@ export default function InvoicePage() {
     accountNumber: "1234567",
     accountHolder: "ヤマダ タロウ",
   });
+
+  // localStorageから事業者設定を読み込んで自社情報・振込先を更新する
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      // representative は設定画面では生名前（例: "山田 太郎"）で保存されているため
+      // PDFで使う形式（"代表　山田 太郎"）へ変換する
+      const rep = saved.representative
+        ? `代表　${saved.representative}`
+        : DEFAULT_COMPANY_INFO.representative;
+      setCompanyInfo({
+        name:          saved.businessName   ?? DEFAULT_COMPANY_INFO.name,
+        postalCode:    saved.postalCode     ?? DEFAULT_COMPANY_INFO.postalCode,
+        address:       saved.address        ?? DEFAULT_COMPANY_INFO.address,
+        representative: rep,
+        tel:           saved.tel            ?? DEFAULT_COMPANY_INFO.tel,
+        email:         saved.email          ?? DEFAULT_COMPANY_INFO.email,
+        invoiceNumber: saved.invoiceNumber  ?? DEFAULT_COMPANY_INFO.invoiceNumber,
+      });
+      setBank((prev) => ({
+        bankName:      saved.bankName      ?? prev.bankName,
+        branchName:    saved.branchName    ?? prev.branchName,
+        accountType:   saved.accountType   ?? prev.accountType,
+        accountNumber: saved.accountNumber ?? prev.accountNumber,
+        accountHolder: saved.accountHolder ?? prev.accountHolder,
+      }));
+    } catch {
+      // 読み込み失敗時はデフォルト値のまま
+    }
+  }, []);
 
   // 備考（デモ初期値）
   const [invoiceNote, setInvoiceNote] = useState(
@@ -346,7 +395,7 @@ export default function InvoicePage() {
         totalWithTax,
         bank,
         invoiceNote,
-        companyInfo: COMPANY_INFO,
+        companyInfo: companyInfo,
       });
       const blob = await pdf(element).toBlob();
       const url = URL.createObjectURL(blob);
@@ -532,35 +581,37 @@ export default function InvoicePage() {
           <div className="rounded-xl border border-stone-100 bg-stone-50 divide-y divide-stone-100">
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">会社名</span>
-              <span className="text-sm font-bold text-stone-800">{COMPANY_INFO.name}</span>
+              <span className="text-sm font-bold text-stone-800">{companyInfo.name}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">郵便番号</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.postalCode}</span>
+              <span className="text-sm text-stone-700">{companyInfo.postalCode}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">住所</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.address}</span>
+              <span className="text-sm text-stone-700">{companyInfo.address}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">代表者</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.representative}</span>
+              <span className="text-sm text-stone-700">{companyInfo.representative}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">TEL</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.tel}</span>
+              <span className="text-sm text-stone-700">{companyInfo.tel}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">MAIL</span>
-              <span className="text-sm text-stone-700">{COMPANY_INFO.email}</span>
+              <span className="text-sm text-stone-700">{companyInfo.email}</span>
             </div>
             <div className="flex items-start gap-2 px-3 py-2">
               <span className="w-24 shrink-0 text-xs text-[#8B4A3C] font-bold pt-0.5">登録番号</span>
-              <span className="text-sm font-bold text-[#8B4A3C]">{COMPANY_INFO.invoiceNumber}</span>
+              <span className="text-sm font-bold text-[#8B4A3C]">{companyInfo.invoiceNumber}</span>
             </div>
           </div>
           <p className="mt-2 text-xs text-stone-400">
-            ※ 自社情報は次工程の事業者設定画面から変更できるようになります。
+            ※ 自社情報は
+            <a href="/settings/company" className="underline text-[#8B4A3C]">事業者設定</a>
+            で変更できます。変更後は「保存する」を押してください。
           </p>
         </div>
 

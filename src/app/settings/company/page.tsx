@@ -7,11 +7,14 @@
 // TODO: 複数口座対応は上位プラン機能として検討する
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ─── 定数 ────────────────────────────────────────────────────
 const ACCOUNT_TYPES = ["普通", "当座"] as const;
 type AccountType = typeof ACCOUNT_TYPES[number];
+
+// 事業者設定をlocalStorageへ保存・読込するキー（一括請求PDFと共有）
+const SETTINGS_STORAGE_KEY = "genba_settings";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 interface CompanyForm {
@@ -39,25 +42,56 @@ const selectCls =
   "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
 const labelCls = "mb-1 block text-sm font-bold text-stone-700";
 
+// ─── デフォルト値 ────────────────────────────────────────────
+const DEFAULT_COMPANY: CompanyForm = {
+  businessName:   "REVO",
+  representative: "山田 太郎",
+  postalCode:     "〒590-0000",
+  address:        "大阪府堺市〇〇区〇〇町",
+  tel:            "090-0000-0000",
+  email:          "example@example.com",
+  invoiceNumber:  "T0000000000000",
+};
+
+const DEFAULT_BANK: BankForm = {
+  bankName:      "〇〇銀行",
+  branchName:    "〇〇支店",
+  accountType:   "普通",
+  accountNumber: "1234567",
+  accountHolder: "ヤマダ タロウ",
+};
+
 // ─── コンポーネント ───────────────────────────────────────────
 export default function CompanySettingsPage() {
-  const [company, setCompany] = useState<CompanyForm>({
-    businessName:   "REVO",
-    representative: "山田 太郎",
-    postalCode:     "〒590-0000",
-    address:        "大阪府堺市〇〇区〇〇町",
-    tel:            "090-0000-0000",
-    email:          "example@example.com",
-    invoiceNumber:  "T0000000000000",
-  });
+  const [company, setCompany] = useState<CompanyForm>(DEFAULT_COMPANY);
+  const [bank, setBank] = useState<BankForm>(DEFAULT_BANK);
 
-  const [bank, setBank] = useState<BankForm>({
-    bankName:      "〇〇銀行",
-    branchName:    "〇〇支店",
-    accountType:   "普通",
-    accountNumber: "1234567",
-    accountHolder: "ヤマダ タロウ",
-  });
+  // 起動時にlocalStorageから読み込む
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      setCompany({
+        businessName:   saved.businessName   ?? DEFAULT_COMPANY.businessName,
+        representative: saved.representative ?? DEFAULT_COMPANY.representative,
+        postalCode:     saved.postalCode     ?? DEFAULT_COMPANY.postalCode,
+        address:        saved.address        ?? DEFAULT_COMPANY.address,
+        tel:            saved.tel            ?? DEFAULT_COMPANY.tel,
+        email:          saved.email          ?? DEFAULT_COMPANY.email,
+        invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY.invoiceNumber,
+      });
+      setBank({
+        bankName:      saved.bankName      ?? DEFAULT_BANK.bankName,
+        branchName:    saved.branchName    ?? DEFAULT_BANK.branchName,
+        accountType:   saved.accountType   ?? DEFAULT_BANK.accountType,
+        accountNumber: saved.accountNumber ?? DEFAULT_BANK.accountNumber,
+        accountHolder: saved.accountHolder ?? DEFAULT_BANK.accountHolder,
+      });
+    } catch {
+      // localStorage読み込み失敗時はデフォルトのまま
+    }
+  }, []);
 
   function handleCompanyChange(e: React.ChangeEvent<HTMLInputElement>) {
     setCompany((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -70,7 +104,14 @@ export default function CompanySettingsPage() {
   }
 
   function handleSave() {
-    alert("事業者設定の保存は次工程で追加します。");
+    try {
+      // company と bank をひとつのオブジェクトにまとめてlocalStorageへ保存
+      const payload = { ...company, ...bank };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+      alert("設定を保存しました。一括請求PDFに反映されます。");
+    } catch {
+      alert("保存に失敗しました。ブラウザの設定を確認してください。");
+    }
   }
 
   function handlePdfCheck() {
