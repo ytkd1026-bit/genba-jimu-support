@@ -159,7 +159,12 @@ function CandidateSelector({
 }
 
 // ─── AI整理ボタンカード ────────────────────────────────────────
-function AiStructureCard({ onPress }: { onPress: () => void }) {
+function AiStructureCard({
+  onPress, isLoading,
+}: {
+  onPress: () => void;
+  isLoading?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-2">
       <p className="text-sm font-bold text-purple-800">AI整理</p>
@@ -167,10 +172,22 @@ function AiStructureCard({ onPress }: { onPress: () => void }) {
         OCR文字をもとに、元請名・住所・金額・日付などを候補として抽出します。
         候補を選んでフォームへ反映できます。
       </p>
-      <button type="button" onClick={onPress}
-        className="w-full rounded-xl border-2 border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70">
-        ✨ AIで整理する（候補を表示）
+      <button type="button" onClick={onPress} disabled={isLoading}
+        className="w-full rounded-xl border-2 border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70 disabled:cursor-not-allowed disabled:opacity-60">
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+            AI整理中…（最大30秒）
+          </span>
+        ) : (
+          "✨ AIで整理する（候補を表示）"
+        )}
       </button>
+      {isLoading && (
+        <p className="text-center text-xs text-purple-500">
+          OpenAI が候補を抽出しています。しばらくお待ちください。
+        </p>
+      )}
     </div>
   );
 }
@@ -390,6 +407,7 @@ export default function ScanPage() {
   const [aiStructured,   setAiStructured]   = useState<AiStructuredResult | null>(null);
   const [selectedCands,  setSelectedCands]  = useState<CandidateSelections>(EMPTY_SELECTIONS);
   const [aiMsg,          setAiMsg]          = useState("");
+  const [isAiLoading,    setIsAiLoading]    = useState(false);
 
   // 保存済みフラグ
   const [agencySaved,  setAgencySaved]  = useState(false);
@@ -421,7 +439,7 @@ export default function ScanPage() {
   // ── リセット ─────────────────────────────────────────────────
   function resetSavedStates() {
     setAgencySaved(false); setReceiptSaved(false); setOrderSaved(false); setOtherSaved(false);
-    setAiMsg(""); setAiStructured(null); setSelectedCands(EMPTY_SELECTIONS);
+    setAiMsg(""); setAiStructured(null); setSelectedCands(EMPTY_SELECTIONS); setIsAiLoading(false);
   }
   function resetForms() {
     setAgencyForm({ clientName: "", contactName: "", projectName: "", address: "", workContent: "", contractAmount: "", sekouDate: "", paymentTerms: "", memo: "" });
@@ -506,13 +524,45 @@ export default function ScanPage() {
     }
   }
 
-  // ── AI整理ハンドラ ────────────────────────────────────────────
-  function handleAiOrganize() {
-    if (!ocrText) return;
-    const result = structureOcrText(ocrText);
-    setAiStructured(result);
-    setSelectedCands(EMPTY_SELECTIONS);
+  // ── AI整理ハンドラ（APIルート経由・ローカルフォールバックあり）─
+  async function handleAiOrganize() {
+    if (!ocrText || isAiLoading) return;
+    setIsAiLoading(true);
     setAiMsg("");
+    setAiStructured(null);
+    setSelectedCands(EMPTY_SELECTIONS);
+
+    try {
+      const res = await fetch("/api/ai/structure-ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: ocrText }),
+        signal: AbortSignal.timeout(35_000),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      // data が ok:false でも candidates は返ってくる想定
+      const result = data as AiStructuredResult & { ok?: boolean };
+      setAiStructured(result);
+
+      // フォールバックが使われた場合は注記を表示
+      const hasWarning = (result.warnings ?? []).some((w) =>
+        w.includes("ローカル候補抽出") || w.includes("エラー")
+      );
+      if (hasWarning) {
+        setAiMsg("⚠️ AI整理APIに問題があったため、ローカル候補抽出を使用しました。");
+      }
+    } catch (err) {
+      console.error("[handleAiOrganize] API 呼び出し失敗:", err);
+      // ローカルフォールバック
+      const result = structureOcrText(ocrText);
+      setAiStructured(result);
+      setAiMsg("⚠️ AI整理APIに接続できなかったため、ローカル候補抽出を使用しました。");
+    } finally {
+      setIsAiLoading(false);
+    }
   }
 
   // ── 金額バリデーション（発注金額欄への反映前チェック）──────────
@@ -669,19 +719,41 @@ export default function ScanPage() {
           <p className="text-xs text-stone-400">✓ OCR前処理（拡大・グレースケール・コントラスト強調）を適用して読み取りました。</p>
         )}
         <OcrTextCard value={ocrText} onChange={setOcrText} />
-        {!aiStructured ? (
-          <AiStructureCard onPress={handleAiOrganize} />
+
+        {/* AI整理エリア */}
+        {isAiLoading ? (
+          /* ローディング中：スピナーカードのみ表示 */
+          <AiStructureCard onPress={handleAiOrganize} isLoading={true} />
+        ) : aiStructured ? (
+          /* 結果表示中：候補選択カード + 再整理ボタン */
+          <>
+            <AiResultCard
+              result={aiStructured}
+              selections={selectedCands}
+              onSelect={(field, value) => setSelectedCands((p) => ({ ...p, [field]: value }))}
+              onApply={applyAiToForm}
+            />
+            <button type="button" onClick={handleAiOrganize}
+              className="w-full rounded-xl border border-purple-200 bg-white py-2.5 text-sm font-bold text-purple-600 active:opacity-70">
+              OCRを修正して再整理する
+            </button>
+          </>
         ) : (
-          <AiResultCard
-            result={aiStructured}
-            selections={selectedCands}
-            onSelect={(field, value) => setSelectedCands((p) => ({ ...p, [field]: value }))}
-            onApply={applyAiToForm}
-          />
+          /* 未実行：整理開始ボタン */
+          <AiStructureCard onPress={handleAiOrganize} isLoading={false} />
         )}
+
         {aiMsg && (
-          <div className={`rounded-xl px-4 py-3 ring-1 ${aiMsg.includes("反映") ? "bg-green-50 ring-green-200" : "bg-purple-50 ring-purple-200"}`}>
-            <p className={`text-sm font-bold ${aiMsg.includes("反映") ? "text-green-700" : "text-purple-700"}`}>{aiMsg}</p>
+          <div className={`rounded-xl px-4 py-3 ring-1 ${
+            aiMsg.includes("反映") ? "bg-green-50 ring-green-200" :
+            aiMsg.includes("⚠️")   ? "bg-amber-50 ring-amber-200" :
+            "bg-purple-50 ring-purple-200"
+          }`}>
+            <p className={`text-sm font-bold ${
+              aiMsg.includes("反映") ? "text-green-700" :
+              aiMsg.includes("⚠️")   ? "text-amber-700" :
+              "text-purple-700"
+            }`}>{aiMsg}</p>
           </div>
         )}
         <OcrExtractedBadge extracted={ocrExtracted} />
