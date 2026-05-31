@@ -16,9 +16,10 @@ const menuCards = [
     accent: false,
   },
   {
+    // TODO: 将来的に /estimates/saved を作り、保存済み見積一覧を表示する。
     icon: "🗂️",
-    title: "保存用見積確認",
-    desc: "原価・粗利を含む自分用PDFを確認",
+    title: "保存済み見積確認",
+    desc: "過去に作成・保存した見積を確認",
     href: "/projects/sample/estimate",
     accent: false,
   },

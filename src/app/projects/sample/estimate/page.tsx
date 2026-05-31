@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   estimatePdfFileName,
   estimateOrderPdfFileName,
@@ -16,6 +16,40 @@ const PDF_ESTIMATE_DATE = "2026-05-30";
 
 // 事業者設定との共通キー（settings/company/page.tsx と同じ値を参照）
 const SETTINGS_STORAGE_KEY = "genba_settings";
+
+// ─── 案件検索用型定義・仮データ ──────────────────────────────
+type EstSearchProject = {
+  id: string;
+  date: string;
+  projectName: string;
+  clientName: string;
+  siteAddress: string;
+  workContent: string;
+  sekouDate: string;
+  status: string;
+};
+
+const EST_STATUS_STYLE: Record<string, string> = {
+  見積中: "bg-amber-100 text-amber-800",
+  下書き: "bg-stone-100 text-stone-600",
+  提出済み: "bg-blue-100 text-blue-700",
+  受注:   "bg-green-100 text-green-700",
+};
+
+const EST_SEARCH_PROJECTS: EstSearchProject[] = [
+  {
+    id: "ep1", date: "2026/06/03",
+    projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",
+    siteAddress: "大阪府堺市〇〇区", workContent: "洋室クロス貼替・洗面所CF貼替",
+    sekouDate: "2026/06/03", status: "見積中",
+  },
+  {
+    id: "ep2", date: "2026/06/05",
+    projectName: "□□店舗 床補修", clientName: "□□リフォーム",
+    siteAddress: "大阪府大阪市□□区", workContent: "店舗床補修",
+    sekouDate: "2026/06/05", status: "下書き",
+  },
+];
 
 type CompanyInfoState = {
   name: string;
@@ -264,10 +298,26 @@ export default function EstimatePage() {
   // null = 生成中なし / 'estimate' = 見積書 / 'order' = 見積書兼注文書 / 'storage' = 保存用
   const [pdfLoading, setPdfLoading] = useState<null | 'estimate' | 'order' | 'storage'>(null);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
-  // 提出先・案件名・現場住所（編集可能）
-  const [submitTo,     setSubmitTo]     = useState(PDF_CLIENT_NAME + " 御中");
+  // 提出先・案件名・現場住所（編集可能・案件検索で自動セット可能）
+  const [submitTo,       setSubmitTo]       = useState(PDF_CLIENT_NAME + " 御中");
   const [estProjectName, setEstProjectName] = useState(PDF_PROJECT_NAME);
-  const [estAddress,   setEstAddress]   = useState("大阪府堺市〇〇区");
+  const [estAddress,     setEstAddress]     = useState("大阪府堺市〇〇区");
+  // 案件検索
+  const [estSearchDate,    setEstSearchDate]    = useState("");
+  const [estSearchProject, setEstSearchProject] = useState("");
+  const [estSearchClient,  setEstSearchClient]  = useState("");
+  const [estHasSearched,   setEstHasSearched]   = useState(false);
+  const [selectedEstProject, setSelectedEstProject] = useState<EstSearchProject | null>(null);
+
+  const estFilteredProjects = useMemo(() => {
+    if (!estHasSearched) return [];
+    return EST_SEARCH_PROJECTS.filter((p) => {
+      const md = estSearchDate    === "" || p.date.includes(estSearchDate);
+      const mp = estSearchProject === "" || p.projectName.includes(estSearchProject);
+      const mc = estSearchClient  === "" || p.clientName.includes(estSearchClient);
+      return md && mp && mc;
+    });
+  }, [estHasSearched, estSearchDate, estSearchProject, estSearchClient]);
 
   // localStorageから事業者設定を読み込む（一括請求PDFと同じ共通キーを使用）
   useEffect(() => {
@@ -432,6 +482,88 @@ export default function EstimatePage() {
             白い部分は提出用、黄色い部分は保存用の内部管理です。
           </p>
         </header>
+
+        {/* ── 案件検索 ── */}
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm space-y-3">
+          <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">案件検索</h2>
+          <div className="space-y-2">
+            <input type="date" value={estSearchDate} onChange={(e) => setEstSearchDate(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
+            <input type="text" placeholder="案件名で検索" value={estSearchProject}
+              onChange={(e) => setEstSearchProject(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
+            <input type="text" placeholder="元請名で検索" value={estSearchClient}
+              onChange={(e) => setEstSearchClient(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
+            <button type="button"
+              onClick={() => setEstHasSearched(true)}
+              className="w-full rounded-xl bg-[#8B4A3C] py-2.5 text-sm font-bold text-white active:opacity-80">
+              検索
+            </button>
+          </div>
+          <div className="space-y-2">
+            {!estHasSearched ? (
+              <p className="py-2 text-center text-xs text-stone-400">
+                日付・案件名・元請名を入力して案件を検索してください。
+              </p>
+            ) : estFilteredProjects.length === 0 ? (
+              <p className="py-2 text-center text-xs text-stone-400">該当する案件はありません。</p>
+            ) : (
+              estFilteredProjects.map((p) => (
+                <div key={p.id} className="rounded-xl border border-stone-100 bg-stone-50 p-3 space-y-2">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-stone-800 leading-tight">{p.projectName}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${EST_STATUS_STYLE[p.status] ?? "bg-stone-100 text-stone-600"}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500">{p.clientName}　{p.siteAddress}</p>
+                    <p className="text-xs text-stone-400">{p.workContent}</p>
+                    <p className="text-xs text-stone-400">施工予定日：{p.sekouDate}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedEstProject(p);
+                      setSubmitTo(p.clientName + " 御中");
+                      setEstProjectName(p.projectName);
+                      setEstAddress(p.siteAddress);
+                      setEstHasSearched(false);
+                      setEstSearchDate(""); setEstSearchProject(""); setEstSearchClient("");
+                    }}
+                    className="w-full rounded-xl bg-[#8B4A3C] py-2 text-sm font-bold text-white active:opacity-80"
+                  >
+                    この案件で見積を作成
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── 選択中の案件カード ── */}
+        {selectedEstProject && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-[#8B4A3C]/20 bg-[#fff8f5] shadow-sm">
+            <div className="flex items-center justify-between border-b border-[#8B4A3C]/10 bg-[#8B4A3C]/5 px-4 py-2.5">
+              <span className="text-xs font-bold text-[#8B4A3C]">選択中の案件</span>
+              <button type="button"
+                onClick={() => setSelectedEstProject(null)}
+                className="rounded-lg px-2 py-1 text-xs font-bold text-stone-400 active:opacity-70">
+                解除
+              </button>
+            </div>
+            <div className="px-4 py-3 space-y-1">
+              <p className="text-sm font-bold text-stone-800">{selectedEstProject.projectName}</p>
+              <p className="text-xs text-stone-500">{selectedEstProject.clientName}　{selectedEstProject.siteAddress}</p>
+              <p className="text-xs text-stone-400">{selectedEstProject.workContent}</p>
+              <p className="text-xs text-stone-400">施工予定日：{selectedEstProject.sekouDate}</p>
+              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${EST_STATUS_STYLE[selectedEstProject.status] ?? "bg-stone-100 text-stone-600"}`}>
+                {selectedEstProject.status}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* 案件情報（編集可能） */}
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm space-y-3">
