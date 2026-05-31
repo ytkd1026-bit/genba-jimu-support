@@ -160,29 +160,58 @@ function CandidateSelector({
 
 // ─── AI整理ボタンカード ────────────────────────────────────────
 function AiStructureCard({
-  onPress, isLoading,
+  onVisionPress, onTextPress, canVision, isLoading,
 }: {
-  onPress: () => void;
+  onVisionPress: () => void;
+  onTextPress: () => void;
+  canVision: boolean;
   isLoading?: boolean;
 }) {
+  const spinner = (
+    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+  );
+
   return (
     <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-2">
       <p className="text-sm font-bold text-purple-800">AI整理</p>
       <p className="text-xs leading-relaxed text-purple-700">
-        OCR文字をもとに、元請名・住所・金額・日付などを候補として抽出します。
-        候補を選んでフォームへ反映できます。
+        元請名・住所・金額・日付などの候補を抽出してフォームへ反映します。
       </p>
-      <button type="button" onClick={onPress} disabled={isLoading}
-        className="w-full rounded-xl border-2 border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70 disabled:cursor-not-allowed disabled:opacity-60">
-        {isLoading ? (
+
+      {/* 画像AI整理（推奨） */}
+      {canVision && (
+        <button type="button" onClick={onVisionPress} disabled={isLoading}
+          className="w-full rounded-xl bg-purple-700 py-3 text-sm font-bold text-white shadow-sm active:opacity-80 disabled:cursor-not-allowed disabled:opacity-60">
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              {spinner}
+              AI整理中…（最大60秒）
+            </span>
+          ) : (
+            "✨ 画像から直接AIで整理する（推奨）"
+          )}
+        </button>
+      )}
+
+      {/* テキストAI整理（サブオプション or 単独） */}
+      <button type="button" onClick={onTextPress} disabled={isLoading}
+        className={`w-full rounded-xl py-2.5 text-sm font-bold active:opacity-70 disabled:cursor-not-allowed disabled:opacity-60 ${
+          canVision
+            ? "border border-purple-300 bg-white text-purple-600"
+            : "border-2 border-purple-300 bg-white text-purple-700"
+        }`}>
+        {isLoading && !canVision ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+            {spinner}
             AI整理中…（最大30秒）
           </span>
+        ) : canVision ? (
+          "📝 OCRテキストから整理する"
         ) : (
           "✨ AIで整理する（候補を表示）"
         )}
       </button>
+
       {isLoading && (
         <p className="text-center text-xs text-purple-500">
           OpenAI が候補を抽出しています。しばらくお待ちください。
@@ -524,7 +553,109 @@ export default function ScanPage() {
     }
   }
 
-  // ── AI整理ハンドラ（APIルート経由・ローカルフォールバックあり）─
+  // ── 画像 → JPEG base64 変換（Canvas圧縮・最大1920px幅） ────────
+  function fileToBase64Compressed(
+    file: File,
+    maxWidth = 1920,
+    quality = 0.88,
+  ): Promise<{ base64: string; mimeType: "image/jpeg" }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas 取得失敗")); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        URL.revokeObjectURL(url);
+        resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("画像読み込み失敗")); };
+      img.src = url;
+    });
+  }
+
+  // ── 画像AI整理（Vision → TextAI → ローカルの3段フォールバック）─
+  async function handleVisionOrganize() {
+    if (!selectedFile || isAiLoading) return;
+    setIsAiLoading(true);
+    setAiMsg("");
+    setAiStructured(null);
+    setSelectedCands(EMPTY_SELECTIONS);
+
+    let visionOk = false;
+
+    try {
+      // Step1: 画像をBase64圧縮変換
+      const { base64, mimeType: mt } = await fileToBase64Compressed(selectedFile);
+
+      // Step2: Vision API 呼び出し
+      const res = await fetch("/api/ai/vision-structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: mt, ocrText: ocrText || undefined }),
+        signal: AbortSignal.timeout(65_000),
+      });
+      if (!res.ok) throw new Error(`Vision API HTTP ${res.status}`);
+
+      const data = await res.json();
+      const result = data as AiStructuredResult & { ok?: boolean };
+      setAiStructured(result);
+      visionOk = true;
+
+      const hasFallbackWarning = (result.warnings ?? []).some((w) =>
+        w.includes("ローカル") || w.includes("フォールバック") || w.includes("エラー")
+      );
+      if (hasFallbackWarning) {
+        setAiMsg("⚠️ 画像AI整理に問題があったため、テキスト候補抽出を補完使用しました。");
+      }
+    } catch (visionErr) {
+      console.error("[handleVisionOrganize] Vision 失敗:", visionErr);
+    }
+
+    // Vision 失敗時 → TextAI API フォールバック
+    if (!visionOk) {
+      if (ocrText) {
+        try {
+          const res = await fetch("/api/ai/structure-ocr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: ocrText }),
+            signal: AbortSignal.timeout(35_000),
+          });
+          if (!res.ok) throw new Error(`TextAI HTTP ${res.status}`);
+          const data = await res.json();
+          setAiStructured(data as AiStructuredResult);
+          setAiMsg("⚠️ 画像AI整理に接続できなかったため、OCRテキストAI整理を使用しました。");
+          visionOk = true;
+        } catch (textErr) {
+          console.error("[handleVisionOrganize] TextAI 失敗:", textErr);
+        }
+      }
+      // TextAI も失敗 → ローカルフォールバック
+      if (!visionOk) {
+        const result = ocrText ? structureOcrText(ocrText) : null;
+        if (result) {
+          setAiStructured(result);
+          setAiMsg("⚠️ AI整理に失敗したため、ローカル候補抽出を使用しました。");
+        } else {
+          setAiMsg("⚠️ 画像AI整理に失敗しました。OCRを実行後、テキスト整理をお試しください。");
+        }
+      }
+    }
+
+    setIsAiLoading(false);
+  }
+
+  // ── AI整理ハンドラ（テキストAI：APIルート経由・ローカルフォールバックあり）─
   async function handleAiOrganize() {
     if (!ocrText || isAiLoading) return;
     setIsAiLoading(true);
@@ -712,20 +843,31 @@ export default function ScanPage() {
 
   // ── OCRセクション描画 ─────────────────────────────────────────
   function renderOcrSection() {
-    if (!ocrText) return null;
+    const canVision = !!(selectedFile && isPreviewableImage(selectedFile));
+    // OCRテキストがなくても、スキャン済みで画像があればAI整理エリアを表示
+    if (!ocrText && !canVision) return null;
+    if (!ocrText && !hasScanned) return null;
+
     return (
       <div className="space-y-3">
         {ocrPreprocessed && (
-          <p className="text-xs text-stone-400">✓ OCR前処理（拡大・グレースケール・コントラスト強調）を適用して読み取りました。</p>
+          <p className="text-xs text-stone-400">
+            ✓ OCR前処理（拡大・グレースケール・コントラスト強調）を適用して読み取りました。
+          </p>
         )}
-        <OcrTextCard value={ocrText} onChange={setOcrText} />
+
+        {/* OCRテキストがある場合のみ表示 */}
+        {ocrText && <OcrTextCard value={ocrText} onChange={setOcrText} />}
 
         {/* AI整理エリア */}
         {isAiLoading ? (
-          /* ローディング中：スピナーカードのみ表示 */
-          <AiStructureCard onPress={handleAiOrganize} isLoading={true} />
+          <AiStructureCard
+            onVisionPress={handleVisionOrganize}
+            onTextPress={handleAiOrganize}
+            canVision={canVision}
+            isLoading={true}
+          />
         ) : aiStructured ? (
-          /* 結果表示中：候補選択カード + 再整理ボタン */
           <>
             <AiResultCard
               result={aiStructured}
@@ -733,14 +875,29 @@ export default function ScanPage() {
               onSelect={(field, value) => setSelectedCands((p) => ({ ...p, [field]: value }))}
               onApply={applyAiToForm}
             />
-            <button type="button" onClick={handleAiOrganize}
-              className="w-full rounded-xl border border-purple-200 bg-white py-2.5 text-sm font-bold text-purple-600 active:opacity-70">
-              OCRを修正して再整理する
-            </button>
+            {/* 再整理エリア */}
+            <div className="space-y-1.5">
+              {canVision && (
+                <button type="button" onClick={handleVisionOrganize}
+                  className="w-full rounded-xl border border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70">
+                  ✨ 画像から再整理する
+                </button>
+              )}
+              {ocrText && (
+                <button type="button" onClick={handleAiOrganize}
+                  className="w-full rounded-xl border border-purple-200 bg-white py-2 text-sm font-bold text-purple-500 active:opacity-70">
+                  📝 OCRテキストから再整理する
+                </button>
+              )}
+            </div>
           </>
         ) : (
-          /* 未実行：整理開始ボタン */
-          <AiStructureCard onPress={handleAiOrganize} isLoading={false} />
+          <AiStructureCard
+            onVisionPress={handleVisionOrganize}
+            onTextPress={handleAiOrganize}
+            canVision={canVision}
+            isLoading={false}
+          />
         )}
 
         {aiMsg && (
@@ -756,7 +913,7 @@ export default function ScanPage() {
             }`}>{aiMsg}</p>
           </div>
         )}
-        <OcrExtractedBadge extracted={ocrExtracted} />
+        {ocrText && <OcrExtractedBadge extracted={ocrExtracted} />}
       </div>
     );
   }
