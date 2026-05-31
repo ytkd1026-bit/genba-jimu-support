@@ -18,7 +18,7 @@ export async function ocrImageFile(
 }
 
 export function extractAmountFromText(text: string): string {
-  // ラベル付きパターン（優先）
+  // ラベル付きパターン（優先）— 10桁以上は除外（インボイス番号等）
   const labelPatterns = [
     /(?:税抜発注金額|税込発注金額)[^\d]{0,15}([\d,]+)/,
     /(?:発注金額)[^\d]{0,15}([\d,]+)/,
@@ -28,7 +28,10 @@ export function extractAmountFromText(text: string): string {
   ];
   for (const pattern of labelPatterns) {
     const m = text.match(pattern);
-    if (m) return m[1].replace(/,/g, "");
+    if (m) {
+      const n = m[1].replace(/,/g, "");
+      if (n.length < 10) return n; // 10桁以上はインボイス番号等として除外
+    }
   }
 
   // 通貨記号パターン
@@ -39,16 +42,22 @@ export function extractAmountFromText(text: string): string {
   ];
   for (const pattern of currencyPatterns) {
     const m = text.match(pattern);
-    if (m) return m[1].replace(/,/g, "");
+    if (m) {
+      const n = m[1].replace(/,/g, "");
+      if (n.length < 10) return n;
+    }
   }
 
-  // フォールバック：最も桁数の多い数字
+  // フォールバック：最も桁数の多い数字（ただし10桁以上は除外）
   const nums = text.match(/[\d,]{5,}/g);
   if (nums && nums.length > 0) {
-    const sorted = [...nums].sort(
-      (a, b) => b.replace(/,/g, "").length - a.replace(/,/g, "").length
-    );
-    return sorted[0].replace(/,/g, "");
+    const filtered = nums.filter((n) => n.replace(/,/g, "").length < 10);
+    if (filtered.length > 0) {
+      const sorted = [...filtered].sort(
+        (a, b) => b.replace(/,/g, "").length - a.replace(/,/g, "").length
+      );
+      return sorted[0].replace(/,/g, "");
+    }
   }
 
   return "";

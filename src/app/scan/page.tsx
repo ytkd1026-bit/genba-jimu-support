@@ -15,7 +15,6 @@ import {
 import {
   structureOcrText,
   type AiStructuredResult,
-  type AiCandidates,
 } from "@/app/utils/aiStructuring";
 import { preprocessImageForOcr } from "@/app/utils/imagePreprocess";
 
@@ -32,18 +31,24 @@ type OcrExtracted = { amount: boolean; date: boolean; company: boolean };
 
 type CandidateSelections = {
   clientName: string;
+  recipientName: string;
+  customerName: string;
   siteAddress: string;
   orderDate: string;
   buildScheduleDate: string;
+  workPeriod: string;
+  orderNumber: string;
   orderAmount: string;
   workDescription: string;
   invoiceNumber: string;
-  recipient: string;
+  paymentTerm: string;
 };
 
 const EMPTY_SELECTIONS: CandidateSelections = {
-  clientName: "", siteAddress: "", orderDate: "", buildScheduleDate: "",
-  orderAmount: "", workDescription: "", invoiceNumber: "", recipient: "",
+  clientName: "", recipientName: "", customerName: "",
+  siteAddress: "", orderDate: "", buildScheduleDate: "",
+  workPeriod: "", orderNumber: "", orderAmount: "",
+  workDescription: "", invoiceNumber: "", paymentTerm: "",
 };
 
 // ─── スタイル定数 ─────────────────────────────────────────────
@@ -85,31 +90,64 @@ function ocrToMemo(text: string, max = 300): string {
 }
 
 // ─── 候補選択ボタン ───────────────────────────────────────────
+interface CandidateItem {
+  value: string;
+  reason?: string;
+  confidence?: "high" | "medium" | "low";
+}
+
+const CONF_LABEL: Record<string, string> = { high: "高", medium: "中", low: "低" };
+const CONF_CLS: Record<string, string> = {
+  high: "bg-green-100 text-green-700",
+  medium: "bg-amber-100 text-amber-700",
+  low: "bg-stone-100 text-stone-500",
+};
+
 function CandidateSelector({
   title, candidates, selected, onSelect,
 }: {
   title: string;
-  candidates: string[];
+  candidates: CandidateItem[];
   selected: string;
   onSelect: (v: string) => void;
 }) {
-  if (candidates.length === 0) return null;
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-bold text-stone-600">{title}</p>
-      <div className="space-y-1">
-        {candidates.map((c, i) => (
-          <button key={i} type="button"
-            onClick={() => onSelect(selected === c ? "" : c)}
-            className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors active:opacity-80 ${
-              selected === c
-                ? "bg-purple-700 font-bold text-white"
-                : "border border-stone-200 bg-white text-stone-700"
-            }`}>
-            {c}
-          </button>
-        ))}
-      </div>
+      {candidates.length === 0 ? (
+        <p className="text-xs text-stone-400">未抽出</p>
+      ) : (
+        <div className="space-y-1">
+          {candidates.map((c, i) => {
+            const isSel = selected === c.value;
+            return (
+              <button key={i} type="button"
+                onClick={() => onSelect(isSel ? "" : c.value)}
+                className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors active:opacity-80 ${
+                  isSel
+                    ? "bg-purple-700 font-bold text-white"
+                    : "border border-stone-200 bg-white text-stone-700"
+                }`}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="flex-1 break-all">{c.value}</span>
+                  {c.confidence && (
+                    <span className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-bold ${
+                      isSel ? "bg-purple-500 text-white" : CONF_CLS[c.confidence]
+                    }`}>
+                      {CONF_LABEL[c.confidence]}
+                    </span>
+                  )}
+                </div>
+                {c.reason && (
+                  <p className={`mt-0.5 text-xs ${isSel ? "text-purple-200" : "text-stone-400"}`}>
+                    {c.reason}
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {selected && (
         <p className="text-xs text-purple-600">✓ 選択中：{selected}</p>
       )}
@@ -161,53 +199,79 @@ function AiResultCard({
         候補が複数ある場合は、正しいものを選択してからフォームへ反映してください。
       </div>
 
-      {/* 書類種別・固定情報 */}
-      {(result.documentType || result.customerName) && (
+      {/* 書類種別 */}
+      {result.documentType && (
         <div className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white">
-          {result.documentType && (
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">書類種別</span>
-              <span className="text-sm text-stone-800">{result.documentType}</span>
-            </div>
-          )}
-          {result.customerName && (
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">お客様名</span>
-              <span className="text-sm text-stone-800">{result.customerName}</span>
-            </div>
-          )}
-          {result.orderNumber && (
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">発注番号</span>
-              <span className="text-sm text-stone-800">{result.orderNumber}</span>
-            </div>
-          )}
+          <div className="flex items-start gap-2 px-3 py-2">
+            <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">書類種別</span>
+            <span className="text-sm text-stone-800">{result.documentType}</span>
+          </div>
         </div>
       )}
 
       {/* 候補選択セクション */}
-      <CandidateSelector title="元請名候補" candidates={candidates.companies}
-        selected={selections.clientName} onSelect={(v) => onSelect("clientName", v)} />
-      <CandidateSelector title="宛先候補" candidates={candidates.recipients}
-        selected={selections.recipient} onSelect={(v) => onSelect("recipient", v)} />
-      <CandidateSelector title="現場住所候補" candidates={candidates.addresses}
-        selected={selections.siteAddress} onSelect={(v) => onSelect("siteAddress", v)} />
-      <CandidateSelector title="発注日候補" candidates={candidates.dates}
-        selected={selections.orderDate} onSelect={(v) => onSelect("orderDate", v)} />
-      <CandidateSelector title="建方予定日候補" candidates={candidates.dates}
-        selected={selections.buildScheduleDate} onSelect={(v) => onSelect("buildScheduleDate", v)} />
-      <CandidateSelector title="発注金額候補" candidates={candidates.amounts}
-        selected={selections.orderAmount} onSelect={(v) => onSelect("orderAmount", v)} />
-      <CandidateSelector title="工事内容候補" candidates={candidates.workItems}
-        selected={selections.workDescription} onSelect={(v) => onSelect("workDescription", v)} />
-      <CandidateSelector title="インボイス登録番号候補" candidates={candidates.invoiceNumbers}
-        selected={selections.invoiceNumber} onSelect={(v) => onSelect("invoiceNumber", v)} />
+      <CandidateSelector title="元請名候補"
+        candidates={candidates.clientNameCandidates}
+        selected={selections.clientName}
+        onSelect={(v) => onSelect("clientName", v)} />
 
-      {/* 警告 */}
-      {result.warnings.length > 0 && (
+      <CandidateSelector title="宛先候補"
+        candidates={candidates.recipientNameCandidates}
+        selected={selections.recipientName}
+        onSelect={(v) => onSelect("recipientName", v)} />
+
+      <CandidateSelector title="お客様名候補"
+        candidates={candidates.customerNameCandidates}
+        selected={selections.customerName}
+        onSelect={(v) => onSelect("customerName", v)} />
+
+      <CandidateSelector title="現場住所候補"
+        candidates={candidates.siteAddressCandidates}
+        selected={selections.siteAddress}
+        onSelect={(v) => onSelect("siteAddress", v)} />
+
+      <CandidateSelector title="発注日候補"
+        candidates={candidates.orderDateCandidates}
+        selected={selections.orderDate}
+        onSelect={(v) => onSelect("orderDate", v)} />
+
+      <CandidateSelector title="建方予定日候補"
+        candidates={candidates.buildScheduleDateCandidates}
+        selected={selections.buildScheduleDate}
+        onSelect={(v) => onSelect("buildScheduleDate", v)} />
+
+      <CandidateSelector title="工期候補"
+        candidates={candidates.workPeriodCandidates}
+        selected={selections.workPeriod}
+        onSelect={(v) => onSelect("workPeriod", v)} />
+
+      {/* 発注金額 — インボイス番号候補と完全分離 */}
+      <CandidateSelector title="発注金額候補"
+        candidates={candidates.amountCandidates}
+        selected={selections.orderAmount}
+        onSelect={(v) => onSelect("orderAmount", v)} />
+
+      <CandidateSelector title="工事内容候補"
+        candidates={candidates.workDescriptionCandidates}
+        selected={selections.workDescription}
+        onSelect={(v) => onSelect("workDescription", v)} />
+
+      <CandidateSelector title="支払条件候補"
+        candidates={candidates.paymentTermCandidates}
+        selected={selections.paymentTerm}
+        onSelect={(v) => onSelect("paymentTerm", v)} />
+
+      {/* インボイス登録番号 — 発注金額欄とは別カテゴリ */}
+      <CandidateSelector title="インボイス登録番号候補"
+        candidates={candidates.invoiceRegistrationNumberCandidates}
+        selected={selections.invoiceNumber}
+        onSelect={(v) => onSelect("invoiceNumber", v)} />
+
+      {/* 注意事項 */}
+      {candidates.warningMessages.length > 0 && (
         <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200 space-y-1">
           <p className="text-xs font-bold text-amber-700">⚠️ 注意事項</p>
-          {result.warnings.map((w, i) => (
+          {candidates.warningMessages.map((w, i) => (
             <p key={i} className="text-xs text-amber-600">• {w}</p>
           ))}
         </div>
@@ -446,39 +510,68 @@ export default function ScanPage() {
     setAiMsg("");
   }
 
-  // ── 選択候補をフォームへ反映 ──────────────────────────────────
+  // ── 金額バリデーション（発注金額欄への反映前チェック）──────────
+  function getSafeAmountValue(selected: string): { value: string; warning: string } {
+    if (!selected) return { value: "", warning: "" };
+    const n = selected.replace(/,/g, "");
+    if (!/^\d+$/.test(n)) return { value: "", warning: "この数字は金額ではない可能性があります。原本を確認してください。" };
+    if (n.length >= 10) return { value: "", warning: "この数字は金額ではない可能性があります。原本を確認してください。" };
+    if (/^T\d/.test(selected)) return { value: "", warning: "この数字は金額ではない可能性があります。原本を確認してください。" };
+    const val = parseInt(n, 10);
+    if (val <= 0) return { value: "", warning: "" };
+    if (val >= 1_000_000_000) return { value: "", warning: "金額が異常に大きい値です。原本を確認してください。" };
+    return { value: n, warning: "" };
+  }
+
+  // ── 選択候補をフォームへ反映（未選択項目は変更しない）──────────
   function applyAiToForm() {
     if (!aiStructured) return;
     const s = selectedCands;
     const pick = (old: string, next: string) => next || old;
+    const warnings = aiStructured.candidates.warningMessages.join("\n");
 
     if (scanType === "order") {
+      const { value: amountVal, warning: amountWarn } = getSafeAmountValue(s.orderAmount);
+      if (s.orderAmount && amountWarn) {
+        setAiMsg(`⚠️ ${amountWarn}`);
+        return;
+      }
       setOrderForm((p) => ({
         clientName:   pick(p.clientName,   s.clientName),
         orderDate:    pick(p.orderDate,    s.orderDate),
         projectName:  p.projectName,
         workContent:  pick(p.workContent,  s.workDescription),
-        orderAmount:  pick(p.orderAmount,  s.orderAmount.replace(/,/g, "")),
-        paymentTerms: p.paymentTerms,
-        memo:         pick(p.memo,         aiStructured.warnings.join("\n")),
+        orderAmount:  amountVal ? pick(p.orderAmount, amountVal) : p.orderAmount,
+        paymentTerms: pick(p.paymentTerms, s.paymentTerm),
+        memo:         pick(p.memo,         warnings),
       }));
     } else if (scanType === "agency") {
+      const { value: amountVal, warning: amountWarn } = getSafeAmountValue(s.orderAmount);
+      if (s.orderAmount && amountWarn) {
+        setAiMsg(`⚠️ ${amountWarn}`);
+        return;
+      }
       setAgencyForm((p) => ({
         clientName:     pick(p.clientName,     s.clientName),
         contactName:    p.contactName,
         projectName:    p.projectName,
         address:        pick(p.address,        s.siteAddress),
         workContent:    pick(p.workContent,    s.workDescription),
-        contractAmount: pick(p.contractAmount, s.orderAmount.replace(/,/g, "")),
+        contractAmount: amountVal ? pick(p.contractAmount, amountVal) : p.contractAmount,
         sekouDate:      pick(p.sekouDate,      s.buildScheduleDate || s.orderDate),
-        paymentTerms:   p.paymentTerms,
-        memo:           pick(p.memo,           aiStructured.warnings.join("\n")),
+        paymentTerms:   pick(p.paymentTerms,   s.paymentTerm),
+        memo:           pick(p.memo,           warnings),
       }));
     } else if (scanType === "receipt") {
+      const { value: amountVal, warning: amountWarn } = getSafeAmountValue(s.orderAmount);
+      if (s.orderAmount && amountWarn) {
+        setAiMsg(`⚠️ ${amountWarn}`);
+        return;
+      }
       setReceiptForm((p) => ({
         date:        pick(p.date,    s.orderDate),
         payee:       pick(p.payee,   s.clientName),
-        amount:      pick(p.amount,  s.orderAmount.replace(/,/g, "")),
+        amount:      amountVal ? pick(p.amount, amountVal) : p.amount,
         taxCategory: p.taxCategory,
         category:    p.category,
         projectLink: p.projectLink,
@@ -513,6 +606,8 @@ export default function ScanPage() {
     : null;
   const aiSt = aiStructured ? "completed" : "not_started";
 
+  const selectedCandsData = selectedCands as unknown as Record<string, unknown>;
+
   function handleAgencySave() {
     saveScanDraft({
       scanType: "client_document",
@@ -520,6 +615,7 @@ export default function ScanPage() {
       status: "draft", extractedData: { ...agencyForm }, memo: agencyForm.memo,
       ocrText: ocrText || undefined,
       aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
+      selectedCandidates: aiStructured ? selectedCandsData : null,
     });
     setAgencySaved(true);
   }
@@ -531,6 +627,7 @@ export default function ScanPage() {
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
       status: "draft", ocrText: ocrText || undefined,
       aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
+      selectedCandidates: aiStructured ? selectedCandsData : null,
     });
     setReceiptSaved(true);
   }
@@ -542,6 +639,7 @@ export default function ScanPage() {
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
       status: "draft", ocrText: ocrText || undefined,
       aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
+      selectedCandidates: aiStructured ? selectedCandsData : null,
     });
     setOrderSaved(true);
   }
@@ -552,6 +650,7 @@ export default function ScanPage() {
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
       ocrText: ocrText || undefined,
       aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
+      selectedCandidates: aiStructured ? selectedCandsData : null,
     });
     setOtherSaved(true);
   }

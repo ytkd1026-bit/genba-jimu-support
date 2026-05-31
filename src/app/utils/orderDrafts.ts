@@ -17,6 +17,7 @@ export interface OrderDraft {
   aiStructuredData?: Record<string, unknown> | null;
   aiStatus?: "not_started" | "pending" | "completed" | "failed";
   aiCandidates?: Record<string, unknown> | null;
+  selectedCandidates?: Record<string, unknown> | null;
 }
 
 const STORAGE_KEY = "genba_jimu_order_drafts";
