@@ -1,28 +1,18 @@
-"use client";
-
 // TODO: 検索はSupabase連携後に projects / customers / invoices / schedule_events を横断検索する
 // TODO: 請求書発行は、案件検索から対象案件を開いて行う設計にする
 // TODO: 今週の予定は schedule_events から取得する
 // TODO: 進捗管理は project_progress から取得する
 
 import Link from "next/link";
-import { useState } from "react";
 
 // ─── 主要ボタン ───────────────────────────────────────────────
 const mainButtons = [
-  { label: "案件検索・登録",    desc: "案件を探す・新しく作る",       icon: "🔍", href: "/projects/register" },
-  { label: "請求書関係",        desc: "未請求確認・請求書作成",       icon: "📄", href: "/invoices" },
-  { label: "見積・注文書関係",  desc: "見積書・注文書を作成",         icon: "📝", href: "/estimates" },
-  { label: "材料・発注管理",    desc: "材料計算・発注確認",           icon: "📦", href: "/materials" },
-  { label: "スケジュール",      desc: "カレンダーで予定を確認",       icon: "📅", href: "/schedule" },
-  { label: "月次収支報告",      desc: "売上・支出・未請求を確認",     icon: "📊", href: "/reports/monthly" },
-];
-
-// ─── 検索対象の仮データ ───────────────────────────────────────
-const SEARCH_DATA = [
-  { date: "2026/06/03", projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",  status: "見積中",  href: "/projects/sample" },
-  { date: "2026/06/05", projectName: "□□店舗 床補修",            clientName: "□□リフォーム", status: "請求待ち", href: "/projects/sample" },
-  { date: "2026/06/30", projectName: "△△工務店 5月分一括請求",   clientName: "△△工務店",  status: "入金予定", href: "/projects/sample/invoice" },
+  { label: "案件検索・登録",   desc: "案件を探す・新しく作る",   icon: "🔍", href: "/projects/register" },
+  { label: "請求書関係",       desc: "未請求確認・請求書作成",   icon: "📄", href: "/invoices" },
+  { label: "見積・注文書関係", desc: "見積書・注文書を作成",     icon: "📝", href: "/estimates" },
+  { label: "材料・発注管理",   desc: "材料計算・発注確認",       icon: "📦", href: "/materials" },
+  { label: "スケジュール",     desc: "カレンダーで予定を確認",   icon: "📅", href: "/schedule" },
+  { label: "月次収支報告",     desc: "売上・支出・未請求を確認", icon: "📊", href: "/reports/monthly" },
 ];
 
 // ─── 進捗管理（進行中案件） ───────────────────────────────────
@@ -69,21 +59,6 @@ const STATUS_STYLE: Record<string, string> = {
 
 // ─── コンポーネント ───────────────────────────────────────────
 export default function Home() {
-  const [searchDate,    setSearchDate]    = useState("");
-  const [searchProject, setSearchProject] = useState("");
-  const [searchClient,  setSearchClient]  = useState("");
-  const [searchResults, setSearchResults] = useState<typeof SEARCH_DATA | null>(null);
-
-  function handleSearch() {
-    const results = SEARCH_DATA.filter((item) => {
-      const matchDate    = searchDate    === "" || item.date.includes(searchDate);
-      const matchProject = searchProject === "" || item.projectName.includes(searchProject);
-      const matchClient  = searchClient  === "" || item.clientName.includes(searchClient);
-      return matchDate && matchProject && matchClient;
-    });
-    setSearchResults(results);
-  }
-
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
       <div className="mx-auto max-w-md px-4 py-3 sm:max-w-lg">
@@ -111,61 +86,6 @@ export default function Home() {
 
         {/* 情報カード一覧 */}
         <section className="space-y-2.5">
-
-          {/* 案件検索 */}
-          <div id="project-search" className="rounded-2xl bg-white p-3 shadow-sm scroll-mt-4">
-            <h2 className="mb-1.5 border-b border-stone-100 pb-1.5 text-sm font-bold text-stone-700">案件検索</h2>
-            <p className="mb-2.5 text-xs text-stone-400">日付・案件名・元請名から案件を探します。</p>
-            <div className="space-y-2">
-              <input type="date" value={searchDate} onChange={(e) => setSearchDate(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
-              <input type="text" placeholder="案件名で検索" value={searchProject} onChange={(e) => setSearchProject(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
-              <input type="text" placeholder="元請名で検索" value={searchClient} onChange={(e) => setSearchClient(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30" />
-              <button type="button" onClick={handleSearch}
-                className="w-full rounded-xl bg-[#8B4A3C] py-2.5 text-sm font-bold text-white active:opacity-80">
-                検索
-              </button>
-            </div>
-
-            {/* 検索結果 */}
-            <div className="mt-3 space-y-2">
-              {searchResults === null ? (
-                <p className="py-3 text-center text-xs text-stone-400">
-                  日付・案件名・元請名を入力して案件を検索してください。
-                </p>
-              ) : searchResults.length === 0 ? (
-                <p className="py-3 text-center text-xs text-stone-400">該当する案件はありません。</p>
-              ) : (
-                searchResults.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-stone-100 bg-stone-50 px-3 py-2">
-                    <div>
-                      <p className="text-xs text-stone-400">{item.date}　{item.clientName}</p>
-                      <p className="text-sm font-bold text-stone-800 leading-tight">{item.projectName}</p>
-                      <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[item.status] ?? "bg-stone-100 text-stone-600"}`}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <Link href={item.href} className="ml-2 shrink-0 rounded-lg bg-[#8B4A3C]/10 px-3 py-1.5 text-xs font-bold text-[#8B4A3C] active:opacity-70">
-                      開く
-                    </Link>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* 請求書発行の案内 */}
-            <div className="mt-3 rounded-xl bg-stone-50 px-3 py-2.5">
-              <p className="text-xs leading-relaxed text-stone-500">
-                請求書を発行する場合は、対象案件を開いて
-                <span className="font-bold text-stone-700">「この案件だけ請求書を作る」</span>
-                または
-                <span className="font-bold text-stone-700">「一括請求に含める」</span>
-                を選んでください。
-              </p>
-            </div>
-          </div>
 
           {/* 未請求一覧へのショートカット */}
           <Link
