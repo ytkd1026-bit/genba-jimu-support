@@ -40,6 +40,35 @@ export interface AiCandidates {
   workDescriptionCandidates: TextCandidate[];
   paymentTermCandidates: TextCandidate[];
   warningMessages: string[];
+  warnings?: string[];
+}
+
+export const defaultAiCandidates: AiCandidates = {
+  clientNameCandidates: [],
+  recipientNameCandidates: [],
+  customerNameCandidates: [],
+  siteAddressCandidates: [],
+  orderDateCandidates: [],
+  buildScheduleDateCandidates: [],
+  workPeriodCandidates: [],
+  orderNumberCandidates: [],
+  amountCandidates: [],
+  invoiceRegistrationNumberCandidates: [],
+  workDescriptionCandidates: [],
+  paymentTermCandidates: [],
+  warningMessages: [],
+  warnings: [],
+};
+
+export function safeMergeCandidates(
+  raw: Partial<AiCandidates> | null | undefined
+): AiCandidates {
+  return {
+    ...defaultAiCandidates,
+    ...raw,
+    warningMessages: raw?.warningMessages ?? raw?.warnings ?? [],
+    warnings: raw?.warnings ?? raw?.warningMessages ?? [],
+  };
 }
 
 export interface AiStructuredResult {

@@ -14,7 +14,10 @@ import {
 } from "@/app/utils/scanOcr";
 import {
   structureOcrText,
+  defaultAiCandidates,
+  safeMergeCandidates,
   type AiStructuredResult,
+  type AiCandidates,
 } from "@/app/utils/aiStructuring";
 import { preprocessImageForOcr } from "@/app/utils/imagePreprocess";
 
@@ -181,7 +184,9 @@ function AiResultCard({
   onSelect: (field: keyof CandidateSelections, value: string) => void;
   onApply: () => void;
 }) {
-  const { candidates } = result;
+  const candidates: AiCandidates = safeMergeCandidates(
+    result?.candidates as Partial<AiCandidates> | null | undefined
+  );
   const hasAny = Object.values(selections).some((v) => !!v);
 
   return (
@@ -268,10 +273,10 @@ function AiResultCard({
         onSelect={(v) => onSelect("invoiceNumber", v)} />
 
       {/* 注意事項 */}
-      {candidates.warningMessages.length > 0 && (
+      {(candidates?.warningMessages ?? []).length > 0 && (
         <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200 space-y-1">
           <p className="text-xs font-bold text-amber-700">⚠️ 注意事項</p>
-          {candidates.warningMessages.map((w, i) => (
+          {(candidates?.warningMessages ?? []).map((w, i) => (
             <p key={i} className="text-xs text-amber-600">• {w}</p>
           ))}
         </div>
@@ -528,7 +533,7 @@ export default function ScanPage() {
     if (!aiStructured) return;
     const s = selectedCands;
     const pick = (old: string, next: string) => next || old;
-    const warnings = aiStructured.candidates.warningMessages.join("\n");
+    const warnings = (aiStructured.candidates?.warningMessages ?? aiStructured.candidates?.warnings ?? []).join("\n");
 
     if (scanType === "order") {
       const { value: amountVal, warning: amountWarn } = getSafeAmountValue(s.orderAmount);
