@@ -9,6 +9,7 @@ export interface StoredDocument {
   fileSize: number;
   createdAt: string;
   updatedAt: string;
+  ocrText?: string;
 }
 
 const STORAGE_KEY = "genba_jimu_document_storage";

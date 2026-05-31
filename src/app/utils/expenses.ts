@@ -13,6 +13,7 @@ export interface ExpenseDraft {
   createdAt: string;
   updatedAt: string;
   status: "draft" | "confirmed";
+  ocrText?: string;
 }
 
 const STORAGE_KEY = "genba_jimu_expense_drafts";

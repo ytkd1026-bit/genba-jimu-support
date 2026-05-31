@@ -13,6 +13,7 @@ export interface OrderDraft {
   createdAt: string;
   updatedAt: string;
   status: "draft" | "confirmed";
+  ocrText?: string;
 }
 
 const STORAGE_KEY = "genba_jimu_order_drafts";

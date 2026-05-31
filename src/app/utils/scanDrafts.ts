@@ -17,6 +17,7 @@ export interface ScanDraft {
   status: ScanDraftStatus;
   extractedData: Record<string, string>;
   memo: string;
+  ocrText?: string;
 }
 
 const STORAGE_KEY = "genba_jimu_scan_drafts";
