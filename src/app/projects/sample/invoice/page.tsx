@@ -163,7 +163,7 @@ const fi = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text
 const fs = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:border-[#8B4A3C] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
 const lbl = "mb-0.5 block text-xs text-stone-400";
 
-// ─── 案件カード ───────────────────────────────────────────────
+// ─── 案件カード（簡略表示） ──────────────────────────────────
 function ProjectCard({
   project, index, canDelete,
   onUpdate, onToggle, onDelete,
@@ -184,79 +184,62 @@ function ProjectCard({
       }`}>
         <div className="flex items-center gap-2.5">
           <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={project.included}
-              onChange={onToggle}
-              className="h-4 w-4 rounded border-stone-300 accent-[#8B4A3C]"
-            />
+            <input type="checkbox" checked={project.included} onChange={onToggle}
+              className="h-4 w-4 rounded border-stone-300 accent-[#8B4A3C]" />
             <span className="text-xs font-bold text-stone-600">案件 {index + 1}</span>
           </label>
           <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-            project.included
-              ? "bg-[#8B4A3C]/10 text-[#8B4A3C]"
-              : "bg-stone-200 text-stone-500"
+            project.included ? "bg-[#8B4A3C]/10 text-[#8B4A3C]" : "bg-stone-200 text-stone-500"
           }`}>
             {project.included ? "請求対象" : "対象外"}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (!canDelete) { alert("案件行は最低1行必要です。"); return; }
-            onDelete();
-          }}
-          className="text-xs text-stone-400 active:text-red-500"
-        >削除</button>
+        <button type="button"
+          onClick={() => { if (!canDelete) { alert("案件行は最低1行必要です。"); return; } onDelete(); }}
+          className="text-xs text-stone-400 active:text-red-500">削除</button>
       </div>
 
-      <div className={`space-y-3 p-4 ${!project.included ? "pointer-events-none select-none" : ""}`}>
+      <div className={`p-4 space-y-2.5 ${!project.included ? "pointer-events-none select-none" : ""}`}>
+        {/* 案件名 */}
         <div>
           <label className={lbl}>案件名</label>
           <input type="text" value={project.projectName}
             onChange={(e) => onUpdate("projectName", e.target.value)}
             placeholder="例：〇〇マンション クロス貼替" className={fi} />
         </div>
-        <div>
-          <label className={lbl}>現場住所</label>
-          <input type="text" value={project.siteAddress}
-            onChange={(e) => onUpdate("siteAddress", e.target.value)}
-            placeholder="例：大阪府堺市〇〇区" className={fi} />
-        </div>
+        {/* 工事内容 */}
         <div>
           <label className={lbl}>工事内容</label>
           <input type="text" value={project.workSummary}
             onChange={(e) => onUpdate("workSummary", e.target.value)}
             placeholder="例：洋室クロス貼替・洗面所CF貼替" className={fi} />
         </div>
+        {/* 完了日 */}
         <div>
           <label className={lbl}>完了日</label>
           <input type="date" value={project.completedAt}
-            onChange={(e) => onUpdate("completedAt", e.target.value)}
-            className={fi} />
+            onChange={(e) => onUpdate("completedAt", e.target.value)} className={fi} />
         </div>
-
-        {/* 金額3行 */}
-        <div className="divide-y divide-stone-100 rounded-xl border border-stone-100">
-          <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-xs text-stone-500">小計</span>
-            <input type="number" inputMode="numeric" value={project.subtotal}
-              onChange={(e) => onUpdate("subtotal", parseFloat(e.target.value) || 0)}
-              className="w-32 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-right text-sm font-bold text-stone-800 focus:border-[#8B4A3C] focus:outline-none" />
-          </div>
-          <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-xs text-stone-500">消費税</span>
-            <input type="number" inputMode="numeric" value={project.tax}
-              onChange={(e) => onUpdate("tax", parseFloat(e.target.value) || 0)}
-              className="w-32 rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-right text-sm font-medium text-stone-600 focus:border-[#8B4A3C] focus:outline-none" />
-          </div>
-          <div className="flex items-center justify-between rounded-b-xl bg-[#fdf0ec] px-3 py-2.5">
-            <span className="text-xs font-bold text-[#8B4A3C]">税込金額</span>
-            <input type="number" inputMode="numeric" value={project.total}
-              onChange={(e) => onUpdate("total", parseFloat(e.target.value) || 0)}
-              className="w-32 rounded-lg border border-[#8B4A3C]/30 bg-[#fdf0ec] px-2 py-1 text-right text-base font-bold text-[#8B4A3C] focus:border-[#8B4A3C] focus:outline-none" />
-          </div>
+        {/* 合計金額（税込） */}
+        <div className="flex items-center justify-between rounded-xl bg-[#fdf0ec] px-3 py-2.5">
+          <span className="text-xs font-bold text-[#8B4A3C]">合計金額（税込）</span>
+          <input type="number" inputMode="numeric" value={project.total}
+            onChange={(e) => {
+              const total = parseFloat(e.target.value) || 0;
+              const subtotal = Math.round(total / 1.1);
+              onUpdate("total", total);
+              onUpdate("subtotal", subtotal);
+              onUpdate("tax", total - subtotal);
+            }}
+            className="w-36 rounded-lg border border-[#8B4A3C]/30 bg-[#fdf0ec] px-2 py-1 text-right text-base font-bold text-[#8B4A3C] focus:border-[#8B4A3C] focus:outline-none" />
         </div>
+        {/* この案件を確認ボタン */}
+        <Link
+          href="/projects/sample/estimate"
+          className="flex w-full items-center justify-center rounded-xl border border-stone-200 bg-white py-2 text-xs font-bold text-stone-500 active:opacity-75"
+        >
+          この案件を確認
+        </Link>
       </div>
     </div>
   );
@@ -268,6 +251,7 @@ export default function InvoicePage() {
   const [allProjects, setAllProjects] = useState<InvoiceProject[]>(INITIAL_ALL_PROJECTS);
   const [newProjectCount, setNewProjectCount] = useState(0);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [searchStarted, setSearchStarted] = useState(false);
 
   // 請求情報
   const [invoiceNo] = useState("INV-0001");
@@ -508,11 +492,17 @@ export default function InvoicePage() {
               <label className={lbl}>請求日</label>
               <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={fi} />
             </div>
+            {/* 検索開始ボタン */}
+            <button type="button"
+              onClick={() => setSearchStarted(true)}
+              className="w-full rounded-xl bg-[#8B4A3C] py-2.5 text-sm font-bold text-white active:opacity-80">
+              検索開始
+            </button>
           </div>
         </div>
 
-        {/* 請求対象案件 */}
-        <section className="mb-4 space-y-3">
+        {/* 請求対象案件（検索開始後のみ表示） */}
+        {searchStarted && <section className="mb-4 space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-stone-700">請求対象案件</h2>
@@ -546,9 +536,10 @@ export default function InvoicePage() {
             <span className="text-base leading-none">＋</span>
             案件行を追加
           </button>
-        </section>
+        </section>}
 
-        {/* 集計カード */}
+        {/* 集計カード（検索開始後のみ表示） */}
+        {searchStarted && <>
         <div className="mb-4 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
           <div className="p-4">
             <h2 className="mb-3 text-sm font-bold text-stone-700">請求金額</h2>
@@ -578,99 +569,86 @@ export default function InvoicePage() {
           </div>
         </div>
 
-        {/* 請求元情報カード */}
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-            請求元情報（自社）
-          </h2>
-          <div className="rounded-xl border border-stone-100 bg-stone-50 divide-y divide-stone-100">
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">会社名</span>
-              <span className="text-sm font-bold text-stone-800">{companyInfo.name}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">郵便番号</span>
-              <span className="text-sm text-stone-700">{companyInfo.postalCode}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">住所</span>
-              <span className="text-sm text-stone-700">{companyInfo.address}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">代表者</span>
-              <span className="text-sm text-stone-700">{companyInfo.representative}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">TEL</span>
-              <span className="text-sm text-stone-700">{companyInfo.tel}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-stone-400 pt-0.5">MAIL</span>
-              <span className="text-sm text-stone-700">{companyInfo.email}</span>
-            </div>
-            <div className="flex items-start gap-2 px-3 py-2">
-              <span className="w-24 shrink-0 text-xs text-[#8B4A3C] font-bold pt-0.5">登録番号</span>
-              <span className="text-sm font-bold text-[#8B4A3C]">{companyInfo.invoiceNumber}</span>
-            </div>
+        {/* ── 一括請求書確認プレビュー ── */}
+        {/* TODO: 将来的に /invoices/bulk を作り、元請別・請求月別に一括請求書一覧を確認できるようにする。 */}
+        <div className="mb-4 overflow-hidden rounded-2xl shadow-sm ring-2 ring-[#8B4A3C]/20">
+          <div className="bg-[#8B4A3C] px-4 py-3">
+            <h2 className="text-sm font-bold text-white">一括請求書確認プレビュー</h2>
+            <p className="mt-0.5 text-xs text-amber-100">
+              PDF出力前に、請求先・対象案件・請求額・振込先・備考を確認してください。
+            </p>
           </div>
-          <p className="mt-2 text-xs text-stone-400">
-            ※ 自社情報は
-            <a href="/settings/company" className="underline text-[#8B4A3C]">事業者設定</a>
-            で変更できます。変更後は「保存する」を押してください。
-          </p>
-        </div>
-
-        {/* 振込先カード */}
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">振込先</h2>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={lbl}>銀行名</label>
-                <input type="text" value={bank.bankName} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} placeholder="例：〇〇銀行" className={fi} />
+          <div className="bg-[#fff8f5] p-4 space-y-3">
+            <ul className="space-y-2">
+              {[
+                { label: "請求先",   value: selectedCustomer.displayName },
+                { label: "対象期間", value: `${periodFrom.replace(/-/g, "/")} 〜 ${periodTo.replace(/-/g, "/")}` },
+                { label: "請求日",   value: invoiceDate.replace(/-/g, "/") },
+                { label: "支払期日", value: selectedCustomer.dueDate.replace(/-/g, "/") },
+                { label: "対象案件数", value: `${targets.length}件` },
+              ].map((item) => (
+                <li key={item.label} className="flex items-start gap-2 text-sm">
+                  <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">{item.label}</span>
+                  <span className="text-stone-800">{item.value}</span>
+                </li>
+              ))}
+            </ul>
+            {/* 対象案件一覧 */}
+            {targets.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-bold text-stone-600">対象案件一覧</p>
+                {targets.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-stone-200 bg-white px-3 py-2">
+                    <p className="text-xs font-bold text-stone-800">{p.projectName}</p>
+                    <p className="text-xs text-stone-500">{p.siteAddress}　完了：{p.completedAt.replace(/-/g, "/")}</p>
+                    <p className="text-right text-xs font-bold text-[#8B4A3C]">{fmtYen(p.total)}</p>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className={lbl}>支店名</label>
-                <input type="text" value={bank.branchName} onChange={(e) => setBank({ ...bank, branchName: e.target.value })} placeholder="例：〇〇支店" className={fi} />
+            )}
+            {/* 金額サマリー */}
+            <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-xs text-stone-500">小計合計</span>
+                <span className="text-sm font-medium text-stone-800">{fmtYen(subtotalSum)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-xs text-stone-500">消費税合計</span>
+                <span className="text-sm font-medium text-stone-600">{fmtYen(taxSum)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-b-xl bg-[#fdf0ec] px-3 py-2.5">
+                <span className="text-xs font-bold text-[#8B4A3C]">税込請求額</span>
+                <span className="text-2xl font-bold text-[#8B4A3C]">{fmtYen(totalWithTax)}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={lbl}>口座種別</label>
-                <select value={bank.accountType} onChange={(e) => setBank({ ...bank, accountType: e.target.value })} className={fs}>
-                  {ACCOUNT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={lbl}>口座番号</label>
-                <input type="text" inputMode="numeric" value={bank.accountNumber} onChange={(e) => setBank({ ...bank, accountNumber: e.target.value })} placeholder="例：1234567" className={fi} />
-              </div>
+            {/* 振込先 */}
+            <div className="rounded-xl border border-stone-200 bg-white p-3">
+              <p className="mb-1.5 text-xs font-bold text-stone-600">振込先</p>
+              <p className="text-xs text-stone-700 leading-relaxed">
+                {bank.bankName}　{bank.branchName}　{bank.accountType}　{bank.accountNumber}　{bank.accountHolder}
+              </p>
             </div>
-            <div>
-              <label className={lbl}>口座名義（カタカナ）</label>
-              <input type="text" value={bank.accountHolder} onChange={(e) => setBank({ ...bank, accountHolder: e.target.value })} placeholder="例：ヤマダ タロウ" className={fi} />
-            </div>
+            {invoiceNote && (
+              <div className="rounded-xl border border-stone-200 bg-white p-3">
+                <p className="mb-1 text-xs font-bold text-stone-600">備考</p>
+                <p className="text-xs text-stone-700 leading-relaxed">{invoiceNote}</p>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* 備考欄 */}
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <label className="mb-2 block text-sm font-bold text-stone-700">備考</label>
-          <textarea
-            value={invoiceNote}
-            onChange={(e) => setInvoiceNote(e.target.value)}
-            rows={3}
-            placeholder="例：5月施工分の一括請求です。お振込み手数料はご負担ください。"
-            className={fi + " resize-none"}
-          />
-        </div>
+        </>}
 
         {/* ボタン群 */}
         <div className="space-y-3 pb-8">
+          {!searchStarted && (
+            <p className="py-4 text-center text-sm text-stone-400">
+              請求先・対象期間・請求日を入力して「検索開始」を押してください。
+            </p>
+          )}
           <button
             type="button"
             onClick={handleBulkInvoicePDF}
-            disabled={isPdfLoading}
+            disabled={isPdfLoading || !searchStarted}
             className="w-full rounded-2xl bg-[#8B4A3C] py-3.5 text-white shadow-sm active:opacity-80 disabled:opacity-50"
           >
             <span className="block text-base font-bold">
@@ -685,8 +663,12 @@ export default function InvoicePage() {
             className="w-full rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80">
             仮保存
           </button>
-          <Link href="/projects/sample"
+          <Link href="/invoices/unbilled"
             className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80">
+            一括請求書一覧確認
+          </Link>
+          <Link href="/projects/sample"
+            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-500 shadow-sm active:opacity-80">
             案件詳細へ戻る
           </Link>
         </div>

@@ -167,6 +167,8 @@ function confirmBadge(s: ConfirmStatus) {
 
 export default function MonthlyReportPage() {
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[0]);
+  const [showSales,    setShowSales]    = useState(false);
+  const [showExpenses, setShowExpenses] = useState(false);
 
   function handleDocumentAdd() {
     alert("書類アップロードとAI読取は次工程で追加します。");
@@ -250,95 +252,87 @@ export default function MonthlyReportPage() {
             </div>
           </div>
 
-          {/* 売上一覧 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-              売上
-            </h2>
-            <p className="mb-3 mt-1 text-xs text-stone-400">
-              請求済み・未請求・入金済み・未入金を確認します。
-            </p>
-            <div className="space-y-2.5">
+          {/* 売上確認ボタン & 詳細 */}
+          <button
+            type="button"
+            onClick={() => setShowSales((v) => !v)}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-stone-100 active:opacity-80"
+          >
+            <div className="text-left">
+              <p className="text-sm font-bold text-stone-800">売上確認</p>
+              <p className="mt-0.5 text-xs text-stone-400">
+                {yen(SUMMARY.sales)}　請求済み・未請求・入金済み・未入金
+              </p>
+            </div>
+            <span className={`ml-4 shrink-0 text-sm font-bold transition-transform ${showSales ? "rotate-90 text-[#8B4A3C]" : "text-stone-300"}`}>
+              ›
+            </span>
+          </button>
+
+          {showSales && (
+            <div className="rounded-2xl bg-white p-4 shadow-sm space-y-2.5">
               {SALES.map((item) => (
-                <div
-                  key={item.projectName}
-                  className="rounded-xl border border-stone-100 p-3"
-                >
+                <div key={item.projectName} className="rounded-xl border border-stone-100 p-3">
                   <div className="mb-1.5 flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-stone-800 leading-tight">
-                        {item.projectName}
-                      </p>
+                      <p className="text-sm font-bold text-stone-800 leading-tight">{item.projectName}</p>
                       <p className="mt-0.5 text-xs text-stone-400">{item.client}</p>
                     </div>
-                    <p className="shrink-0 text-base font-bold text-stone-800">
-                      {yen(item.amount)}
-                    </p>
+                    <p className="shrink-0 text-base font-bold text-stone-800">{yen(item.amount)}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${invoiceBadge(item.invoiceStatus)}`}
-                    >
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${invoiceBadge(item.invoiceStatus)}`}>
                       {item.invoiceStatus}
                     </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${paymentBadge(item.paymentStatus)}`}
-                    >
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${paymentBadge(item.paymentStatus)}`}>
                       {item.paymentStatus}
                     </span>
-                    <span className="ml-auto text-xs text-stone-400">
-                      支払期日：{item.dueDate}
-                    </span>
+                    <span className="ml-auto text-xs text-stone-400">支払期日：{item.dueDate}</span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
 
-          {/* 支出一覧 */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-              支出
-            </h2>
-            <p className="mb-3 mt-1 text-xs text-stone-400">
-              材料費・外注費・駐車場代・廃材処分費などを確認します。
-            </p>
-            <div className="space-y-2.5">
+          {/* 支出確認ボタン & 詳細 */}
+          <button
+            type="button"
+            onClick={() => setShowExpenses((v) => !v)}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-stone-100 active:opacity-80"
+          >
+            <div className="text-left">
+              <p className="text-sm font-bold text-stone-800">支出確認</p>
+              <p className="mt-0.5 text-xs text-stone-400">
+                {yen(SUMMARY.expenses)}　材料費・外注費・経費など
+              </p>
+            </div>
+            <span className={`ml-4 shrink-0 text-sm font-bold transition-transform ${showExpenses ? "rotate-90 text-[#8B4A3C]" : "text-stone-300"}`}>
+              ›
+            </span>
+          </button>
+
+          {showExpenses && (
+            <div className="rounded-2xl bg-white p-4 shadow-sm space-y-2.5">
               {EXPENSES.map((item, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-stone-100 p-3"
-                >
+                <div key={i} className="rounded-xl border border-stone-100 p-3">
                   <div className="mb-1.5 flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-stone-800 leading-tight">
-                        {item.payee}
-                      </p>
-                      <p className="mt-0.5 text-xs text-stone-400">
-                        {item.date}　{item.category}
-                      </p>
-                      <p className="mt-0.5 text-xs text-stone-400">
-                        {item.projectName}
-                      </p>
+                      <p className="text-sm font-bold text-stone-800 leading-tight">{item.payee}</p>
+                      <p className="mt-0.5 text-xs text-stone-400">{item.date}　{item.category}</p>
+                      <p className="mt-0.5 text-xs text-stone-400">{item.projectName}</p>
                     </div>
-                    <p className="shrink-0 text-base font-bold text-stone-800">
-                      {yen(item.amount)}
-                    </p>
+                    <p className="shrink-0 text-base font-bold text-stone-800">{yen(item.amount)}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                      {item.document}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${confirmBadge(item.status)}`}
-                    >
+                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">{item.document}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${confirmBadge(item.status)}`}>
                       {item.status}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
 
           {/* 支出内訳 */}
           <div className="rounded-2xl bg-white p-4 shadow-sm">

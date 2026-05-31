@@ -8,10 +8,19 @@
 // TODO: 入金予定日は schedule_events に反映する
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+// ─── localStorage キー ─────────────────────────────────────────
+const UNBILLED_PROJECTS_STORAGE_KEY = "genba_jimu_unbilled_projects";
 
 // ─── 型定義 ──────────────────────────────────────────────────
-type BillingStatus = "未請求" | "入金待ち" | "請求済み";
+type BillingStatus =
+  | "unbilled"
+  | "single_invoiced"
+  | "bulk_selected"
+  | "paid_waiting"
+  | "paid";
 
 type UnbilledProject = {
   id: string;
@@ -23,12 +32,14 @@ type UnbilledProject = {
   totalAmount: number;
   billingStatus: BillingStatus;
   isBulkCandidate: boolean;
+  isBulkSelected: boolean;
+  invoicedAt: string | null;
   completedAt: string;
   paymentTerms: string;
 };
 
-// ─── 仮データ ─────────────────────────────────────────────────
-const ALL_PROJECTS: UnbilledProject[] = [
+// ─── 初期データ ────────────────────────────────────────────────
+const initialInvoiceProjects: UnbilledProject[] = [
   {
     id: "project-1",
     date: "2026/05/20",
@@ -37,8 +48,10 @@ const ALL_PROJECTS: UnbilledProject[] = [
     siteAddress: "大阪府堺市〇〇区",
     workContent: "洋室クロス貼替・洗面所CF貼替",
     totalAmount: 105600,
-    billingStatus: "未請求",
+    billingStatus: "unbilled",
     isBulkCandidate: true,
+    isBulkSelected: false,
+    invoicedAt: null,
     completedAt: "2026/05/20",
     paymentTerms: "翌月末払い",
   },
@@ -50,8 +63,10 @@ const ALL_PROJECTS: UnbilledProject[] = [
     siteAddress: "大阪府堺市△△区",
     workContent: "洗面所CF貼替",
     totalAmount: 30800,
-    billingStatus: "未請求",
+    billingStatus: "unbilled",
     isBulkCandidate: true,
+    isBulkSelected: false,
+    invoicedAt: null,
     completedAt: "2026/05/22",
     paymentTerms: "翌月末払い",
   },
@@ -63,8 +78,10 @@ const ALL_PROJECTS: UnbilledProject[] = [
     siteAddress: "大阪府大阪市□□区",
     workContent: "店舗床補修",
     totalAmount: 88000,
-    billingStatus: "未請求",
+    billingStatus: "unbilled",
     isBulkCandidate: false,
+    isBulkSelected: false,
+    invoicedAt: null,
     completedAt: "2026/06/05",
     paymentTerms: "都度請求",
   },
@@ -76,8 +93,10 @@ const ALL_PROJECTS: UnbilledProject[] = [
     siteAddress: "大阪府堺市□□区",
     workContent: "雑工事一式",
     totalAmount: 22000,
-    billingStatus: "入金待ち",
+    billingStatus: "paid_waiting",
     isBulkCandidate: false,
+    isBulkSelected: false,
+    invoicedAt: null,
     completedAt: "2026/06/10",
     paymentTerms: "翌月末払い",
   },
@@ -88,30 +107,61 @@ function fmtYen(n: number): string {
   return n.toLocaleString("ja-JP") + "円";
 }
 
+// ─── ステータス表示ラベル ──────────────────────────────────────
+const STATUS_LABEL: Record<BillingStatus, string> = {
+  unbilled:        "未請求",
+  single_invoiced: "単体請求済み",
+  bulk_selected:   "一括請求追加済み",
+  paid_waiting:    "入金待ち",
+  paid:            "入金済み",
+};
+
 // ─── ステータス色 ─────────────────────────────────────────────
 const STATUS_STYLE: Record<BillingStatus, string> = {
-  未請求:   "bg-amber-100 text-amber-800",
-  入金待ち: "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-300",
-  請求済み: "bg-green-100 text-green-700",
+  unbilled:        "bg-amber-100 text-amber-800",
+  single_invoiced: "bg-blue-100 text-blue-700",
+  bulk_selected:   "bg-purple-100 text-purple-700",
+  paid_waiting:    "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-300",
+  paid:            "bg-green-100 text-green-700",
 };
 
 const STATUS_CARD_STYLE: Record<BillingStatus, string> = {
-  未請求:   "border-amber-200 bg-white",
-  入金待ち: "border-yellow-200 bg-yellow-50",
-  請求済み: "border-green-200 bg-green-50",
+  unbilled:        "border-amber-200 bg-white",
+  single_invoiced: "border-blue-200 bg-blue-50",
+  bulk_selected:   "border-purple-200 bg-purple-50",
+  paid_waiting:    "border-yellow-200 bg-yellow-50",
+  paid:            "border-green-200 bg-green-50",
 };
 
+// ─── 絞り込みマップ（コンポーネント外で定義） ─────────────────
+const STATUS_FILTER_OPTIONS: { label: string; value: BillingStatus | null }[] = [
+  { label: "すべて",           value: null },
+  { label: "未請求",           value: "unbilled" },
+  { label: "一括請求追加済み", value: "bulk_selected" },
+  { label: "単体請求済み",     value: "single_invoiced" },
+  { label: "入金待ち",         value: "paid_waiting" },
+  { label: "入金済み",         value: "paid" },
+];
+
 // ─── 案件カード ───────────────────────────────────────────────
-function ProjectCard({ project }: { project: UnbilledProject }) {
+function ProjectCard({
+  project,
+  onSingleInvoice,
+  onBulkSelect,
+}: {
+  project: UnbilledProject;
+  onSingleInvoice: (id: string) => void;
+  onBulkSelect: (id: string) => void;
+}) {
   return (
     <div className={`overflow-hidden rounded-2xl border shadow-sm ${STATUS_CARD_STYLE[project.billingStatus]}`}>
       {/* カードヘッダー */}
       <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLE[project.billingStatus]}`}>
-            {project.billingStatus}
+            {STATUS_LABEL[project.billingStatus]}
           </span>
-          {project.isBulkCandidate && (
+          {project.isBulkCandidate && project.billingStatus === "unbilled" && (
             <span className="rounded-full bg-[#8B4A3C]/10 px-2 py-0.5 text-xs font-bold text-[#8B4A3C]">
               一括請求候補
             </span>
@@ -128,6 +178,9 @@ function ProjectCard({ project }: { project: UnbilledProject }) {
         <div className="flex flex-wrap gap-x-4 gap-y-0.5">
           <span className="text-xs text-stone-400">完了日：{project.completedAt}</span>
           <span className="text-xs text-stone-400">支払条件：{project.paymentTerms}</span>
+          {project.invoicedAt && (
+            <span className="text-xs text-stone-400">請求日：{project.invoicedAt}</span>
+          )}
         </div>
         {/* 金額（目立つ表示） */}
         <div className="rounded-xl bg-[#fdf0ec] px-3 py-2 text-right">
@@ -138,18 +191,20 @@ function ProjectCard({ project }: { project: UnbilledProject }) {
 
       {/* アクションボタン */}
       <div className="grid grid-cols-3 gap-1.5 border-t border-stone-100 px-4 py-3">
-        <Link
-          href="/projects/sample/single-invoice"
+        <button
+          type="button"
+          onClick={() => onSingleInvoice(project.id)}
           className="flex items-center justify-center rounded-xl bg-[#8B4A3C] px-2 py-2.5 text-center text-xs font-bold text-white active:opacity-80"
         >
           単体請求書<br />を作る
-        </Link>
-        <Link
-          href="/projects/sample/invoice"
+        </button>
+        <button
+          type="button"
+          onClick={() => onBulkSelect(project.id)}
           className="flex items-center justify-center rounded-xl border border-[#8B4A3C] bg-white px-2 py-2.5 text-center text-xs font-bold text-[#8B4A3C] active:opacity-80"
         >
           一括請求<br />に含める
-        </Link>
+        </button>
         <Link
           href="/projects/sample"
           className="flex items-center justify-center rounded-xl border border-stone-200 bg-white px-2 py-2.5 text-center text-xs font-bold text-stone-600 active:opacity-80"
@@ -163,31 +218,96 @@ function ProjectCard({ project }: { project: UnbilledProject }) {
 
 // ─── メインページ ─────────────────────────────────────────────
 export default function UnbilledPage() {
-  const [searchClient,   setSearchClient]   = useState("");
-  const [searchProject,  setSearchProject]  = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("すべて");
+  const router = useRouter();
+  const [invoiceProjects, setInvoiceProjects] = useState<UnbilledProject[]>(initialInvoiceProjects);
+  const [searchClient,    setSearchClient]    = useState("");
+  const [searchProject,   setSearchProject]   = useState("");
+  const [selectedStatus,  setSelectedStatus]  = useState("すべて");
+
+  // 初回：localStorage から復元
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(UNBILLED_PROJECTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as UnbilledProject[];
+        setInvoiceProjects(parsed);
+      }
+    } catch {
+      setInvoiceProjects(initialInvoiceProjects);
+    }
+  }, []);
+
+  // 状態変更のたびに localStorage へ保存
+  useEffect(() => {
+    localStorage.setItem(UNBILLED_PROJECTS_STORAGE_KEY, JSON.stringify(invoiceProjects));
+  }, [invoiceProjects]);
+
+  // 単体請求済みに変更
+  function handleSingleInvoice(id: string) {
+    const ok = window.confirm("この案件の単体請求書を作成済みにしますか？");
+    if (!ok) return;
+    setInvoiceProjects((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, billingStatus: "single_invoiced" as BillingStatus, invoicedAt: "2026/06/30", isBulkSelected: false }
+          : p
+      )
+    );
+    window.alert("単体請求済みにしました。請求書画面へ移動します。");
+    router.push("/projects/sample/single-invoice");
+  }
+
+  // 一括請求に追加
+  function handleBulkSelect(id: string) {
+    const ok = window.confirm("この案件を一括請求に含めますか？");
+    if (!ok) return;
+    setInvoiceProjects((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, billingStatus: "bulk_selected" as BillingStatus, isBulkSelected: true }
+          : p
+      )
+    );
+    window.alert("一括請求に追加しました。一括請求書画面へ移動します。");
+    router.push("/projects/sample/invoice");
+  }
+
+  // 初期状態に戻す
+  function handleReset() {
+    const ok = window.confirm(
+      "請求状態を初期状態に戻しますか？この画面の仮保存データがリセットされます。"
+    );
+    if (!ok) return;
+    setInvoiceProjects(initialInvoiceProjects);
+    localStorage.removeItem(UNBILLED_PROJECTS_STORAGE_KEY);
+    window.alert("請求状態を初期状態に戻しました。");
+  }
 
   // 絞り込み
   const filtered = useMemo(() => {
-    return ALL_PROJECTS.filter((p) => {
+    const statusFilter = STATUS_FILTER_OPTIONS.find((o) => o.label === selectedStatus)?.value ?? null;
+    return invoiceProjects.filter((p) => {
       const mc = searchClient  === "" || p.clientName.includes(searchClient);
       const mp = searchProject === "" || p.projectName.includes(searchProject);
-      const ms = selectedStatus === "すべて" || p.billingStatus === selectedStatus;
+      const ms = statusFilter === null || p.billingStatus === statusFilter;
       return mc && mp && ms;
     });
-  }, [searchClient, searchProject, selectedStatus]);
+  }, [invoiceProjects, searchClient, searchProject, selectedStatus]);
 
   // セクション分け
-  const singleUnbilled  = filtered.filter((p) => p.billingStatus === "未請求" && !p.isBulkCandidate);
-  const bulkCandidates  = filtered.filter((p) => p.billingStatus === "未請求" && p.isBulkCandidate);
-  const awaitingPayment = filtered.filter((p) => p.billingStatus === "入金待ち");
+  const unbilledList       = filtered.filter((p) => p.billingStatus === "unbilled");
+  const bulkSelectedList   = filtered.filter((p) => p.billingStatus === "bulk_selected");
+  const singleInvoicedList = filtered.filter((p) => p.billingStatus === "single_invoiced");
+  const paidWaitingList    = filtered.filter((p) => p.billingStatus === "paid_waiting");
 
   // サマリー計算（全データ対象）
-  const unbilledAll    = ALL_PROJECTS.filter((p) => p.billingStatus === "未請求");
-  const unbilledCount  = unbilledAll.length;
-  const unbilledTotal  = unbilledAll.reduce((s, p) => s + p.totalAmount, 0);
-  const thisMonthCount = unbilledAll.filter((p) => p.paymentTerms === "翌月末払い").length;
-  const bulkCount      = unbilledAll.filter((p) => p.isBulkCandidate).length;
+  const unbilledCount       = invoiceProjects.filter((p) => p.billingStatus === "unbilled").length;
+  const unbilledTotal       = invoiceProjects
+    .filter((p) => p.billingStatus === "unbilled")
+    .reduce((s, p) => s + p.totalAmount, 0);
+  const singleInvoicedCount = invoiceProjects.filter((p) => p.billingStatus === "single_invoiced").length;
+  const bulkSelectedCount   = invoiceProjects.filter((p) => p.billingStatus === "bulk_selected").length;
+  const paidWaitingCount    = invoiceProjects.filter((p) => p.billingStatus === "paid_waiting").length;
 
   const inputCls =
     "w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
@@ -224,22 +344,27 @@ export default function UnbilledPage() {
                 <p className="text-lg font-bold">{fmtYen(unbilledTotal)}</p>
               </div>
               <div className="rounded-xl bg-white/10 px-3 py-2">
-                <p className="text-xs text-amber-200">今月請求予定</p>
-                <p className="text-base font-bold">{thisMonthCount}件</p>
+                <p className="text-xs text-amber-200">単体請求済み</p>
+                <p className="text-base font-bold">{singleInvoicedCount}件</p>
               </div>
               <div className="rounded-xl bg-white/10 px-3 py-2">
-                <p className="text-xs text-amber-200">一括請求候補</p>
-                <p className="text-base font-bold">{bulkCount}件</p>
+                <p className="text-xs text-amber-200">一括請求追加済み</p>
+                <p className="text-base font-bold">{bulkSelectedCount}件</p>
+              </div>
+              <div className="col-span-2 rounded-xl bg-white/10 px-3 py-2">
+                <p className="text-xs text-amber-200">入金待ち</p>
+                <p className="text-base font-bold">{paidWaitingCount}件</p>
               </div>
             </div>
           </div>
 
-          {/* 注意カード */}
+          {/* 注意カード（仮保存について） */}
           <div className="rounded-2xl bg-yellow-50 p-4 shadow-sm ring-1 ring-yellow-200">
-            <h3 className="mb-1.5 text-sm font-bold text-yellow-800">⚠️ 請求漏れ注意</h3>
+            <h3 className="mb-1.5 text-sm font-bold text-yellow-800">請求状態の仮保存について</h3>
             <p className="text-sm leading-relaxed text-yellow-700">
-              施工完了後、請求書を作成していない案件は売上に反映されません。
-              月末前に未請求一覧を確認してください。
+              現在は localStorage に仮保存しています。<br />
+              同じブラウザでは再読み込み後も状態が残りますが、別端末や別ブラウザには共有されません。<br />
+              本運用では Supabase と連携して保存する予定です。
             </p>
           </div>
 
@@ -267,70 +392,103 @@ export default function UnbilledPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className={selectCls}
             >
-              {["すべて", "未請求", "入金待ち", "請求済み"].map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {STATUS_FILTER_OPTIONS.map((o) => (
+                <option key={o.label} value={o.label}>{o.label}</option>
               ))}
             </select>
           </div>
 
-          {/* ── 未請求（単体請求） ── */}
-          {singleUnbilled.length > 0 && (
+          {/* ── 未請求 ── */}
+          {unbilledList.length > 0 && (
             <section>
               <h2 className="mb-2 px-1 text-sm font-bold text-stone-700">
                 未請求
                 <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-                  {singleUnbilled.length}件
+                  {unbilledList.length}件
                 </span>
               </h2>
               <div className="space-y-3">
-                {singleUnbilled.map((p) => <ProjectCard key={p.id} project={p} />)}
+                {unbilledList.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onSingleInvoice={handleSingleInvoice}
+                    onBulkSelect={handleBulkSelect}
+                  />
+                ))}
               </div>
             </section>
           )}
 
-          {/* ── 一括請求候補 ── */}
-          {bulkCandidates.length > 0 && (
+          {/* ── 一括請求に追加済み ── */}
+          {bulkSelectedList.length > 0 && (
             <section>
-              <h2 className="mb-2 px-1 text-sm font-bold text-[#8B4A3C]">
-                一括請求候補
-                <span className="ml-2 rounded-full bg-[#8B4A3C]/10 px-2 py-0.5 text-xs text-[#8B4A3C]">
-                  {bulkCandidates.length}件
+              <h2 className="mb-2 px-1 text-sm font-bold text-purple-700">
+                一括請求に追加済み
+                <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
+                  {bulkSelectedList.length}件
                 </span>
               </h2>
-
-              {/* 一括請求候補の説明 */}
-              <div className="mb-2 rounded-xl border border-[#8B4A3C]/20 bg-[#fff8f5] px-4 py-3">
-                <p className="mb-1 text-xs font-bold text-[#8B4A3C]">一括請求候補について</p>
-                <p className="text-xs leading-relaxed text-stone-600">
-                  同じ元請の未請求案件は、一括請求にまとめると請求漏れを防ぎやすくなります。
-                  月末締めの元請は、一括請求候補として確認してください。
-                </p>
-              </div>
-
               <div className="space-y-3">
-                {bulkCandidates.map((p) => <ProjectCard key={p.id} project={p} />)}
+                {bulkSelectedList.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onSingleInvoice={handleSingleInvoice}
+                    onBulkSelect={handleBulkSelect}
+                  />
+                ))}
               </div>
             </section>
           )}
 
-          {/* 未請求も一括候補もない場合 */}
-          {singleUnbilled.length === 0 && bulkCandidates.length === 0 && (
+          {/* ── 単体請求済み ── */}
+          {singleInvoicedList.length > 0 && (
+            <section>
+              <h2 className="mb-2 px-1 text-sm font-bold text-blue-700">
+                単体請求済み
+                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                  {singleInvoicedList.length}件
+                </span>
+              </h2>
+              <div className="space-y-3">
+                {singleInvoicedList.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onSingleInvoice={handleSingleInvoice}
+                    onBulkSelect={handleBulkSelect}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 未請求・一括・単体のいずれもない場合 */}
+          {unbilledList.length === 0 && bulkSelectedList.length === 0 && singleInvoicedList.length === 0 && (
             <div className="rounded-2xl border-2 border-dashed border-stone-200 py-10 text-center">
-              <p className="text-sm text-stone-400">未請求の案件はありません</p>
+              <p className="text-sm text-stone-400">該当する案件はありません</p>
             </div>
           )}
 
           {/* ── 入金待ち ── */}
-          {awaitingPayment.length > 0 && (
+          {paidWaitingList.length > 0 && (
             <section>
               <h2 className="mb-2 px-1 text-sm font-bold text-stone-700">
                 入金待ち
                 <span className="ml-2 rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700">
-                  {awaitingPayment.length}件
+                  {paidWaitingList.length}件
                 </span>
               </h2>
               <div className="space-y-3">
-                {awaitingPayment.map((p) => <ProjectCard key={p.id} project={p} />)}
+                {paidWaitingList.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onSingleInvoice={handleSingleInvoice}
+                    onBulkSelect={handleBulkSelect}
+                  />
+                ))}
               </div>
             </section>
           )}
@@ -342,6 +500,15 @@ export default function UnbilledPage() {
           >
             月次収支で確認
           </Link>
+
+          {/* 初期状態に戻すボタン */}
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3 text-sm font-bold text-stone-400 shadow-sm active:opacity-80"
+          >
+            請求状態を初期状態に戻す
+          </button>
 
         </div>
       </div>

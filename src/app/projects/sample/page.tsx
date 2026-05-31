@@ -126,9 +126,7 @@ export default function SampleProjectPage() {
           >
             ← ホームへ戻る
           </Link>
-          <h1 className="text-xl font-bold text-stone-800">
-            〇〇マンション クロス貼替
-          </h1>
+          <h1 className="text-xl font-bold text-stone-800">案件詳細</h1>
           <p className="mt-1 text-sm text-stone-500">
             この案件の見積・材料・原価・請求を管理します。
           </p>

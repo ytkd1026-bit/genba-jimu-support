@@ -50,6 +50,9 @@ export type EstimatePDFProps = {
   taxSum: number;
   totalWithTax: number;
   companyInfo: CompanyInfoForPDF;
+  clientName?: string;
+  projectName?: string;
+  siteAddress?: string;
 };
 
 function toNum(v: string): number {
@@ -309,7 +312,10 @@ const s = StyleSheet.create({
   },
 });
 
-function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo }: EstimatePDFProps) {
+function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
+  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayProject = projectName ?? '〇〇マンション クロス貼替';
+  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={s.page}>
@@ -320,15 +326,15 @@ function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, company
             <Text style={s.docTitle}>見積明細書</Text>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+              <Text style={s.clientValueLg}>{displayClient}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+              <Text style={s.clientValue}>{displayProject}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+              <Text style={s.clientValue}>{displayAddress}</Text>
             </View>
           </View>
           <View style={s.headerRight}>
@@ -565,7 +571,10 @@ const o = StyleSheet.create({
 });
 
 // ─── 見積書兼注文書 PDF コンポーネント ───────────────────────
-function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo }: EstimatePDFProps) {
+function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
+  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayProject = projectName ?? '〇〇マンション クロス貼替';
+  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
     <Document>
       {/* ─── 1ページ目：見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
@@ -577,15 +586,15 @@ function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, co
             <Text style={s.docTitle}>見積書兼注文書</Text>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+              <Text style={s.clientValueLg}>{displayClient}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+              <Text style={s.clientValue}>{displayProject}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+              <Text style={s.clientValue}>{displayAddress}</Text>
             </View>
           </View>
           <View style={s.headerRight}>
@@ -682,7 +691,7 @@ function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, co
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: BORDER }}>
           <Text style={{ fontSize: 9, fontWeight: 700, color: ACCENT }}>見積書兼注文書 — 発注確認欄</Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Text style={{ fontSize: 7, color: GRAY }}>案件：〇〇マンション クロス貼替</Text>
+            <Text style={{ fontSize: 7, color: GRAY }}>案件：{displayProject}</Text>
             <Text style={{ fontSize: 7, color: GRAY }}>見積番号：EST-0001</Text>
           </View>
         </View>
@@ -932,7 +941,7 @@ const p = StyleSheet.create({
 });
 
 // ─── 保存用PDF コンポーネント ─────────────────────────────────
-function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate, companyInfo }: StoragePDFProps) {
+function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate, companyInfo, clientName, projectName, siteAddress }: StoragePDFProps) {
   // 工事別利益サマリーの計算
   const salesByJob = new Map<string, number>();
   lines.forEach((line) => {
@@ -957,6 +966,9 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
     return { name, sales, cost, profit, margin };
   });
 
+  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayProject = projectName ?? '〇〇マンション クロス貼替';
+  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
     <Document>
       {/* ─── 1ページ目：提出用見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
@@ -966,15 +978,15 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
             <Text style={s.docTitle}>保存用 見積明細</Text>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>△△工務店 御中</Text>
+              <Text style={s.clientValueLg}>{displayClient}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>〇〇マンション クロス貼替</Text>
+              <Text style={s.clientValue}>{displayProject}</Text>
             </View>
             <View style={s.clientRow}>
               <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>大阪府堺市〇〇区</Text>
+              <Text style={s.clientValue}>{displayAddress}</Text>
             </View>
           </View>
           <View style={s.headerRight}>

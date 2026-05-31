@@ -264,6 +264,10 @@ export default function EstimatePage() {
   // null = 生成中なし / 'estimate' = 見積書 / 'order' = 見積書兼注文書 / 'storage' = 保存用
   const [pdfLoading, setPdfLoading] = useState<null | 'estimate' | 'order' | 'storage'>(null);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
+  // 提出先・案件名・現場住所（編集可能）
+  const [submitTo,     setSubmitTo]     = useState(PDF_CLIENT_NAME + " 御中");
+  const [estProjectName, setEstProjectName] = useState(PDF_PROJECT_NAME);
+  const [estAddress,   setEstAddress]   = useState("大阪府堺市〇〇区");
 
   // localStorageから事業者設定を読み込む（一括請求PDFと同じ共通キーを使用）
   useEffect(() => {
@@ -337,11 +341,11 @@ export default function EstimatePage() {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimatePDF } = await import('./EstimatePDF');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
+      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimatePdfFileName({
-        clientName:  PDF_CLIENT_NAME,
-        projectName: PDF_PROJECT_NAME,
+        clientName:  submitTo,
+        projectName: estProjectName,
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
@@ -371,11 +375,14 @@ export default function EstimatePage() {
         grossProfit,
         grossMarginRate,
         companyInfo,
+        clientName:  submitTo,
+        projectName: estProjectName,
+        siteAddress: estAddress,
       });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, storagePdfFileName({
-        clientName:  PDF_CLIENT_NAME,
-        projectName: PDF_PROJECT_NAME,
+        clientName:  submitTo,
+        projectName: estProjectName,
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
@@ -395,11 +402,11 @@ export default function EstimatePage() {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimateOrderPDF } = await import('./EstimatePDF');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo });
+      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimateOrderPdfFileName({
-        clientName:  PDF_CLIENT_NAME,
-        projectName: PDF_PROJECT_NAME,
+        clientName:  submitTo,
+        projectName: estProjectName,
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
@@ -426,28 +433,27 @@ export default function EstimatePage() {
           </p>
         </header>
 
-        {/* 書類風 案件情報 */}
-        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-base font-bold text-stone-800">見積明細書</span>
-            <span className="text-xs text-stone-400">EST-0001</span>
+        {/* 案件情報（編集可能） */}
+        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+            <span className="text-sm font-bold text-stone-800">案件情報</span>
+            <span className="text-xs text-stone-400">EST-0001 · 2026/05/30</span>
           </div>
-          <div className="mb-3 border-b border-stone-100 pb-3">
-            <p className="text-xs text-stone-400">作成日</p>
-            <p className="text-sm font-medium text-stone-700">2026/05/30</p>
+          <div>
+            <label className="mb-0.5 block text-xs text-stone-400">提出先</label>
+            <input type="text" value={submitTo} onChange={(e) => setSubmitTo(e.target.value)}
+              className={fldInput} />
           </div>
-          <ul className="space-y-2">
-            {[
-              { label: "提出先", value: "△△工務店 御中", bold: true },
-              { label: "案件名", value: "〇〇マンション クロス貼替", bold: false },
-              { label: "現場住所", value: "大阪府堺市〇〇区", bold: false },
-            ].map((item) => (
-              <li key={item.label} className="flex items-start gap-3 text-sm">
-                <span className="w-16 shrink-0 pt-0.5 text-xs text-stone-400">{item.label}</span>
-                <span className={item.bold ? "font-bold text-stone-800" : "text-stone-700"}>{item.value}</span>
-              </li>
-            ))}
-          </ul>
+          <div>
+            <label className="mb-0.5 block text-xs text-stone-400">案件名</label>
+            <input type="text" value={estProjectName} onChange={(e) => setEstProjectName(e.target.value)}
+              className={fldInput} />
+          </div>
+          <div>
+            <label className="mb-0.5 block text-xs text-stone-400">現場住所</label>
+            <input type="text" value={estAddress} onChange={(e) => setEstAddress(e.target.value)}
+              className={fldInput} />
+          </div>
         </div>
 
         {/* 凡例 */}
@@ -630,6 +636,64 @@ export default function EstimatePage() {
           </section>
 
         </div>{/* end 2col grid */}
+
+        {/* ── 見積内容確認プレビュー ── */}
+        <div className="mt-4 overflow-hidden rounded-2xl shadow-sm ring-2 ring-[#8B4A3C]/20">
+          <div className="bg-[#8B4A3C] px-4 py-3">
+            <h2 className="text-sm font-bold text-white">見積内容確認プレビュー</h2>
+            <p className="mt-0.5 text-xs text-amber-100">
+              PDF出力前に、提出先・案件名・明細・税込金額を確認してください。
+            </p>
+          </div>
+          <div className="bg-[#fff8f5] p-4 space-y-3">
+            <ul className="space-y-2">
+              {[
+                { label: "提出先",   value: submitTo },
+                { label: "案件名",   value: estProjectName },
+                { label: "現場住所", value: estAddress },
+                { label: "明細件数", value: `${lines.length}件` },
+              ].map((item) => (
+                <li key={item.label} className="flex items-start gap-2 text-sm">
+                  <span className="w-20 shrink-0 pt-0.5 text-xs text-stone-400">{item.label}</span>
+                  <span className="text-stone-800">{item.value}</span>
+                </li>
+              ))}
+            </ul>
+            {/* 金額サマリー */}
+            <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-xs text-stone-500">小計</span>
+                <span className="text-sm font-medium text-stone-800">{formatYen(subtotalSum)}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-xs text-stone-500">消費税（10%）</span>
+                <span className="text-sm font-medium text-stone-600">{formatYen(taxSum)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-b-xl bg-[#fdf0ec] px-3 py-2.5">
+                <span className="text-xs font-bold text-[#8B4A3C]">税込合計</span>
+                <span className="text-2xl font-bold text-[#8B4A3C]">{formatYen(totalWithTax)}</span>
+              </div>
+            </div>
+            {/* 出力するPDF種別 */}
+            <div className="rounded-xl border border-stone-200 bg-white p-3">
+              <p className="mb-2 text-xs font-bold text-stone-600">出力するPDF種別</p>
+              <div className="space-y-1.5 text-xs text-stone-600">
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-stone-100 px-1.5 py-0.5 font-bold text-stone-600">見積書</span>
+                  <span>原価なし・提出用</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-[#8B4A3C] px-1.5 py-0.5 font-bold text-white">兼注文書</span>
+                  <span>署名返送で発注確認</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-amber-200 px-1.5 py-0.5 font-bold text-amber-800">保存用</span>
+                  <span>原価・粗利あり・自分用</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* ── PDF出力エリア ── */}
         <div className="mt-4 space-y-3 pb-8">

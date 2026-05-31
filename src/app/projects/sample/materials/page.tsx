@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -15,7 +15,6 @@ type MaterialRow = {
   unitPrice: string;
   itemName: string;
   orderNote: string;
-  // 発注管理
   supplier: string;
   isSupplied: boolean;
   isOrdered: boolean;
@@ -24,11 +23,61 @@ type MaterialRow = {
   deliveryNote: string;
 };
 
+type SearchableProject = {
+  id: string;
+  date: string;
+  projectName: string;
+  clientName: string;
+  siteAddress: string;
+  workContent: string;
+  sekouDate: string;
+  status: string;
+};
+
+type MaterialStatus = "未発注" | "発注済み" | "搬入待ち" | "搬入済み";
+
 // ─── 定数 ────────────────────────────────────────────────────
 const KOUJI_TYPES = ["クロス", "クッションフロア", "フロアタイル", "長尺シート", "タイルカーペット", "副資材", "その他"];
 const LOCATION2_OPTIONS = ["天井", "壁", "床", "共通"];
 const UNITS = ["m", "㎡", "枚", "式", "ケース", "本"];
 const FLOOR_TYPES = new Set(["クッションフロア", "フロアタイル", "長尺シート", "タイルカーペット"]);
+
+// ─── 案件検索用仮データ ───────────────────────────────────────
+const SEARCH_PROJECTS: SearchableProject[] = [
+  {
+    id: "sp1", date: "2026/06/03",
+    projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",
+    siteAddress: "大阪府堺市〇〇区", workContent: "洋室クロス貼替・洗面所CF貼替",
+    sekouDate: "2026-06-10", status: "施工前",
+  },
+  {
+    id: "sp2", date: "2026/06/05",
+    projectName: "□□店舗 床補修", clientName: "□□リフォーム",
+    siteAddress: "大阪府大阪市□□区", workContent: "店舗床補修",
+    sekouDate: "2026-06-15", status: "見積済み",
+  },
+  {
+    id: "sp3", date: "2026/06/10",
+    projectName: "◇◇マンション 雑工事", clientName: "〇〇建設",
+    siteAddress: "大阪府堺市□□区", workContent: "雑工事一式",
+    sekouDate: "2026-06-20", status: "材料手配中",
+  },
+];
+
+// ─── ステータス色 ─────────────────────────────────────────────
+const MATERIAL_STATUS_STYLE: Record<MaterialStatus, string> = {
+  未発注:   "bg-[#8B4A3C]/10 text-[#8B4A3C]",
+  発注済み: "bg-yellow-100 text-yellow-700",
+  搬入待ち: "bg-blue-100 text-blue-700",
+  搬入済み: "bg-green-100 text-green-700",
+};
+
+const PROJ_STATUS_STYLE: Record<string, string> = {
+  施工前:    "bg-blue-100 text-blue-700",
+  見積済み:  "bg-amber-100 text-amber-700",
+  材料手配中: "bg-purple-100 text-purple-700",
+  施工中:    "bg-green-100 text-green-700",
+};
 
 // ─── 初期データ ───────────────────────────────────────────────
 const initialRows: MaterialRow[] = [
@@ -67,21 +116,19 @@ function emptyRow(id: number): MaterialRow {
 
 // ─── ユーティリティ ───────────────────────────────────────────
 function toNum(v: string): number { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
-
 function calcOrderQty(qty: string, lossRate: string): number {
   return toNum(qty) * (1 + toNum(lossRate) / 100);
 }
-
 function fmtQty(n: number, unit: string): string {
-  return (unit === 'm' || unit === '㎡') ? n.toFixed(2) : Math.ceil(n).toString();
+  return (unit === "m" || unit === "㎡") ? n.toFixed(2) : Math.ceil(n).toString();
 }
-
 function fmtYen(n: number): string { return "¥" + Math.floor(n).toLocaleString("ja-JP"); }
 
 // ─── スタイル定数 ─────────────────────────────────────────────
 const fi = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-400/40";
 const fs = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-teal-400/40";
 const lbl = "mb-0.5 block text-xs text-stone-400";
+const searchInputCls = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
 
 // ─── 材料行カード ─────────────────────────────────────────────
 function MaterialCard({
@@ -97,39 +144,30 @@ function MaterialCard({
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-teal-100">
-      {/* カードヘッダー */}
       <div className="flex items-center justify-between border-b border-teal-50 bg-teal-50 px-4 py-2.5">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold text-teal-700">材料行 {index + 1}</span>
           <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-700">
-            {row.koujiType || '未設定'}
+            {row.koujiType || "未設定"}
           </span>
-          {/* 発注ステータスバッジ */}
           <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-            row.isOrdered
-              ? "bg-green-100 text-green-700"
-              : "bg-amber-100 text-amber-700"
+            row.isOrdered ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
           }`}>
             {row.isOrdered ? "発注済み" : "未発注"}
           </span>
           {row.isSupplied && (
-            <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
-              支給材
-            </span>
+            <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">支給材</span>
           )}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button type="button" onClick={onDuplicate} className="text-xs text-stone-400 active:text-stone-600">複製</button>
-          <button
-            type="button"
+          <button type="button"
             onClick={() => { if (!canDelete) { alert("材料行は最低1行必要です。"); return; } onDelete(); }}
-            className="text-xs text-stone-400 active:text-red-500"
-          >削除</button>
+            className="text-xs text-stone-400 active:text-red-500">削除</button>
         </div>
       </div>
 
       <div className="space-y-3 p-4">
-        {/* 工種・施工箇所 */}
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={lbl}>工種</label>
@@ -148,8 +186,6 @@ function MaterialCard({
             {LOCATION2_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </div>
-
-        {/* 数量・ロス率 */}
         <div className="grid grid-cols-3 gap-2">
           <div>
             <label className={lbl}>見積数量</label>
@@ -166,31 +202,21 @@ function MaterialCard({
             <input type="number" inputMode="decimal" value={row.lossRate} onChange={(e) => onUpdate({ lossRate: e.target.value })} placeholder="10" className={fi} />
           </div>
         </div>
-
-        {/* 発注数量（自動計算） */}
         <div className="flex items-center justify-between rounded-xl bg-teal-50 px-3 py-2.5">
           <span className="text-xs font-bold text-teal-700">発注数量</span>
-          <span className="text-base font-bold text-teal-700">
-            {fmtQty(orderQty, row.unit)} {row.unit}
-          </span>
+          <span className="text-base font-bold text-teal-700">{fmtQty(orderQty, row.unit)} {row.unit}</span>
         </div>
-
-        {/* 材料単価 */}
         <div>
           <label className={lbl}>材料単価（円）</label>
           <input type="number" inputMode="numeric" value={row.unitPrice} onChange={(e) => onUpdate({ unitPrice: e.target.value })} placeholder="300" className={fi} />
         </div>
-
-        {/* 材料費 / 参考材料費 */}
         {row.isSupplied ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between rounded-xl bg-stone-100 px-3 py-2.5">
               <span className="text-xs font-bold text-stone-500">参考材料費</span>
               <span className="text-base font-bold text-stone-500">{fmtYen(refCost)}</span>
             </div>
-            <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              支給材のため、材料費合計には含めません。
-            </div>
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">支給材のため、材料費合計には含めません。</div>
           </div>
         ) : (
           <div className="flex items-center justify-between rounded-xl bg-[#fdf0ec] px-3 py-2.5">
@@ -198,46 +224,26 @@ function MaterialCard({
             <span className="text-base font-bold text-[#8B4A3C]">{fmtYen(effectiveCost)}</span>
           </div>
         )}
-
-        {/* 品番・材料名 */}
         <div>
           <label className={lbl}>品番・材料名</label>
           <input type="text" value={row.itemName} onChange={(e) => onUpdate({ itemName: e.target.value })} placeholder="例：量産クロス SP-0000" className={fi} />
         </div>
-
-        {/* 仕入先 */}
         <div>
           <label className={lbl}>仕入先</label>
           <input type="text" value={row.supplier} onChange={(e) => onUpdate({ supplier: e.target.value })} placeholder="例：〇〇商店、サンゲツ、元請け支給など" className={fi} />
         </div>
-
-        {/* ─── 発注管理エリア ─── */}
         <div className="rounded-xl border border-stone-100 bg-stone-50 p-3 space-y-3">
           <p className="text-xs font-bold text-stone-500">発注管理</p>
-
-          {/* チェックボックス行 */}
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={row.isSupplied}
-                onChange={(e) => onUpdate({ isSupplied: e.target.checked })}
-                className="h-4 w-4 rounded border-stone-300 accent-amber-500"
-              />
+              <input type="checkbox" checked={row.isSupplied} onChange={(e) => onUpdate({ isSupplied: e.target.checked })} className="h-4 w-4 rounded border-stone-300 accent-amber-500" />
               <span className="text-sm text-stone-700">支給材</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={row.isOrdered}
-                onChange={(e) => onUpdate({ isOrdered: e.target.checked })}
-                className="h-4 w-4 rounded border-stone-300 accent-green-600"
-              />
+              <input type="checkbox" checked={row.isOrdered} onChange={(e) => onUpdate({ isOrdered: e.target.checked })} className="h-4 w-4 rounded border-stone-300 accent-green-600" />
               <span className="text-sm text-stone-700">発注済み</span>
             </label>
           </div>
-
-          {/* 発注日・搬入予定日 */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={lbl}>発注日</label>
@@ -248,24 +254,15 @@ function MaterialCard({
               <input type="date" value={row.deliveryDate} onChange={(e) => onUpdate({ deliveryDate: e.target.value })} className={fi} />
             </div>
           </div>
-
-          {/* 納期メモ */}
           <div>
             <label className={lbl}>納期メモ</label>
             <input type="text" value={row.deliveryNote} onChange={(e) => onUpdate({ deliveryNote: e.target.value })} placeholder="例：午前着、分納、欠品注意、現場直送など" className={fi} />
           </div>
         </div>
-
-        {/* 発注メモ */}
         <div>
           <label className={lbl}>発注メモ</label>
-          <textarea
-            value={row.orderNote}
-            onChange={(e) => onUpdate({ orderNote: e.target.value })}
-            placeholder="例：予備分を含めて発注"
-            rows={2}
-            className={fi + " resize-none"}
-          />
+          <textarea value={row.orderNote} onChange={(e) => onUpdate({ orderNote: e.target.value })}
+            placeholder="例：予備分を含めて発注" rows={2} className={fi + " resize-none"} />
         </div>
       </div>
     </div>
@@ -277,6 +274,13 @@ export default function MaterialsPage() {
   const [rows, setRows] = useState<MaterialRow[]>(initialRows);
   const [nextId, setNextId] = useState(4);
 
+  // 案件検索
+  const [searchDate,    setSearchDate]    = useState("");
+  const [searchProject, setSearchProject] = useState("");
+  const [searchClient,  setSearchClient]  = useState("");
+  const [hasSearched,   setHasSearched]   = useState(false);
+  const [selectedProject, setSelectedProject] = useState<SearchableProject | null>(null);
+
   function updateRow(id: number, updates: Partial<MaterialRow>) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
   }
@@ -284,9 +288,7 @@ export default function MaterialsPage() {
     setRows((prev) => [...prev, emptyRow(nextId)]);
     setNextId((n) => n + 1);
   }
-  function removeRow(id: number) {
-    setRows((prev) => prev.filter((r) => r.id !== id));
-  }
+  function removeRow(id: number) { setRows((prev) => prev.filter((r) => r.id !== id)); }
   function duplicateRow(id: number) {
     const src = rows.find((r) => r.id === id);
     if (!src) return;
@@ -295,22 +297,47 @@ export default function MaterialsPage() {
     setNextId((n) => n + 1);
   }
 
-  // ── 集計 ──────────────────────────────────────────────────────
+  // 集計
   function rowCost(r: MaterialRow): number {
     return r.isSupplied ? 0 : calcOrderQty(r.qty, r.lossRate) * toNum(r.unitPrice);
   }
   function rowRefCost(r: MaterialRow): number {
     return calcOrderQty(r.qty, r.lossRate) * toNum(r.unitPrice);
   }
-
   const totalMaterialCost = rows.reduce((acc, r) => acc + rowCost(r), 0);
-  const refMaterialCost = rows.reduce((acc, r) => acc + rowRefCost(r), 0);
-  const crossCost = rows.filter((r) => r.koujiType === "クロス").reduce((acc, r) => acc + rowCost(r), 0);
-  const floorCost = rows.filter((r) => FLOOR_TYPES.has(r.koujiType)).reduce((acc, r) => acc + rowCost(r), 0);
+  const refMaterialCost   = rows.reduce((acc, r) => acc + rowRefCost(r), 0);
+  const crossCost       = rows.filter((r) => r.koujiType === "クロス").reduce((acc, r) => acc + rowCost(r), 0);
+  const floorCost       = rows.filter((r) => FLOOR_TYPES.has(r.koujiType)).reduce((acc, r) => acc + rowCost(r), 0);
   const subMaterialCost = rows.filter((r) => r.koujiType === "副資材").reduce((acc, r) => acc + rowCost(r), 0);
-  const orderedCount = rows.filter((r) => r.isOrdered).length;
-  const unorderedCount = rows.filter((r) => !r.isOrdered).length;
-  const suppliedCount = rows.filter((r) => r.isSupplied).length;
+  const orderedCount    = rows.filter((r) => r.isOrdered).length;
+  const unorderedCount  = rows.filter((r) => !r.isOrdered).length;
+  const suppliedCount   = rows.filter((r) => r.isSupplied).length;
+
+  // 材料ステータス（案件レベル）
+  const nonSuppliedRows = rows.filter((r) => !r.isSupplied);
+  const caseStatus: MaterialStatus =
+    nonSuppliedRows.some((r) => !r.isOrdered) ? "未発注" :
+    nonSuppliedRows.some((r) => r.deliveryDate) ? "搬入待ち" :
+    "発注済み";
+
+  // 表示用の案件情報
+  const displayProject = selectedProject ?? {
+    projectName: "〇〇マンション クロス貼替",
+    siteAddress: "大阪府堺市〇〇区",
+    workContent: "クロス・床",
+    sekouDate:   "2026-06-10",
+  };
+
+  // 検索絞り込み（ボタン押下後のみ表示）
+  const filteredProjects = useMemo(() => {
+    if (!hasSearched) return [];
+    return SEARCH_PROJECTS.filter((p) => {
+      const md = searchDate    === "" || p.date.includes(searchDate);
+      const mp = searchProject === "" || p.projectName.includes(searchProject);
+      const mc = searchClient  === "" || p.clientName.includes(searchClient);
+      return md && mp && mc;
+    });
+  }, [hasSearched, searchDate, searchProject, searchClient]);
 
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
@@ -318,8 +345,8 @@ export default function MaterialsPage() {
 
         {/* ヘッダー */}
         <header className="mb-4">
-          <Link href="/projects/sample" className="mb-3 inline-flex items-center gap-1 text-sm text-[#8B4A3C] hover:opacity-75">
-            ← 案件詳細へ戻る
+          <Link href="/materials" className="mb-3 inline-flex items-center gap-1 text-sm text-[#8B4A3C] hover:opacity-75">
+            ← 材料・発注管理へ戻る
           </Link>
           <h1 className="text-xl font-bold text-stone-800">材料計算</h1>
           <p className="mt-1 text-sm text-stone-500">
@@ -327,17 +354,94 @@ export default function MaterialsPage() {
           </p>
         </header>
 
-        {/* 案件情報カード */}
+        {/* ── 案件検索 ── */}
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm space-y-3">
+          <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">案件検索</h2>
+
+          {/* 選択中バナー */}
+          {selectedProject && (
+            <div className="flex items-center justify-between rounded-xl bg-[#8B4A3C]/10 px-3 py-2.5">
+              <div>
+                <p className="text-[10px] font-bold text-[#8B4A3C]">選択中の案件</p>
+                <p className="text-sm font-bold text-stone-800">{selectedProject.projectName}</p>
+                <p className="text-xs text-stone-500">{selectedProject.clientName}</p>
+              </div>
+              <button type="button" onClick={() => setSelectedProject(null)}
+                className="ml-2 shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-bold text-stone-500 active:opacity-70">
+                解除
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <input type="date" value={searchDate} onChange={(e) => setSearchDate(e.target.value)} className={searchInputCls} />
+            <input type="text" placeholder="案件名で検索" value={searchProject}
+              onChange={(e) => setSearchProject(e.target.value)} className={searchInputCls} />
+            <input type="text" placeholder="元請名で検索" value={searchClient}
+              onChange={(e) => setSearchClient(e.target.value)} className={searchInputCls} />
+            <button type="button"
+              onClick={() => setHasSearched(true)}
+              className="w-full rounded-xl bg-[#8B4A3C] py-2.5 text-sm font-bold text-white active:opacity-80">
+              検索
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {!hasSearched ? (
+              <p className="py-2 text-center text-xs text-stone-400">
+                日付・案件名・元請名を入力して検索してください。
+              </p>
+            ) : filteredProjects.length === 0 ? (
+              <p className="py-2 text-center text-xs text-stone-400">該当する案件はありません。</p>
+            ) : (
+              filteredProjects.map((p) => (
+                <div key={p.id} className="rounded-xl border border-stone-100 bg-stone-50 p-3 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-stone-800 leading-tight">{p.projectName}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${PROJ_STATUS_STYLE[p.status] ?? "bg-stone-100 text-stone-600"}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-500">{p.clientName}　{p.siteAddress}</p>
+                      <p className="text-xs text-stone-400">{p.workContent}</p>
+                      <p className="text-xs text-stone-400">施工予定日：{p.sekouDate.replace(/-/g, "/")}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProject(p);
+                      setHasSearched(false);
+                      setSearchDate(""); setSearchProject(""); setSearchClient("");
+                    }}
+                    className="w-full rounded-xl bg-[#8B4A3C] py-2 text-sm font-bold text-white active:opacity-80"
+                  >
+                    この案件で材料計算する
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 案件情報カード（ステータスバッジ付き） */}
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-bold text-stone-800">案件情報</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-stone-800">{displayProject.projectName}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${MATERIAL_STATUS_STYLE[caseStatus]}`}>
+                {caseStatus}
+              </span>
+            </div>
             <span className="text-xs text-stone-400">EST-0001</span>
           </div>
           <ul className="space-y-1.5">
             {[
-              { label: "案件名", value: "〇〇マンション クロス貼替" },
-              { label: "現場住所", value: "大阪府堺市〇〇区" },
-              { label: "工事種別", value: "クロス・床" },
+              { label: "現場住所", value: displayProject.siteAddress },
+              { label: "工事種別", value: displayProject.workContent },
+              { label: "施工予定日", value: displayProject.sekouDate.replace(/-/g, "/") },
             ].map((item) => (
               <li key={item.label} className="flex items-start gap-2 text-sm">
                 <span className="w-20 shrink-0 text-stone-400">{item.label}</span>
@@ -381,11 +485,8 @@ export default function MaterialsPage() {
             />
           ))}
 
-          <button
-            type="button"
-            onClick={addRow}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-teal-200 py-3.5 text-sm font-bold text-teal-600 active:opacity-75"
-          >
+          <button type="button" onClick={addRow}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-teal-200 py-3.5 text-sm font-bold text-teal-600 active:opacity-75">
             <span className="text-base leading-none">＋</span>
             材料行を追加
           </button>
@@ -395,7 +496,6 @@ export default function MaterialsPage() {
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
           <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">集計</h2>
           <ul className="space-y-2">
-            {/* メイン合計 */}
             <li className="flex items-center justify-between">
               <span className="text-sm font-bold text-stone-800">材料費合計（支給材除く）</span>
               <span className="text-lg font-bold text-[#8B4A3C]">{fmtYen(totalMaterialCost)}</span>
@@ -404,7 +504,6 @@ export default function MaterialsPage() {
               <span className="text-stone-500">参考材料費合計（全行）</span>
               <span className="font-medium text-stone-600">{fmtYen(refMaterialCost)}</span>
             </li>
-            {/* 内訳 */}
             <li className="flex items-center justify-between text-sm">
               <span className="text-stone-500">クロス材料費</span>
               <span className="font-medium text-stone-800">{fmtYen(crossCost)}</span>
@@ -417,16 +516,13 @@ export default function MaterialsPage() {
               <span className="text-stone-500">副資材費</span>
               <span className="font-medium text-stone-800">{fmtYen(subMaterialCost)}</span>
             </li>
-            {/* 発注状況 */}
             <li className="mt-1 border-t border-stone-100 pt-2 flex items-center justify-between text-sm">
               <span className="text-stone-500">発注行数</span>
               <span className="font-medium text-stone-800">{rows.length}行</span>
             </li>
             <li className="flex items-center justify-between text-sm">
               <span className="font-bold text-amber-700">未発注件数</span>
-              <span className={`font-bold ${unorderedCount > 0 ? "text-amber-700" : "text-stone-400"}`}>
-                {unorderedCount}件
-              </span>
+              <span className={`font-bold ${unorderedCount > 0 ? "text-amber-700" : "text-stone-400"}`}>{unorderedCount}件</span>
             </li>
             <li className="flex items-center justify-between text-sm">
               <span className="text-green-700">発注済み件数</span>
@@ -439,6 +535,85 @@ export default function MaterialsPage() {
               </li>
             )}
           </ul>
+        </div>
+
+        {/* ── 材料発注確認プレビュー ── */}
+        {/* TODO: @react-pdf/renderer で材料発注PDFを生成する */}
+        {/* TODO: PDFには案件名・工種・施工箇所・材料名・発注数量・搬入予定日・発注メモを表示する */}
+        {/* TODO: 発注先ごとにPDFを分ける */}
+        <div className="mb-4 overflow-hidden rounded-2xl shadow-sm ring-2 ring-[#8B4A3C]/20">
+          <div className="bg-[#8B4A3C] px-4 py-3">
+            <h2 className="text-sm font-bold text-white">材料発注確認プレビュー</h2>
+            <p className="mt-0.5 text-xs text-amber-100">
+              発注前に、数量・ロス率・発注状態・搬入予定日を確認してください。
+            </p>
+          </div>
+          <div className="bg-[#fff8f5] p-4 space-y-2">
+            <div className="mb-2 text-xs text-stone-500">
+              案件名：<span className="font-bold text-stone-700">{displayProject.projectName}</span>
+            </div>
+            {rows.map((row, i) => {
+              const oQty = calcOrderQty(row.qty, row.lossRate);
+              const cost = row.isSupplied ? 0 : oQty * toNum(row.unitPrice);
+              return (
+                <div key={row.id} className="rounded-xl border border-stone-200 bg-white p-3 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-stone-700">材料行{i + 1}：{row.koujiType}</span>
+                    {row.location1 && <span className="text-xs text-stone-500">{row.location1} / {row.location2}</span>}
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${row.isOrdered ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                      {row.isOrdered ? "発注済み" : "未発注"}
+                    </span>
+                    {row.isSupplied && <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">支給材</span>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 text-xs text-stone-500">
+                    <span>見積：{row.qty}{row.unit}　→　発注：{fmtQty(oQty, row.unit)}{row.unit}</span>
+                    <span>ロス率：{row.lossRate}%</span>
+                    <span>材料費：{fmtYen(cost)}</span>
+                    <span>搬入予定：{row.deliveryDate.replace(/-/g, "/") || "未定"}</span>
+                  </div>
+                  {row.orderNote && <p className="text-xs text-stone-400">メモ：{row.orderNote}</p>}
+                </div>
+              );
+            })}
+            <div className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-xs text-stone-500">未発注件数</span>
+                <span className={`text-sm font-bold ${unorderedCount > 0 ? "text-amber-700" : "text-stone-400"}`}>{unorderedCount}件</span>
+              </div>
+              <div className="flex items-center justify-between rounded-b-xl bg-[#fdf0ec] px-3 py-2.5">
+                <span className="text-xs font-bold text-[#8B4A3C]">材料費合計（支給材除く）</span>
+                <span className="text-xl font-bold text-[#8B4A3C]">{fmtYen(totalMaterialCost)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 材料発注PDFを作るボタン */}
+          <div className="bg-[#fff8f5] px-4 pb-4">
+            <button
+              type="button"
+              onClick={() => alert("材料発注PDF出力は次工程で実装します。")}
+              className="w-full rounded-2xl border-2 border-[#8B4A3C] bg-white py-3.5 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
+            >
+              材料発注PDFを作る
+            </button>
+          </div>
+        </div>
+
+        {/* 材料発注PDF一覧確認 */}
+        {/* TODO: 将来的に /materials/orders で材料発注PDF一覧を作る。 */}
+        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+            材料発注PDF一覧確認
+          </h2>
+          <p className="py-3 text-center text-xs text-stone-400">
+            作成済みの材料発注PDFはまだありません。
+          </p>
+          <Link
+            href="/schedule"
+            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-stone-50 py-3 text-sm font-bold text-stone-500 active:opacity-80"
+          >
+            材料発注一覧確認
+          </Link>
         </div>
 
         {/* ボタン群 */}
