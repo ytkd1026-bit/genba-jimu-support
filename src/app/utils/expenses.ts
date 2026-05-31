@@ -14,6 +14,8 @@ export interface ExpenseDraft {
   updatedAt: string;
   status: "draft" | "confirmed";
   ocrText?: string;
+  aiStructuredData?: Record<string, string | number | null> | null;
+  aiStatus?: "not_started" | "pending" | "completed" | "failed";
 }
 
 const STORAGE_KEY = "genba_jimu_expense_drafts";

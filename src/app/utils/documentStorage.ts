@@ -10,6 +10,8 @@ export interface StoredDocument {
   createdAt: string;
   updatedAt: string;
   ocrText?: string;
+  aiStructuredData?: Record<string, string | number | null> | null;
+  aiStatus?: "not_started" | "pending" | "completed" | "failed";
 }
 
 const STORAGE_KEY = "genba_jimu_document_storage";

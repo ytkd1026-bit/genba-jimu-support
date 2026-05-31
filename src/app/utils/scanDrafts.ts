@@ -6,6 +6,8 @@ export type ScanType =
 
 export type ScanDraftStatus = "draft" | "confirmed" | "registered";
 
+export type AiStatus = "not_started" | "pending" | "completed" | "failed";
+
 export interface ScanDraft {
   id: string;
   scanType: ScanType;
@@ -18,6 +20,8 @@ export interface ScanDraft {
   extractedData: Record<string, string>;
   memo: string;
   ocrText?: string;
+  aiStructuredData?: Record<string, string | number | null> | null;
+  aiStatus?: AiStatus;
 }
 
 const STORAGE_KEY = "genba_jimu_scan_drafts";
