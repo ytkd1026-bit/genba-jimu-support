@@ -84,6 +84,23 @@ export default function Home() {
           ))}
         </section>
 
+        {/* スキャン登録 エントリー */}
+        <Link
+          href="/scan"
+          className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-stone-100 active:opacity-75"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fdf0ec] text-xl">
+              📷
+            </span>
+            <div>
+              <p className="text-sm font-bold text-stone-800">スキャン登録</p>
+              <p className="text-xs text-stone-400">PDF・画像・レシートを読み取る</p>
+            </div>
+          </div>
+          <span className="text-stone-300">›</span>
+        </Link>
+
         {/* 情報カード一覧 */}
         <section className="space-y-2.5">
 
