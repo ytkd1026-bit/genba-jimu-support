@@ -234,6 +234,7 @@ export default function ScanPage() {
               <span className="text-3xl">📂</span>
               <span className="text-sm font-bold text-stone-600">ファイルを選択</span>
               <span className="text-xs text-stone-400">PDF・画像（JPEG・PNG・WebP）に対応</span>
+              <span className="text-xs text-stone-400">iPhone写真（HEIC）はプレビューできない場合があります</span>
             </button>
 
             {/* ── 選択ファイルプレビュー ── */}
@@ -273,11 +274,52 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* HEIC 注意 */}
+                {/* HEIC 専用カード */}
                 {isHeic(selectedFile) && (
-                  <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-200">
-                    HEICファイルはブラウザによってプレビューに対応していない場合があります。
-                    プレビューが表示されない場合は、JPEG・PNG・WebP形式に変換してからお試しください。
+                  <div className="overflow-hidden rounded-xl ring-1 ring-orange-300">
+                    <div className="flex items-center gap-2 bg-orange-100 px-4 py-2.5">
+                      <span className="text-lg">📱</span>
+                      <p className="text-sm font-bold text-orange-800">
+                        iPhone写真（HEIC形式）が選択されています
+                      </p>
+                    </div>
+                    <div className="bg-orange-50 px-4 py-3 space-y-3">
+                      <p className="text-xs leading-relaxed text-orange-700">
+                        iPhoneで撮影した写真はHEIC形式で保存されています。
+                        ChromeやSafariなど一部のブラウザでは画像プレビューが表示されませんが、
+                        ファイルの選択と仮読取はそのまま続行できます。
+                      </p>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-orange-800">プレビューを表示したい場合の対処方法</p>
+
+                        <div className="rounded-lg bg-white px-3 py-2.5 space-y-1.5 ring-1 ring-orange-200">
+                          <p className="text-xs font-bold text-stone-700">方法①　スクリーンショットで代替する</p>
+                          <ol className="space-y-0.5 text-xs leading-relaxed text-stone-500 list-decimal list-inside">
+                            <li>iPhoneのカメラロールで対象の写真を開く</li>
+                            <li>スクリーンショットを撮る（電源ボタン＋音量アップ）</li>
+                            <li>撮ったスクリーンショット（JPEG）をアップロードする</li>
+                          </ol>
+                        </div>
+
+                        <div className="rounded-lg bg-white px-3 py-2.5 space-y-1.5 ring-1 ring-orange-200">
+                          <p className="text-xs font-bold text-stone-700">方法②　iPhone設定を変更する（今後の撮影から適用）</p>
+                          <ol className="space-y-0.5 text-xs leading-relaxed text-stone-500 list-decimal list-inside">
+                            <li>iPhoneの「設定」アプリを開く</li>
+                            <li>「カメラ」をタップ</li>
+                            <li>「フォーマット」をタップ</li>
+                            <li>「互換性優先」を選択する</li>
+                          </ol>
+                          <p className="text-[10px] text-stone-400">
+                            ※ 設定変更後に撮影した写真はJPEG形式で保存されます
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-orange-600">
+                        HEICのままでも仮読取は実行できます。プレビュー確認が不要な場合はそのまま続けてください。
+                      </p>
+                    </div>
                   </div>
                 )}
 
