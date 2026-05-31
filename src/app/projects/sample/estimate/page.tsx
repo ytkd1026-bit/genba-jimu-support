@@ -9,6 +9,7 @@ import {
 } from "@/app/utils/pdfFileName";
 import { upsertEstimate, setSelectedEstimateId, getSavedEstimates, STATUS_LABELS } from "@/app/utils/savedEstimates";
 import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
 const PDF_CLIENT_NAME   = "△△工務店";
@@ -343,10 +344,11 @@ export default function EstimatePage() {
 
   const estFilteredProjects = useMemo(() => {
     if (!estHasSearched) return [];
-    return EST_SEARCH_PROJECTS.filter((p) => {
-      const md = estSearchDate    === "" || p.date.includes(estSearchDate);
-      const mp = estSearchProject === "" || p.projectName.includes(estSearchProject);
-      const mc = estSearchClient  === "" || p.clientName.includes(estSearchClient);
+    const source = getTestMode() === "demo" ? EST_SEARCH_PROJECTS : [];
+    return source.filter((p) => {
+      const md = estSearchDate    === "" || p.date.includes(estSearchDate.replace(/-/g, "/"));
+      const mp = estSearchProject === "" || matchesKeyword([p.projectName, p.siteAddress, p.workContent], estSearchProject);
+      const mc = estSearchClient  === "" || matchesKeyword([p.clientName], estSearchClient);
       return md && mp && mc;
     });
   }, [estHasSearched, estSearchDate, estSearchProject, estSearchClient]);

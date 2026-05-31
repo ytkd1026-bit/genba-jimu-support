@@ -35,3 +35,16 @@ export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   overwrite:   "上書き保存",
   new_version: "別版保存",
 };
+
+export function saveProjectHistory(entry: ProjectHistoryEntry): void {
+  addProjectHistory(entry);
+}
+
+export function getProjectHistoriesByProjectId(projectId: string): ProjectHistoryEntry[] {
+  return getProjectHistories(projectId);
+}
+
+export function clearProjectHistories(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PROJECT_HISTORIES_KEY);
+}

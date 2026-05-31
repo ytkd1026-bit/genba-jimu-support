@@ -171,13 +171,15 @@ export default function MonthlyReportPage() {
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[0]);
   const [showSales,    setShowSales]    = useState(false);
   const [showExpenses, setShowExpenses] = useState(false);
+  const [docMsg,       setDocMsg]       = useState("");
 
   useEffect(() => {
     setIsDemo(getTestMode() === "demo");
   }, []);
 
   function handleDocumentAdd() {
-    alert("書類アップロードとAI読取は次工程で追加します。");
+    setDocMsg("書類アップロードとAI読取は次工程で追加します。");
+    setTimeout(() => setDocMsg(""), 4000);
   }
 
   return (
@@ -381,6 +383,11 @@ export default function MonthlyReportPage() {
               レシート、発注書PDF、FAX画像、元請からの注文書を月次収支に紐づけます。
               レシートスキャンとAI分類は有料プラン機能として実装予定です。
             </p>
+            {docMsg && (
+              <div className="mb-3 rounded-xl bg-stone-50 px-3 py-2.5 ring-1 ring-stone-200">
+                <p className="text-sm text-stone-600">{docMsg}</p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2.5">
               {DOCUMENT_BUTTONS.map((btn) => (
                 <button

@@ -252,10 +252,16 @@ const CALENDAR_CELLS: (number | null)[] = Array.from({ length: GRID_SIZE }, (_, 
 export default function SchedulePage() {
   const [isDemo,      setIsDemo]      = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [infoMsg,     setInfoMsg]     = useState("");
 
   useEffect(() => {
     setIsDemo(getTestMode() === "demo");
   }, []);
+
+  function showInfo(msg: string) {
+    setInfoMsg(msg);
+    setTimeout(() => setInfoMsg(""), 4000);
+  }
 
   const monthEvents    = isDemo ? DEMO_MONTH_EVENTS    : [];
   const materialAlerts = isDemo ? DEMO_MATERIAL_ALERTS : [];
@@ -286,19 +292,26 @@ export default function SchedulePage() {
 
         <div className="space-y-3">
 
+          {/* インラインメッセージ */}
+          {infoMsg && (
+            <div className="rounded-xl bg-stone-50 px-4 py-3 ring-1 ring-stone-200">
+              <p className="text-sm text-stone-600">{infoMsg}</p>
+            </div>
+          )}
+
           {/* ── 月間カレンダー ── */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
 
             {/* 月ナビゲーション */}
             <div className="flex items-center justify-between border-b border-stone-100 px-4 py-3">
               <button type="button"
-                onClick={() => alert("月移動は次工程で追加します。")}
+                onClick={() => showInfo("月移動は次工程で追加します。")}
                 className="rounded-xl border border-stone-200 px-3 py-1.5 text-sm font-bold text-stone-600 active:opacity-70">
                 ← 前月
               </button>
               <span className="text-base font-bold text-stone-800">{CALENDAR_MONTH_LABEL}</span>
               <button type="button"
-                onClick={() => alert("月移動は次工程で追加します。")}
+                onClick={() => showInfo("月移動は次工程で追加します。")}
                 className="rounded-xl border border-stone-200 px-3 py-1.5 text-sm font-bold text-stone-600 active:opacity-70">
                 翌月 →
               </button>
@@ -508,7 +521,7 @@ export default function SchedulePage() {
             </p>
             <button
               type="button"
-              onClick={() => alert("カレンダー連携は次工程で追加します。")}
+              onClick={() => showInfo("カレンダー連携は次工程で追加します。")}
               className="w-full rounded-xl border border-stone-200 bg-white py-2.5 text-sm font-bold text-stone-600 shadow-sm active:opacity-70"
             >
               カレンダー連携設定

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 
 // ─── localStorage キー ─────────────────────────────────────────
 const UNBILLED_PROJECTS_STORAGE_KEY = "genba_jimu_unbilled_projects";
@@ -226,6 +227,7 @@ export default function UnbilledPage() {
   const [searchClient,    setSearchClient]    = useState("");
   const [searchProject,   setSearchProject]   = useState("");
   const [selectedStatus,  setSelectedStatus]  = useState("すべて");
+  const [infoMsg,         setInfoMsg]         = useState("");
 
   // 初回：testMode を確認してデータを設定
   useEffect(() => {
@@ -264,7 +266,6 @@ export default function UnbilledPage() {
           : p
       )
     );
-    window.alert("単体請求済みにしました。請求書画面へ移動します。");
     router.push("/projects/sample/single-invoice");
   }
 
@@ -279,7 +280,6 @@ export default function UnbilledPage() {
           : p
       )
     );
-    window.alert("一括請求に追加しました。一括請求書画面へ移動します。");
     router.push("/projects/sample/invoice");
   }
 
@@ -292,15 +292,16 @@ export default function UnbilledPage() {
     const resetData = isDemo ? initialInvoiceProjects : [];
     setInvoiceProjects(resetData);
     if (isDemo) localStorage.removeItem(UNBILLED_PROJECTS_STORAGE_KEY);
-    window.alert("請求状態を初期状態に戻しました。");
+    setInfoMsg("請求状態を初期状態に戻しました。");
+    setTimeout(() => setInfoMsg(""), 3000);
   }
 
   // 絞り込み
   const filtered = useMemo(() => {
     const statusFilter = STATUS_FILTER_OPTIONS.find((o) => o.label === selectedStatus)?.value ?? null;
     return invoiceProjects.filter((p) => {
-      const mc = searchClient  === "" || p.clientName.includes(searchClient);
-      const mp = searchProject === "" || p.projectName.includes(searchProject);
+      const mc = searchClient  === "" || matchesKeyword([p.clientName], searchClient);
+      const mp = searchProject === "" || matchesKeyword([p.projectName, p.workContent, p.siteAddress], searchProject);
       const ms = statusFilter === null || p.billingStatus === statusFilter;
       return mc && mp && ms;
     });
@@ -379,6 +380,13 @@ export default function UnbilledPage() {
                 同じブラウザでは再読み込み後も状態が残りますが、別端末や別ブラウザには共有されません。<br />
                 本運用では Supabase と連携して保存する予定です。
               </p>
+            </div>
+          )}
+
+          {/* インラインメッセージ */}
+          {infoMsg && (
+            <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+              <p className="text-sm font-bold text-green-700">{infoMsg}</p>
             </div>
           )}
 

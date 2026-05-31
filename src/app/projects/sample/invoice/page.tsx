@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { bulkInvoicePdfFileName } from "@/app/utils/pdfFileName";
+import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 
 // TODO: Supabase連携後は、新規案件登録時の元請情報を customers テーブルに保存し、
 //       projects.customer_id と紐づける。現在は仮データで動作確認中。
@@ -195,8 +197,12 @@ function ProjectCard({
           </span>
         </div>
         <button type="button"
-          onClick={() => { if (!canDelete) { alert("案件行は最低1行必要です。"); return; } onDelete(); }}
-          className="text-xs text-stone-400 active:text-red-500">削除</button>
+          onClick={onDelete}
+          disabled={!canDelete}
+          title={!canDelete ? "案件行は最低1行必要です" : undefined}
+          className={`text-xs ${canDelete ? "text-stone-400 active:text-red-500" : "cursor-not-allowed text-stone-200"}`}>
+          削除
+        </button>
       </div>
 
       <div className={`p-4 space-y-2.5 ${!project.included ? "pointer-events-none select-none" : ""}`}>
@@ -247,11 +253,21 @@ function ProjectCard({
 
 // ─── メインページ ─────────────────────────────────────────────
 export default function InvoicePage() {
+  // モード
+  const [isDemo, setIsDemo] = useState(false);
+
   // 案件データ（全元請分）
-  const [allProjects, setAllProjects] = useState<InvoiceProject[]>(INITIAL_ALL_PROJECTS);
+  const [allProjects, setAllProjects] = useState<InvoiceProject[]>([]);
   const [newProjectCount, setNewProjectCount] = useState(0);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [searchStarted, setSearchStarted] = useState(false);
+
+  // キーワード検索
+  const [searchKeyword, setSearchKeyword] = useState("");
+
+  // 画面内メッセージ
+  const [invoiceMsg, setInvoiceMsg] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
 
   // 請求情報
   const [invoiceNo] = useState("INV-0001");
@@ -271,6 +287,13 @@ export default function InvoicePage() {
     accountNumber: "1234567",
     accountHolder: "ヤマダ タロウ",
   });
+
+  // テストモード確認 + demo時のみサンプル案件を読み込む
+  useEffect(() => {
+    const demo = getTestMode() === "demo";
+    setIsDemo(demo);
+    if (demo) setAllProjects(INITIAL_ALL_PROJECTS);
+  }, []);
 
   // localStorageから事業者設定を読み込んで自社情報・振込先を更新する
   useEffect(() => {
@@ -320,11 +343,17 @@ export default function InvoicePage() {
     setSelectedCustomerId(customerId);
   }
 
-  // 選択元請に絞った案件リスト
-  const filteredProjects = useMemo(
-    () => allProjects.filter((p) => p.customerId === selectedCustomerId),
-    [allProjects, selectedCustomerId]
-  );
+  // 選択元請に絞った案件リスト（キーワード含む検索）
+  const filteredProjects = useMemo(() => {
+    const byCustomer = allProjects.filter((p) => p.customerId === selectedCustomerId);
+    if (!searchKeyword.trim()) return byCustomer;
+    return byCustomer.filter((p) =>
+      matchesKeyword(
+        [p.projectName, p.siteAddress, p.workSummary, p.completedAt, p.total],
+        searchKeyword
+      )
+    );
+  }, [allProjects, selectedCustomerId, searchKeyword]);
 
   // 案件操作
   function toggleProject(id: string) {
@@ -352,7 +381,8 @@ export default function InvoicePage() {
   async function handleBulkInvoicePDF() {
     if (isPdfLoading) return;
     if (targets.length === 0) {
-      alert("請求対象案件がありません。請求対象にチェックを入れてください。");
+      setInvoiceMsg("請求対象案件がありません。請求対象にチェックを入れてください。");
+      setTimeout(() => setInvoiceMsg(""), 4000);
       return;
     }
     setIsPdfLoading(true);
@@ -397,7 +427,8 @@ export default function InvoicePage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('PDF生成エラー:', err);
-      alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
+      setInvoiceMsg('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
+      setTimeout(() => setInvoiceMsg(""), 6000);
     } finally {
       setIsPdfLoading(false);
     }
@@ -492,6 +523,17 @@ export default function InvoicePage() {
               <label className={lbl}>請求日</label>
               <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className={fi} />
             </div>
+            {/* キーワード検索 */}
+            <div>
+              <label className={lbl}>案件キーワード検索（任意）</label>
+              <input
+                type="text"
+                placeholder="案件名・現場住所・工事内容・金額など"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                className={fi}
+              />
+            </div>
             {/* 検索開始ボタン */}
             <button type="button"
               onClick={() => setSearchStarted(true)}
@@ -500,6 +542,18 @@ export default function InvoicePage() {
             </button>
           </div>
         </div>
+
+        {/* インラインメッセージ */}
+        {invoiceMsg && (
+          <div className="mb-4 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-200">
+            <p className="text-sm text-amber-700">{invoiceMsg}</p>
+          </div>
+        )}
+        {saveMsg && (
+          <div className="mb-4 rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+            <p className="text-sm font-bold text-green-700">{saveMsg}</p>
+          </div>
+        )}
 
         {/* 請求対象案件（検索開始後のみ表示） */}
         {searchStarted && <section className="mb-4 space-y-3">
@@ -516,8 +570,15 @@ export default function InvoicePage() {
           </div>
 
           {filteredProjects.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-stone-200 py-8 text-center text-sm text-stone-400">
-              この元請の案件はまだありません
+            <div className="rounded-2xl border-2 border-dashed border-stone-200 py-8 text-center space-y-1">
+              <p className="text-sm text-stone-500">
+                {isDemo
+                  ? "この元請の案件はまだありません"
+                  : "一括請求する案件はまだありません。"}
+              </p>
+              {!isDemo && (
+                <p className="text-sm text-stone-400">案件登録、または見積作成から始めてください。</p>
+              )}
             </div>
           ) : (
             filteredProjects.map((project, index) => (
@@ -659,7 +720,7 @@ export default function InvoicePage() {
             </span>
           </button>
           <button type="button"
-            onClick={() => alert("一括請求書を仮保存しました。次工程で保存機能を追加します。")}
+            onClick={() => { setSaveMsg("一括請求書を仮保存しました。次工程で保存機能を追加します。"); setTimeout(() => setSaveMsg(""), 4000); }}
             className="w-full rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80">
             仮保存
           </button>

@@ -10,6 +10,8 @@
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
+import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 
 const SETTINGS_STORAGE_KEY = "genba_settings";
 
@@ -108,6 +110,7 @@ export default function SingleInvoicePage() {
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [companyInfo,  setCompanyInfo]  = useState<CompanyInfo>(DEFAULT_COMPANY);
   const [bank,         setBank]         = useState<BankInfo>(DEFAULT_BANK);
+  const [saveMsg,      setSaveMsg]      = useState("");
 
   // 事業者設定を localStorage から読み込む
   useEffect(() => {
@@ -143,10 +146,11 @@ export default function SingleInvoicePage() {
   // 検索結果（ボタン押下後のみ表示）
   const filteredProjects = useMemo(() => {
     if (!hasSearched) return [];
-    return SEARCH_PROJECTS.filter((p) => {
-      const md = searchDate    === "" || p.date.includes(searchDate);
-      const mp = searchProject === "" || p.projectName.includes(searchProject);
-      const mc = searchClient  === "" || p.clientName.includes(searchClient);
+    const source = getTestMode() === "demo" ? SEARCH_PROJECTS : [];
+    return source.filter((p) => {
+      const md = searchDate    === "" || p.date.includes(searchDate.replace(/-/g, "/"));
+      const mp = searchProject === "" || matchesKeyword([p.projectName, p.siteAddress, p.workContent], searchProject);
+      const mc = searchClient  === "" || matchesKeyword([p.clientName], searchClient);
       return md && mp && mc;
     });
   }, [hasSearched, searchDate, searchProject, searchClient]);
@@ -378,10 +382,15 @@ export default function SingleInvoicePage() {
               </span>
             </button>
             <button type="button"
-              onClick={() => alert("単体請求書の保存は次工程で追加します。")}
+              onClick={() => { setSaveMsg("単体請求書を仮保存しました。次工程で保存機能を追加します。"); setTimeout(() => setSaveMsg(""), 4000); }}
               className="w-full rounded-2xl border border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80">
               仮保存
             </button>
+            {saveMsg && (
+              <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                <p className="text-sm font-bold text-green-700">{saveMsg}</p>
+              </div>
+            )}
             <Link href="/invoices/unbilled"
               className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80">
               単体請求書一覧確認

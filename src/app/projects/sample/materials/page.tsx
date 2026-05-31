@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -163,8 +164,12 @@ function MaterialCard({
         <div className="flex items-center gap-3 shrink-0">
           <button type="button" onClick={onDuplicate} className="text-xs text-stone-400 active:text-stone-600">複製</button>
           <button type="button"
-            onClick={() => { if (!canDelete) { alert("材料行は最低1行必要です。"); return; } onDelete(); }}
-            className="text-xs text-stone-400 active:text-red-500">削除</button>
+            onClick={onDelete}
+            disabled={!canDelete}
+            title={!canDelete ? "材料行は最低1行必要です" : undefined}
+            className={`text-xs ${canDelete ? "text-stone-400 active:text-red-500" : "cursor-not-allowed text-stone-200"}`}>
+            削除
+          </button>
         </div>
       </div>
 
@@ -292,6 +297,7 @@ export default function MaterialsPage() {
   const [searchClient,  setSearchClient]  = useState("");
   const [hasSearched,   setHasSearched]   = useState(false);
   const [selectedProject, setSelectedProject] = useState<SearchableProject | null>(null);
+  const [infoMsg, setInfoMsg] = useState("");
 
   function updateRow(id: number, updates: Partial<MaterialRow>) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
@@ -345,16 +351,17 @@ export default function MaterialsPage() {
     sekouDate:   "",
   });
 
-  // 検索絞り込み（ボタン押下後のみ表示）
+  // 検索絞り込み（ボタン押下後のみ表示・demoモード限定）
   const filteredProjects = useMemo(() => {
     if (!hasSearched) return [];
-    return SEARCH_PROJECTS.filter((p) => {
-      const md = searchDate    === "" || p.date.includes(searchDate);
-      const mp = searchProject === "" || p.projectName.includes(searchProject);
-      const mc = searchClient  === "" || p.clientName.includes(searchClient);
+    const source = isDemo ? SEARCH_PROJECTS : [];
+    return source.filter((p) => {
+      const md = searchDate    === "" || p.date.includes(searchDate.replace(/-/g, "/"));
+      const mp = searchProject === "" || matchesKeyword([p.projectName, p.siteAddress, p.workContent], searchProject);
+      const mc = searchClient  === "" || matchesKeyword([p.clientName], searchClient);
       return md && mp && mc;
     });
-  }, [hasSearched, searchDate, searchProject, searchClient]);
+  }, [hasSearched, searchDate, searchProject, searchClient, isDemo]);
 
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
@@ -616,7 +623,7 @@ export default function MaterialsPage() {
           <div className="bg-[#fff8f5] px-4 pb-4">
             <button
               type="button"
-              onClick={() => alert("材料発注PDF出力は次工程で実装します。")}
+              onClick={() => { setInfoMsg("材料発注PDF出力は次工程で実装します。"); setTimeout(() => setInfoMsg(""), 4000); }}
               className="w-full rounded-2xl border-2 border-[#8B4A3C] bg-white py-3.5 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
             >
               材料発注PDFを作る
@@ -643,9 +650,14 @@ export default function MaterialsPage() {
 
         {/* ボタン群 */}
         <div className="space-y-3 pb-8">
+          {infoMsg && (
+            <div className="rounded-xl bg-stone-50 px-4 py-3 ring-1 ring-stone-200">
+              <p className="text-sm text-stone-600">{infoMsg}</p>
+            </div>
+          )}
           <button
             type="button"
-            onClick={() => alert("材料計算を仮保存しました。次工程で保存機能を追加します。")}
+            onClick={() => { setInfoMsg("材料計算を仮保存しました。次工程で保存機能を追加します。"); setTimeout(() => setInfoMsg(""), 4000); }}
             className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
           >
             仮保存

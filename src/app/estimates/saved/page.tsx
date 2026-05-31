@@ -10,6 +10,7 @@ import {
   setSelectedEstimateId,
   type SavedEstimate,
 } from "@/app/utils/savedEstimates";
+import { matchesKeyword } from "@/app/utils/search";
 import SavedEstimateCard from "@/app/components/SavedEstimateCard";
 
 export default function SavedEstimatesPage() {
@@ -39,15 +40,11 @@ export default function SavedEstimatesPage() {
     setEstimates(getSavedEstimates());
   }
 
-  // ⑯ 部分入力検索（案件名・提出先・現場住所・工事内容）
+  // 部分一致検索（案件名・提出先・現場住所・工事内容）
   const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return estimates;
+    if (!searchQuery.trim()) return estimates;
     return estimates.filter((e) =>
-      e.projectName.toLowerCase().includes(q) ||
-      e.clientName.toLowerCase().includes(q) ||
-      e.workDescription.toLowerCase().includes(q) ||
-      e.siteAddress.toLowerCase().includes(q)
+      matchesKeyword([e.projectName, e.clientName, e.workDescription, e.siteAddress], searchQuery)
     );
   }, [estimates, searchQuery]);
 

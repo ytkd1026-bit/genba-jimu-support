@@ -65,6 +65,8 @@ const DEFAULT_BANK: BankForm = {
 export default function CompanySettingsPage() {
   const [company, setCompany] = useState<CompanyForm>(DEFAULT_COMPANY);
   const [bank, setBank] = useState<BankForm>(DEFAULT_BANK);
+  const [saveMsg, setSaveMsg] = useState("");
+  const [pdfInfo, setPdfInfo] = useState(false);
 
   // 起動時にlocalStorageから読み込む
   useEffect(() => {
@@ -105,13 +107,13 @@ export default function CompanySettingsPage() {
 
   function handleSave() {
     try {
-      // company と bank をひとつのオブジェクトにまとめてlocalStorageへ保存
-      // 見積PDF・兼注文書PDF・保存用PDF・一括請求PDFで共通参照する
       const payload = { ...company, ...bank };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
-      alert("事業者設定を保存しました。");
+      setSaveMsg("事業者設定を保存しました。");
+      setTimeout(() => setSaveMsg(""), 4000);
     } catch {
-      alert("保存に失敗しました。ブラウザの設定を確認してください。");
+      setSaveMsg("保存に失敗しました。ブラウザの設定を確認してください。");
+      setTimeout(() => setSaveMsg(""), 6000);
     }
   }
 
@@ -127,13 +129,13 @@ export default function CompanySettingsPage() {
     } catch {
       // 削除失敗は無視
     }
-    alert("設定を初期値に戻しました。");
+    setSaveMsg("設定を初期値に戻しました。");
+    setTimeout(() => setSaveMsg(""), 4000);
   }
 
   function handlePdfCheck() {
-    alert(
-      "見積書PDF・見積書兼注文書PDF・保存用PDF・一括請求PDFに\n事業者設定の値が反映されています。\n\n変更後は「保存する」を押してから各PDFを出力してください。"
-    );
+    setPdfInfo(true);
+    setTimeout(() => setPdfInfo(false), 6000);
   }
 
   return (
@@ -371,6 +373,11 @@ export default function CompanySettingsPage() {
             >
               保存する
             </button>
+            {saveMsg && (
+              <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                <p className="text-sm font-bold text-green-700">{saveMsg}</p>
+              </div>
+            )}
             <button
               type="button"
               onClick={handlePdfCheck}
@@ -378,6 +385,14 @@ export default function CompanySettingsPage() {
             >
               PDF反映を確認
             </button>
+            {pdfInfo && (
+              <div className="rounded-xl bg-stone-50 px-4 py-3 ring-1 ring-stone-200">
+                <p className="text-sm text-stone-700 leading-relaxed">
+                  見積書PDF・見積書兼注文書PDF・保存用PDF・一括請求PDFに事業者設定の値が反映されます。
+                  変更後は「保存する」を押してから各PDFを出力してください。
+                </p>
+              </div>
+            )}
             <button
               type="button"
               onClick={handleReset}

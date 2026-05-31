@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 import {
   getProjectHistories,
   addProjectHistory,
@@ -206,8 +207,8 @@ export default function SampleProjectPage() {
     if (!hasSearched) return projects;
     return projects.filter((p) => {
       const md = searchDate    === "" || p.sekouDate.includes(searchDate.replace(/-/g, "/"));
-      const mp = searchProject === "" || p.projectName.includes(searchProject);
-      const mc = searchClient  === "" || p.clientName.includes(searchClient);
+      const mp = searchProject === "" || matchesKeyword([p.projectName, p.address, p.workContent], searchProject);
+      const mc = searchClient  === "" || matchesKeyword([p.clientName], searchClient);
       return md && mp && mc;
     });
   }, [hasSearched, searchDate, searchProject, searchClient, isDemo]);

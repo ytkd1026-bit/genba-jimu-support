@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTestMode } from "@/app/utils/testMode";
+import { matchesKeyword } from "@/app/utils/search";
 import {
   getSavedEstimates,
   setSelectedEstimateId,
@@ -116,9 +117,9 @@ export default function ProjectRegisterPage() {
   const projectSearchResults = useMemo(() => {
     if (!hasSearched) return [];
     return projectsData.filter((p) => {
-      const md = searchDate    === "" || p.date.includes(searchDate);
-      const mp = searchProject === "" || p.projectName.includes(searchProject);
-      const mc = searchClient  === "" || p.clientName.includes(searchClient);
+      const md = searchDate    === "" || p.date.includes(searchDate.replace(/-/g, "/"));
+      const mp = searchProject === "" || matchesKeyword([p.projectName, p.siteAddress, p.workContent], searchProject);
+      const mc = searchClient  === "" || matchesKeyword([p.clientName], searchClient);
       return md && mp && mc;
     });
   }, [hasSearched, searchDate, searchProject, searchClient, projectsData]);
