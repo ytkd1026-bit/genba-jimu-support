@@ -6,7 +6,7 @@
 // TODO: OCR/AI読取APIを後工程で接続する
 
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type ScanType = "agency" | "receipt" | "order" | "other" | null;
@@ -24,12 +24,47 @@ const SCAN_TYPES: { id: ScanType; icon: string; title: string; desc: string }[] 
   { id: "other",   icon: "📁", title: "その他書類を読み取る", desc: "後で分類する書類として保存する" },
 ];
 
+// ─── ファイル種別ユーティリティ ───────────────────────────────
+function getFileTypeLabel(file: File): string {
+  if (file.type === "application/pdf") return "PDF";
+  if (file.type.startsWith("image/")) return "画像";
+  return "ファイル";
+}
+
+function isPreviewableImage(file: File): boolean {
+  return ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+}
+
+function isHeic(file: File): boolean {
+  return (
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    file.name.toLowerCase().endsWith(".heic") ||
+    file.name.toLowerCase().endsWith(".heif")
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // ─── コンポーネント ───────────────────────────────────────────
 export default function ScanPage() {
   const [scanType,    setScanType]    = useState<ScanType>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
   const [hasScanned,  setHasScanned]  = useState(false);
+  const [noFileWarn,  setNoFileWarn]  = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // objectURL のメモリ後始末
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   // ── 元請書類フォーム ──────────────────────────────────────
   const [agencyForm, setAgencyForm] = useState({
@@ -76,24 +111,33 @@ export default function ScanPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+
+    // 古いURLを解放
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+
     setSelectedFile(file);
     setHasScanned(false);
+    setNoFileWarn(false);
+
+    if (file && isPreviewableImage(file)) {
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewUrl(null);
+    }
   }
 
   function handleScan() {
+    if (!selectedFile) {
+      setNoFileWarn(true);
+      return;
+    }
     if (!scanType) {
       alert("スキャン種別を選択してください。");
       return;
     }
     setHasScanned(true);
-    // リセット
+    setNoFileWarn(false);
     setChecks({ amount: false, date: false, address: false, client: false });
-  }
-
-  function getFileTypeLabel(file: File): string {
-    if (file.type === "application/pdf")   return "PDF";
-    if (file.type.startsWith("image/")) return "画像";
-    return "ファイル";
   }
 
   function agencyChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -122,6 +166,16 @@ export default function ScanPage() {
         </header>
 
         <div className="space-y-4">
+
+          {/* ── OCR未実装 注意カード ── */}
+          <div className="rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-200">
+            <h2 className="mb-1.5 text-sm font-bold text-stone-700">読取精度について</h2>
+            <p className="text-xs leading-relaxed text-stone-500">
+              現在はスキャン機能の初期版です。
+              選択した画像やPDFの内容を実際にOCRで読み取る機能は、次工程で実装します。
+              今はファイル選択・プレビュー・仮読取結果・確認編集までを確認できます。
+            </p>
+          </div>
 
           {/* ── スキャン種別選択 ── */}
           <div className="space-y-2">
@@ -179,29 +233,82 @@ export default function ScanPage() {
             >
               <span className="text-3xl">📂</span>
               <span className="text-sm font-bold text-stone-600">ファイルを選択</span>
-              <span className="text-xs text-stone-400">PDF・画像（JPEG・PNG）に対応</span>
+              <span className="text-xs text-stone-400">PDF・画像（JPEG・PNG・WebP）に対応</span>
             </button>
 
-            {/* 選択ファイル情報 */}
+            {/* ── 選択ファイルプレビュー ── */}
             {selectedFile && (
-              <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">
-                    {selectedFile.type === "application/pdf" ? "📄" : "🖼️"}
-                  </span>
-                  <p className="text-sm font-bold text-stone-800 leading-tight break-all">
-                    {selectedFile.name}
-                  </p>
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-stone-700">選択したファイル</h3>
+
+                {/* ファイル情報 */}
+                <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">
+                      {selectedFile.type === "application/pdf" ? "📄" : "🖼️"}
+                    </span>
+                    <p className="text-sm font-bold text-stone-800 leading-tight break-all">
+                      {selectedFile.name}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-stone-400">
+                    <span className="rounded bg-stone-200 px-1.5 py-0.5 font-bold text-stone-600">
+                      {getFileTypeLabel(selectedFile)}
+                    </span>
+                    <span>{selectedFile.type || "不明"}</span>
+                    <span>{formatFileSize(selectedFile.size)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-stone-400">
-                  <span className="rounded bg-stone-200 px-1.5 py-0.5 font-bold text-stone-600">
-                    {getFileTypeLabel(selectedFile)}
-                  </span>
-                  <span>読取待ち</span>
-                </div>
+
+                {/* 画像プレビュー */}
+                {isPreviewableImage(selectedFile) && previewUrl && (
+                  <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewUrl}
+                      alt="プレビュー"
+                      className="max-h-[60vh] w-full object-contain"
+                      style={{ background: "#fff" }}
+                    />
+                  </div>
+                )}
+
+                {/* HEIC 注意 */}
+                {isHeic(selectedFile) && (
+                  <div className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-200">
+                    HEICファイルはブラウザによってプレビューに対応していない場合があります。
+                    プレビューが表示されない場合は、JPEG・PNG・WebP形式に変換してからお試しください。
+                  </div>
+                )}
+
+                {/* PDFカード */}
+                {selectedFile.type === "application/pdf" && (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 space-y-1">
+                    <p className="text-sm font-bold text-blue-800">PDFファイルが選択されています</p>
+                    <p className="text-xs text-blue-600">
+                      PDFの中身表示と文字読取は次工程で実装します。
+                    </p>
+                  </div>
+                )}
+
+                {/* 未対応形式 */}
+                {!isPreviewableImage(selectedFile) &&
+                  !isHeic(selectedFile) &&
+                  selectedFile.type !== "application/pdf" && (
+                  <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500">
+                    このファイル形式は現在プレビューに対応していません。
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* ── ファイル未選択時の注意 ── */}
+          {noFileWarn && (
+            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-200">
+              先にファイルを選択してください。
+            </div>
+          )}
 
           {/* ── 仮読取ボタン ── */}
           <button
@@ -387,6 +494,13 @@ export default function ScanPage() {
               </div>
             </div>
           )}
+
+          {/* ── テスト感想入力リンク ── */}
+          <div className="flex justify-end pb-2">
+            <Link href="/test-feedback" className="text-xs text-stone-400 underline underline-offset-2 hover:text-[#8B4A3C]">
+              この画面の感想を書く
+            </Link>
+          </div>
 
           <div className="pb-8" />
 

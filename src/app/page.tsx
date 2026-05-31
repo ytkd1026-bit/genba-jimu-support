@@ -193,6 +193,13 @@ export default function Home() {
                 </div>
                 <span className="text-stone-300">›</span>
               </Link>
+              <Link href="/test-mode" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
+                <div>
+                  <p className="text-sm font-bold text-stone-700">🧪 初回ユーザーテストモード</p>
+                  <p className="text-xs text-stone-400">職人仲間向けのテストプレイ設定</p>
+                </div>
+                <span className="text-stone-300">›</span>
+              </Link>
               <div className="flex gap-2 px-2 pt-1">
                 <button type="button" className="flex-1 rounded-xl border border-stone-200 py-2 text-xs font-bold text-stone-400 active:opacity-70">
                   📋 テンプレ集

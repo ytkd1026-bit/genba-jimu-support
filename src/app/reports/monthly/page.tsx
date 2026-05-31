@@ -395,12 +395,19 @@ export default function MonthlyReportPage() {
           </div>
 
           {/* ホームへ戻る */}
-          <div className="pb-8 pt-1">
+          <div className="pb-2 pt-1">
             <Link
               href="/"
               className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
             >
               ホームへ戻る
+            </Link>
+          </div>
+
+          {/* テスト感想リンク */}
+          <div className="flex justify-end pb-8">
+            <Link href="/test-feedback" className="text-xs text-stone-400 underline underline-offset-2 hover:text-[#8B4A3C]">
+              この画面の感想を書く
             </Link>
           </div>
 

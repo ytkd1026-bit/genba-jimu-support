@@ -390,6 +390,11 @@ export default function SingleInvoicePage() {
               className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3 text-sm font-bold text-stone-400 shadow-sm active:opacity-80">
               案件詳細へ戻る
             </Link>
+            <div className="flex justify-end pt-1">
+              <Link href="/test-feedback" className="text-xs text-stone-400 underline underline-offset-2 hover:text-[#8B4A3C]">
+                この画面の感想を書く
+              </Link>
+            </div>
           </div>
 
         </div>

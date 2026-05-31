@@ -631,6 +631,11 @@ export default function MaterialsPage() {
           >
             案件詳細へ戻る
           </Link>
+          <div className="flex justify-end pt-1">
+            <Link href="/test-feedback" className="text-xs text-stone-400 underline underline-offset-2 hover:text-[#8B4A3C]">
+              この画面の感想を書く
+            </Link>
+          </div>
         </div>
 
       </div>

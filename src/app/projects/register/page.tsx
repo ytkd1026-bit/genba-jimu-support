@@ -191,6 +191,13 @@ export default function ProjectRegisterPage() {
             ))}
           </section>
 
+          {/* テスト感想リンク */}
+          <div className="flex justify-end pb-8">
+            <Link href="/test-feedback" className="text-xs text-stone-400 underline underline-offset-2 hover:text-[#8B4A3C]">
+              この画面の感想を書く
+            </Link>
+          </div>
+
         </div>
       </div>
     </div>
