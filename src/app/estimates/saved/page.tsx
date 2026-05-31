@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   getSavedEstimates,
   deleteEstimate,
@@ -13,9 +13,14 @@ import {
 } from "@/app/utils/savedEstimates";
 import { useRouter } from "next/navigation";
 
+function fmtYen(n: number): string {
+  return "¥" + n.toLocaleString("ja-JP");
+}
+
 export default function SavedEstimatesPage() {
   const router = useRouter();
-  const [estimates, setEstimates] = useState<SavedEstimate[]>([]);
+  const [estimates,    setEstimates]    = useState<SavedEstimate[]>([]);
+  const [searchQuery,  setSearchQuery]  = useState("");
 
   useEffect(() => {
     setEstimates(getSavedEstimates());
@@ -37,12 +42,25 @@ export default function SavedEstimatesPage() {
     setEstimates(getSavedEstimates());
   }
 
+  // ⑯ 部分入力検索（案件名・提出先・工事内容・現場住所）
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return estimates;
+    return estimates.filter((e) =>
+      e.projectName.toLowerCase().includes(q) ||
+      e.clientName.toLowerCase().includes(q) ||
+      e.workDescription.toLowerCase().includes(q) ||
+      e.siteAddress.toLowerCase().includes(q)
+    );
+  }, [estimates, searchQuery]);
+
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
       <div className="mx-auto max-w-md px-4 py-4 sm:max-w-lg">
 
-        <header className="mb-6">
-          <Link href="/estimates" className="mb-3 inline-flex items-center gap-1 text-sm text-[#8B4A3C] hover:opacity-75">
+        <header className="mb-4">
+          <Link href="/estimates"
+            className="mb-3 inline-flex items-center gap-1 text-sm text-[#8B4A3C] hover:opacity-75">
             ← 見積・注文書関係へ戻る
           </Link>
           <h1 className="text-xl font-bold text-stone-800">保存済み見積一覧</h1>
@@ -53,6 +71,18 @@ export default function SavedEstimatesPage() {
 
         <div className="space-y-3">
 
+          {/* ⑯ 検索フォーム */}
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+            <input
+              type="text"
+              placeholder="案件名・提出先・工事内容で検索"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30"
+            />
+          </div>
+
+          {/* 空状態 */}
           {estimates.length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-stone-200 px-4 py-10 text-center">
               <p className="text-sm text-stone-500">保存済み見積はまだありません。</p>
@@ -66,8 +96,12 @@ export default function SavedEstimatesPage() {
                 </Link>
               </div>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-stone-200 py-8 text-center">
+              <p className="text-sm text-stone-400">「{searchQuery}」に一致する見積はありません。</p>
+            </div>
           ) : (
-            estimates.map((est) => (
+            filtered.map((est) => (
               <div key={est.id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
 
                 {/* カードヘッダー */}
@@ -85,9 +119,16 @@ export default function SavedEstimatesPage() {
 
                 {/* カード本文 */}
                 <div className="px-4 py-3 space-y-1">
-                  <p className="text-sm font-bold text-stone-800 leading-tight">
+
+                  {/* ⑭ 案件名クリックで見積を開く */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpen(est.id)}
+                    className="text-left text-sm font-bold text-[#8B4A3C] underline underline-offset-2 leading-tight active:opacity-70"
+                  >
                     {est.projectName || "（案件名なし）"}
-                  </p>
+                  </button>
+
                   {est.clientName && (
                     <p className="text-xs text-stone-500">{est.clientName}</p>
                   )}
@@ -97,13 +138,24 @@ export default function SavedEstimatesPage() {
                   {est.workDescription && (
                     <p className="line-clamp-1 text-xs text-stone-400">{est.workDescription}</p>
                   )}
-                  <div className="mt-1.5 rounded-lg bg-[#fdf0ec] px-3 py-1.5 text-right">
-                    <span className="text-xs text-[#8B4A3C]">税込合計　</span>
-                    <span className="text-base font-bold text-[#8B4A3C]">
-                      ¥{est.total.toLocaleString("ja-JP")}
-                    </span>
+
+                  {/* ⑬ 小計・消費税・税込小計 */}
+                  <div className="mt-1.5 divide-y divide-stone-100 rounded-lg border border-stone-100">
+                    <div className="flex items-center justify-between px-3 py-1.5">
+                      <span className="text-xs text-stone-500">小計</span>
+                      <span className="text-xs font-medium text-stone-700">{fmtYen(est.subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-1.5">
+                      <span className="text-xs text-stone-500">消費税（10%）</span>
+                      <span className="text-xs font-medium text-stone-600">{fmtYen(est.tax)}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-b-lg bg-[#fdf0ec] px-3 py-1.5">
+                      <span className="text-xs font-bold text-[#8B4A3C]">税込合計</span>
+                      <span className="text-base font-bold text-[#8B4A3C]">{fmtYen(est.total)}</span>
+                    </div>
                   </div>
-                  <div className="flex gap-3 text-xs text-stone-400 pt-0.5">
+
+                  <div className="flex gap-3 pt-0.5 text-xs text-stone-400">
                     <span>作成日：{est.createdAt}</span>
                     {est.createdAt !== est.updatedAt && (
                       <span>更新日：{est.updatedAt}</span>
@@ -113,12 +165,13 @@ export default function SavedEstimatesPage() {
 
                 {/* アクションボタン */}
                 <div className="grid grid-cols-2 gap-1.5 border-t border-stone-100 px-4 py-3">
+                  {/* ⑮ 見積を修正する */}
                   <button
                     type="button"
                     onClick={() => handleOpen(est.id)}
                     className="flex min-h-[44px] items-center justify-center rounded-xl bg-[#8B4A3C] px-2 py-2 text-center text-xs font-bold text-white active:opacity-80"
                   >
-                    この見積を開く
+                    見積を修正する
                   </button>
                   <Link
                     href="/projects/sample/estimate"

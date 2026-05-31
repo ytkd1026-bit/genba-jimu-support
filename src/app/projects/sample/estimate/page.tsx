@@ -104,6 +104,10 @@ const LOCATION2_OPTIONS = ["天井", "壁", "床", "共通"];
 const COST_CATEGORIES = [
   "材料費", "副資材", "施工費", "外注費", "諸経費", "設備機器代", "その他",
 ];
+// 明細の項目（複数選択対応のプリセット）
+const PREDEFINED_CATEGORIES = [
+  "内装工事", "床工事", "天井工事", "壁工事", "建具工事", "塗装工事", "解体工事", "諸経費",
+];
 
 // ─── 初期データ ───────────────────────────────────────────────
 const initialLines: LineItem[] = [
@@ -149,7 +153,7 @@ const initialCosts: CostItem[] = [
 
 // ─── 空行テンプレート ─────────────────────────────────────────
 function emptyLine(id: number): LineItem {
-  return { id, category: "未分類", koujiName: "", koujiContent: "", location1: "", location2: "壁", qty: "1", unit: "式", unitPrice: "0", note: "" };
+  return { id, category: "内装工事", koujiName: "", koujiContent: "", location1: "", location2: "壁", qty: "1", unit: "式", unitPrice: "0", note: "" };
 }
 function emptyCost(id: number): CostItem {
   return { id, costCategory: "材料費", targetCategory: "", targetKouji: "", content: "", qty: "1", unit: "式", costUnitPrice: "0", note: "" };
@@ -194,8 +198,33 @@ function LineCard({ line, index, canDelete, onUpdate, onDelete, onDuplicate }: {
       </div>
 
       <div className="space-y-3 p-3">
-        <div className="grid grid-cols-2 gap-2">
-          <div><label className={lbl}>項目</label><input type="text" value={line.category} onChange={(e) => onUpdate("category", e.target.value)} placeholder="内装工事" className={fldInput} /></div>
+        <div className="grid grid-cols-2 items-start gap-2">
+          <div>
+            <label className={lbl}>項目</label>
+            <select
+              value={PREDEFINED_CATEGORIES.includes(line.category) ? line.category : "その他（自由入力）"}
+              onChange={(e) => {
+                if (e.target.value === "その他（自由入力）") {
+                  onUpdate("category", "");
+                } else {
+                  onUpdate("category", e.target.value);
+                }
+              }}
+              className={fldSelect}
+            >
+              {PREDEFINED_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              <option value="その他（自由入力）">その他（自由入力）</option>
+            </select>
+            {!PREDEFINED_CATEGORIES.includes(line.category) && (
+              <input
+                type="text"
+                value={line.category}
+                onChange={(e) => onUpdate("category", e.target.value)}
+                placeholder="カテゴリを入力"
+                className={fldInput + " mt-1.5"}
+              />
+            )}
+          </div>
           <div><label className={lbl}>工事名</label><input type="text" value={line.koujiName} onChange={(e) => onUpdate("koujiName", e.target.value)} placeholder="クロス貼替" className={fldInput} /></div>
         </div>
         <div><label className={lbl}>工事内容</label><input type="text" value={line.koujiContent} onChange={(e) => onUpdate("koujiContent", e.target.value)} placeholder="既存クロスめくり・下地処理・新規クロス貼り" className={fldInput} /></div>
