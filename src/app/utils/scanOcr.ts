@@ -3,7 +3,7 @@ import type { LoggerMessage } from "tesseract.js";
 export type OcrProgressCallback = (progress: number) => void;
 
 export async function ocrImageFile(
-  file: File,
+  file: File | Blob,
   onProgress?: OcrProgressCallback
 ): Promise<string> {
   const { recognize } = await import("tesseract.js");

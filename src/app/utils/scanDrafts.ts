@@ -22,6 +22,7 @@ export interface ScanDraft {
   ocrText?: string;
   aiStructuredData?: Record<string, unknown> | null;
   aiStatus?: AiStatus;
+  aiCandidates?: Record<string, unknown> | null;
 }
 
 const STORAGE_KEY = "genba_jimu_scan_drafts";

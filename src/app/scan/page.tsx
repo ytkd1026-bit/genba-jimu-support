@@ -15,7 +15,9 @@ import {
 import {
   structureOcrText,
   type AiStructuredResult,
+  type AiCandidates,
 } from "@/app/utils/aiStructuring";
+import { preprocessImageForOcr } from "@/app/utils/imagePreprocess";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type ScanType = "agency" | "receipt" | "order" | "other" | null;
@@ -28,12 +30,27 @@ type FieldConfig = {
 
 type OcrExtracted = { amount: boolean; date: boolean; company: boolean };
 
+type CandidateSelections = {
+  clientName: string;
+  siteAddress: string;
+  orderDate: string;
+  buildScheduleDate: string;
+  orderAmount: string;
+  workDescription: string;
+  invoiceNumber: string;
+  recipient: string;
+};
+
+const EMPTY_SELECTIONS: CandidateSelections = {
+  clientName: "", siteAddress: "", orderDate: "", buildScheduleDate: "",
+  orderAmount: "", workDescription: "", invoiceNumber: "", recipient: "",
+};
+
 // ─── スタイル定数 ─────────────────────────────────────────────
 const inputCls =
   "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
 const labelCls = "mb-1 block text-sm font-bold text-stone-700";
 
-// ─── スキャン種別 ─────────────────────────────────────────────
 const SCAN_TYPES: { id: ScanType; icon: string; title: string; desc: string }[] = [
   { id: "agency",  icon: "📄", title: "元請書類を読み取る",      desc: "PDF・FAX・LINE画像から案件下書きを作る" },
   { id: "receipt", icon: "🧾", title: "レシートを読み取る",      desc: "支出データの下書きを作る" },
@@ -54,10 +71,8 @@ function isPreviewableImage(file: File): boolean {
 }
 function isHeic(file: File): boolean {
   return (
-    file.type === "image/heic" ||
-    file.type === "image/heif" ||
-    file.name.toLowerCase().endsWith(".heic") ||
-    file.name.toLowerCase().endsWith(".heif")
+    file.type === "image/heic" || file.type === "image/heif" ||
+    file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif")
   );
 }
 function formatFileSize(bytes: number): string {
@@ -65,27 +80,39 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
 function ocrToMemo(text: string, max = 300): string {
   return text.length <= max ? text : "";
 }
 
-// ─── OCR読取文字カード ─────────────────────────────────────────
-function OcrTextCard({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+// ─── 候補選択ボタン ───────────────────────────────────────────
+function CandidateSelector({
+  title, candidates, selected, onSelect,
+}: {
+  title: string;
+  candidates: string[];
+  selected: string;
+  onSelect: (v: string) => void;
+}) {
+  if (candidates.length === 0) return null;
   return (
     <div className="space-y-1.5">
-      <label className={labelCls}>OCR読取文字（編集可）</label>
-      <p className="text-xs leading-relaxed text-stone-500">
-        OCRで画像から抽出した文字です。
-        発注書・見積書・請求書などの表形式では、文字化けや順番の崩れが起こることがあります。
-        金額・日付・住所・元請名は必ず確認してください。
-      </p>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={7}
-        className="w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 font-mono text-sm text-stone-700 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20"
-      />
+      <p className="text-xs font-bold text-stone-600">{title}</p>
+      <div className="space-y-1">
+        {candidates.map((c, i) => (
+          <button key={i} type="button"
+            onClick={() => onSelect(selected === c ? "" : c)}
+            className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors active:opacity-80 ${
+              selected === c
+                ? "bg-purple-700 font-bold text-white"
+                : "border border-stone-200 bg-white text-stone-700"
+            }`}>
+            {c}
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <p className="text-xs text-purple-600">✓ 選択中：{selected}</p>
+      )}
     </div>
   );
 }
@@ -96,68 +123,87 @@ function AiStructureCard({ onPress }: { onPress: () => void }) {
     <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-2">
       <p className="text-sm font-bold text-purple-800">AI整理</p>
       <p className="text-xs leading-relaxed text-purple-700">
-        OCR文字をもとに、元請名・案件名・現場住所・金額・日付・工事内容などへ整理します。
-        現在はローカルで簡易解析します。次工程でAI連携精度を向上させます。
+        OCR文字をもとに、元請名・住所・金額・日付などを候補として抽出します。
+        候補を選んでフォームへ反映できます。
       </p>
-      <button
-        type="button"
-        onClick={onPress}
-        className="w-full rounded-xl border-2 border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70"
-      >
-        ✨ AIで整理する
+      <button type="button" onClick={onPress}
+        className="w-full rounded-xl border-2 border-purple-300 bg-white py-2.5 text-sm font-bold text-purple-700 active:opacity-70">
+        ✨ AIで整理する（候補を表示）
       </button>
     </div>
   );
 }
 
-// ─── AI整理結果カード ──────────────────────────────────────────
+// ─── AI整理結果カード（候補表示版）────────────────────────────
 function AiResultCard({
-  result,
-  onApply,
+  result, selections, onSelect, onApply,
 }: {
   result: AiStructuredResult;
+  selections: CandidateSelections;
+  onSelect: (field: keyof CandidateSelections, value: string) => void;
   onApply: () => void;
 }) {
-  const rows: { label: string; value: string }[] = [
-    { label: "書類種別",           value: result.documentType },
-    { label: "元請名",             value: result.clientName },
-    { label: "宛先",               value: result.recipientName },
-    { label: "発注日",             value: result.orderDate },
-    { label: "建方予定日",         value: result.buildScheduleDate },
-    { label: "発注番号",           value: result.orderNumber },
-    { label: "お客様名",           value: result.customerName },
-    { label: "案件名",             value: result.projectName },
-    { label: "現場住所",           value: result.siteAddress },
-    { label: "工事内容",           value: result.workDescription },
-    { label: "工期",               value: result.workPeriod },
-    { label: "発注金額",           value: result.orderAmount },
-    { label: "支払条件",           value: result.paymentTerm },
-    { label: "インボイス登録番号", value: result.invoiceRegistrationNumber },
-  ];
+  const { candidates } = result;
+  const hasAny = Object.values(selections).some((v) => !!v);
 
   return (
-    <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-3">
+    <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-4">
       <div className="flex items-center gap-2">
         <p className="text-sm font-bold text-purple-800">AI整理結果</p>
         <span className="rounded-full bg-purple-200 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
-          ローカル解析
+          候補選択式
         </span>
       </div>
-      <p className="text-xs text-purple-600">
-        OCRから項目を抽出しました。必ず原本と照合してください。
-      </p>
 
-      <div className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white">
-        {rows.map(({ label, value }) => (
-          <div key={label} className="flex items-start gap-2 px-3 py-2">
-            <span className="w-28 shrink-0 pt-0.5 text-xs text-stone-400">{label}</span>
-            <span className={`text-sm leading-snug ${value ? "text-stone-800" : "text-stone-300"}`}>
-              {value || "未抽出"}
-            </span>
-          </div>
-        ))}
+      {/* 注意 */}
+      <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-700 ring-1 ring-amber-200 leading-relaxed">
+        AI整理結果は候補です。住所・金額・日付・元請名は必ず原本と照合してください。
+        候補が複数ある場合は、正しいものを選択してからフォームへ反映してください。
       </div>
 
+      {/* 書類種別・固定情報 */}
+      {(result.documentType || result.customerName) && (
+        <div className="divide-y divide-stone-100 overflow-hidden rounded-xl bg-white">
+          {result.documentType && (
+            <div className="flex items-start gap-2 px-3 py-2">
+              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">書類種別</span>
+              <span className="text-sm text-stone-800">{result.documentType}</span>
+            </div>
+          )}
+          {result.customerName && (
+            <div className="flex items-start gap-2 px-3 py-2">
+              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">お客様名</span>
+              <span className="text-sm text-stone-800">{result.customerName}</span>
+            </div>
+          )}
+          {result.orderNumber && (
+            <div className="flex items-start gap-2 px-3 py-2">
+              <span className="w-24 shrink-0 pt-0.5 text-xs text-stone-400">発注番号</span>
+              <span className="text-sm text-stone-800">{result.orderNumber}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 候補選択セクション */}
+      <CandidateSelector title="元請名候補" candidates={candidates.companies}
+        selected={selections.clientName} onSelect={(v) => onSelect("clientName", v)} />
+      <CandidateSelector title="宛先候補" candidates={candidates.recipients}
+        selected={selections.recipient} onSelect={(v) => onSelect("recipient", v)} />
+      <CandidateSelector title="現場住所候補" candidates={candidates.addresses}
+        selected={selections.siteAddress} onSelect={(v) => onSelect("siteAddress", v)} />
+      <CandidateSelector title="発注日候補" candidates={candidates.dates}
+        selected={selections.orderDate} onSelect={(v) => onSelect("orderDate", v)} />
+      <CandidateSelector title="建方予定日候補" candidates={candidates.dates}
+        selected={selections.buildScheduleDate} onSelect={(v) => onSelect("buildScheduleDate", v)} />
+      <CandidateSelector title="発注金額候補" candidates={candidates.amounts}
+        selected={selections.orderAmount} onSelect={(v) => onSelect("orderAmount", v)} />
+      <CandidateSelector title="工事内容候補" candidates={candidates.workItems}
+        selected={selections.workDescription} onSelect={(v) => onSelect("workDescription", v)} />
+      <CandidateSelector title="インボイス登録番号候補" candidates={candidates.invoiceNumbers}
+        selected={selections.invoiceNumber} onSelect={(v) => onSelect("invoiceNumber", v)} />
+
+      {/* 警告 */}
       {result.warnings.length > 0 && (
         <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200 space-y-1">
           <p className="text-xs font-bold text-amber-700">⚠️ 注意事項</p>
@@ -167,13 +213,29 @@ function AiResultCard({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onApply}
-        className="w-full rounded-xl bg-purple-700 py-2.5 text-sm font-bold text-white shadow-sm active:opacity-80"
-      >
-        AI整理結果をフォームへ反映
+      <button type="button" onClick={onApply} disabled={!hasAny}
+        className="w-full rounded-xl bg-purple-700 py-2.5 text-sm font-bold text-white shadow-sm active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40">
+        選択した候補をフォームへ反映
       </button>
+      {!hasAny && (
+        <p className="text-center text-xs text-stone-400">上の候補を1つ以上タップして選択してください</p>
+      )}
+    </div>
+  );
+}
+
+// ─── OCR読取文字カード ─────────────────────────────────────────
+function OcrTextCard({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <label className={labelCls}>OCR読取文字（編集可）</label>
+      <p className="text-xs leading-relaxed text-stone-500">
+        OCRで画像から抽出した文字です。
+        発注書・見積書などの表形式では、文字化けや順番の崩れが起こることがあります。
+        金額・日付・住所・元請名は必ず確認してください。
+      </p>
+      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={7}
+        className="w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 font-mono text-sm text-stone-700 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20" />
     </div>
   );
 }
@@ -198,9 +260,7 @@ function OcrExtractedBadge({ extracted }: { extracted: OcrExtracted }) {
 }
 
 // ─── フォームフィールド ───────────────────────────────────────
-function FormField({
-  field, value, onChange,
-}: {
+function FormField({ field, value, onChange }: {
   field: FieldConfig;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -218,9 +278,7 @@ function FormField({
 }
 
 // ─── 保存後ボタン ─────────────────────────────────────────────
-function PostSaveButtons({
-  primaryLabel, primaryHref, secondaryLabel, secondaryHref,
-}: {
+function PostSaveButtons({ primaryLabel, primaryHref, secondaryLabel, secondaryHref }: {
   primaryLabel: string; primaryHref: string;
   secondaryLabel: string; secondaryHref: string;
 }) {
@@ -251,16 +309,18 @@ export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // OCR 状態
-  const [isOcrLoading, setIsOcrLoading] = useState(false);
-  const [ocrProgress,  setOcrProgress]  = useState(0);
-  const [ocrText,      setOcrText]      = useState("");
-  const [ocrError,     setOcrError]     = useState("");
-  const [scanNote,     setScanNote]     = useState("");
-  const [ocrExtracted, setOcrExtracted] = useState<OcrExtracted>({ amount: false, date: false, company: false });
+  const [isOcrLoading,    setIsOcrLoading]    = useState(false);
+  const [ocrProgress,     setOcrProgress]     = useState(0);
+  const [ocrText,         setOcrText]         = useState("");
+  const [ocrError,        setOcrError]        = useState("");
+  const [scanNote,        setScanNote]        = useState("");
+  const [ocrPreprocessed, setOcrPreprocessed] = useState(false);
+  const [ocrExtracted,    setOcrExtracted]    = useState<OcrExtracted>({ amount: false, date: false, company: false });
 
   // AI整理状態
-  const [aiStructured, setAiStructured] = useState<AiStructuredResult | null>(null);
-  const [aiMsg,        setAiMsg]        = useState("");
+  const [aiStructured,   setAiStructured]   = useState<AiStructuredResult | null>(null);
+  const [selectedCands,  setSelectedCands]  = useState<CandidateSelections>(EMPTY_SELECTIONS);
+  const [aiMsg,          setAiMsg]          = useState("");
 
   // 保存済みフラグ
   const [agencySaved,  setAgencySaved]  = useState(false);
@@ -272,7 +332,7 @@ export default function ScanPage() {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
 
-  // ── フォーム（空で初期化） ────────────────────────────────────
+  // ── フォーム（全て空で初期化） ────────────────────────────────
   const [agencyForm, setAgencyForm] = useState({
     clientName: "", contactName: "", projectName: "", address: "",
     workContent: "", contractAmount: "", sekouDate: "", paymentTerms: "", memo: "",
@@ -292,7 +352,7 @@ export default function ScanPage() {
   // ── リセット ─────────────────────────────────────────────────
   function resetSavedStates() {
     setAgencySaved(false); setReceiptSaved(false); setOrderSaved(false); setOtherSaved(false);
-    setAiMsg(""); setAiStructured(null);
+    setAiMsg(""); setAiStructured(null); setSelectedCands(EMPTY_SELECTIONS);
   }
   function resetForms() {
     setAgencyForm({ clientName: "", contactName: "", projectName: "", address: "", workContent: "", contractAmount: "", sekouDate: "", paymentTerms: "", memo: "" });
@@ -306,9 +366,8 @@ export default function ScanPage() {
     const file = e.target.files?.[0] ?? null;
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setSelectedFile(file);
-    setHasScanned(false);
-    setNoFileWarn(false);
-    setOcrText(""); setOcrError(""); setScanNote("");
+    setHasScanned(false); setNoFileWarn(false);
+    setOcrText(""); setOcrError(""); setScanNote(""); setOcrPreprocessed(false);
     resetSavedStates(); resetForms();
     setPreviewUrl(file && isPreviewableImage(file) ? URL.createObjectURL(file) : null);
   }
@@ -331,14 +390,14 @@ export default function ScanPage() {
     }
   }
 
-  // ── 読取ハンドラ ─────────────────────────────────────────────
+  // ── 読取ハンドラ（前処理あり）────────────────────────────────
   async function handleScan() {
     if (!selectedFile) { setNoFileWarn(true); return; }
     if (!scanType) { alert("スキャン種別を選択してください。"); return; }
     setNoFileWarn(false);
     setChecks({ amount: false, date: false, address: false, client: false });
     resetSavedStates(); resetForms();
-    setOcrText(""); setOcrError(""); setScanNote(""); setOcrProgress(0);
+    setOcrText(""); setOcrError(""); setScanNote(""); setOcrProgress(0); setOcrPreprocessed(false);
 
     if (selectedFile.type === "application/pdf") {
       setScanNote("PDFの中身読取は次工程で実装します。現在はファイル保存と下書き入力のみ対応しています。");
@@ -354,7 +413,19 @@ export default function ScanPage() {
 
     setIsOcrLoading(true);
     try {
-      const text = await ocrImageFile(selectedFile, (p) => setOcrProgress(p));
+      // 前処理を試みる
+      let ocrSource: File | Blob = selectedFile;
+      try {
+        const preprocessed = await preprocessImageForOcr(selectedFile);
+        if (preprocessed) {
+          ocrSource = preprocessed;
+          setOcrPreprocessed(true);
+        }
+      } catch {
+        // 失敗したらオリジナルで続行
+      }
+
+      const text = await ocrImageFile(ocrSource, (p) => setOcrProgress(p));
       setOcrText(text);
       populateFormsFromOcr(text, scanType, selectedFile);
       setHasScanned(true);
@@ -371,55 +442,53 @@ export default function ScanPage() {
     if (!ocrText) return;
     const result = structureOcrText(ocrText);
     setAiStructured(result);
+    setSelectedCands(EMPTY_SELECTIONS);
     setAiMsg("");
   }
 
-  // ── AI整理結果をフォームへ反映 ────────────────────────────────
-  function applyAiToForm(result: AiStructuredResult) {
+  // ── 選択候補をフォームへ反映 ──────────────────────────────────
+  function applyAiToForm() {
+    if (!aiStructured) return;
+    const s = selectedCands;
     const pick = (old: string, next: string) => next || old;
 
     if (scanType === "order") {
       setOrderForm((p) => ({
-        clientName:   pick(p.clientName,   result.clientName),
-        orderDate:    pick(p.orderDate,    result.orderDate),
-        projectName:  pick(p.projectName,  result.projectName || (result.customerName ? `${result.customerName} 工事` : "")),
-        workContent:  pick(p.workContent,  result.workDescription),
-        orderAmount:  pick(p.orderAmount,  result.orderAmount.replace(/,/g, "")),
-        paymentTerms: pick(p.paymentTerms, result.paymentTerm),
-        memo:         pick(p.memo,         result.warnings.length > 0 ? result.warnings.join("\n") : ""),
+        clientName:   pick(p.clientName,   s.clientName),
+        orderDate:    pick(p.orderDate,    s.orderDate),
+        projectName:  p.projectName,
+        workContent:  pick(p.workContent,  s.workDescription),
+        orderAmount:  pick(p.orderAmount,  s.orderAmount.replace(/,/g, "")),
+        paymentTerms: p.paymentTerms,
+        memo:         pick(p.memo,         aiStructured.warnings.join("\n")),
       }));
     } else if (scanType === "agency") {
       setAgencyForm((p) => ({
-        clientName:     pick(p.clientName,     result.clientName),
+        clientName:     pick(p.clientName,     s.clientName),
         contactName:    p.contactName,
-        projectName:    pick(p.projectName,    result.projectName),
-        address:        pick(p.address,        result.siteAddress),
-        workContent:    pick(p.workContent,    result.workDescription),
-        contractAmount: pick(p.contractAmount, result.orderAmount.replace(/,/g, "")),
-        sekouDate:      pick(p.sekouDate,      result.buildScheduleDate || result.orderDate),
-        paymentTerms:   pick(p.paymentTerms,   result.paymentTerm),
-        memo:           pick(p.memo,           result.warnings.length > 0 ? result.warnings.join("\n") : ""),
+        projectName:    p.projectName,
+        address:        pick(p.address,        s.siteAddress),
+        workContent:    pick(p.workContent,    s.workDescription),
+        contractAmount: pick(p.contractAmount, s.orderAmount.replace(/,/g, "")),
+        sekouDate:      pick(p.sekouDate,      s.buildScheduleDate || s.orderDate),
+        paymentTerms:   p.paymentTerms,
+        memo:           pick(p.memo,           aiStructured.warnings.join("\n")),
       }));
     } else if (scanType === "receipt") {
       setReceiptForm((p) => ({
-        date:        pick(p.date,        result.orderDate),
-        payee:       pick(p.payee,       result.clientName || result.recipientName),
-        amount:      pick(p.amount,      result.orderAmount.replace(/,/g, "")),
+        date:        pick(p.date,    s.orderDate),
+        payee:       pick(p.payee,   s.clientName),
+        amount:      pick(p.amount,  s.orderAmount.replace(/,/g, "")),
         taxCategory: p.taxCategory,
         category:    p.category,
-        projectLink: pick(p.projectLink, result.projectName),
-        memo:        pick(p.memo,        result.warnings.join("\n")),
+        projectLink: p.projectLink,
+        memo:        p.memo,
       }));
     } else if (scanType === "other") {
-      setOtherForm((p) => ({
-        documentName:   pick(p.documentName,   result.documentType ? `${result.documentType}_${result.orderDate}` : ""),
-        category:       p.category,
-        relatedProject: pick(p.relatedProject, result.projectName || result.customerName),
-        memo:           pick(p.memo,           result.warnings.join("\n")),
-      }));
+      setOtherForm((p) => ({ ...p }));
     }
 
-    setAiMsg("AI整理結果をフォームへ反映しました。内容を確認してください。");
+    setAiMsg("選択した候補をフォームへ反映しました。内容を確認してください。");
     setTimeout(() => setAiMsg(""), 5000);
   }
 
@@ -439,14 +508,18 @@ export default function ScanPage() {
 
   // ── 保存ハンドラ ─────────────────────────────────────────────
   const aiData = aiStructured ? (aiStructured as unknown as Record<string, unknown>) : null;
-  const aiSt   = aiStructured ? "completed" : "not_started";
+  const aiCandidatesData = aiStructured?.candidates
+    ? (aiStructured.candidates as unknown as Record<string, unknown>)
+    : null;
+  const aiSt = aiStructured ? "completed" : "not_started";
 
   function handleAgencySave() {
     saveScanDraft({
       scanType: "client_document",
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
       status: "draft", extractedData: { ...agencyForm }, memo: agencyForm.memo,
-      ocrText: ocrText || undefined, aiStructuredData: aiData, aiStatus: aiSt,
+      ocrText: ocrText || undefined,
+      aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
     });
     setAgencySaved(true);
   }
@@ -456,7 +529,8 @@ export default function ScanPage() {
       taxType: receiptForm.taxCategory, category: receiptForm.category,
       linkedProject: receiptForm.projectLink, memo: receiptForm.memo,
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
-      status: "draft", ocrText: ocrText || undefined, aiStructuredData: aiData, aiStatus: aiSt,
+      status: "draft", ocrText: ocrText || undefined,
+      aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
     });
     setReceiptSaved(true);
   }
@@ -466,7 +540,8 @@ export default function ScanPage() {
       projectName: orderForm.projectName, workDescription: orderForm.workContent,
       orderAmount: orderForm.orderAmount, paymentTerm: orderForm.paymentTerms, memo: orderForm.memo,
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
-      status: "draft", ocrText: ocrText || undefined, aiStructuredData: aiData, aiStatus: aiSt,
+      status: "draft", ocrText: ocrText || undefined,
+      aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
     });
     setOrderSaved(true);
   }
@@ -475,25 +550,34 @@ export default function ScanPage() {
       documentName: otherForm.documentName || selectedFile?.name || "（無題書類）",
       category: otherForm.category, relatedProject: otherForm.relatedProject, memo: otherForm.memo,
       fileName: selectedFile?.name ?? "", fileType: selectedFile?.type ?? "", fileSize: selectedFile?.size ?? 0,
-      ocrText: ocrText || undefined, aiStructuredData: aiData, aiStatus: aiSt,
+      ocrText: ocrText || undefined,
+      aiStructuredData: aiData, aiCandidates: aiCandidatesData, aiStatus: aiSt,
     });
     setOtherSaved(true);
   }
 
-  // ── OCRセクション（各フォームで共通描画） ─────────────────────
+  // ── OCRセクション描画 ─────────────────────────────────────────
   function renderOcrSection() {
     if (!ocrText) return null;
     return (
       <div className="space-y-3">
+        {ocrPreprocessed && (
+          <p className="text-xs text-stone-400">✓ OCR前処理（拡大・グレースケール・コントラスト強調）を適用して読み取りました。</p>
+        )}
         <OcrTextCard value={ocrText} onChange={setOcrText} />
         {!aiStructured ? (
           <AiStructureCard onPress={handleAiOrganize} />
         ) : (
-          <AiResultCard result={aiStructured} onApply={() => applyAiToForm(aiStructured)} />
+          <AiResultCard
+            result={aiStructured}
+            selections={selectedCands}
+            onSelect={(field, value) => setSelectedCands((p) => ({ ...p, [field]: value }))}
+            onApply={applyAiToForm}
+          />
         )}
         {aiMsg && (
-          <div className={`rounded-xl px-4 py-3 ring-1 ${aiStructured ? "bg-green-50 ring-green-200" : "bg-purple-50 ring-purple-200"}`}>
-            <p className={`text-sm font-bold ${aiStructured ? "text-green-700" : "text-purple-700"}`}>{aiMsg}</p>
+          <div className={`rounded-xl px-4 py-3 ring-1 ${aiMsg.includes("反映") ? "bg-green-50 ring-green-200" : "bg-purple-50 ring-purple-200"}`}>
+            <p className={`text-sm font-bold ${aiMsg.includes("反映") ? "text-green-700" : "text-purple-700"}`}>{aiMsg}</p>
           </div>
         )}
         <OcrExtractedBadge extracted={ocrExtracted} />
@@ -513,18 +597,17 @@ export default function ScanPage() {
 
         <div className="space-y-4">
 
-          {/* ── 読取精度カード ── */}
+          {/* 読取精度カード */}
           <div className="rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-200">
             <h2 className="mb-1.5 text-sm font-bold text-stone-700">読取精度について</h2>
             <p className="text-xs leading-relaxed text-stone-500">
-              現在はOCR読取の初期版です。
-              画像から文字を抽出しますが、金額・日付・住所・元請名を誤認識する可能性があります。
-              必ず画面上で確認・修正してから保存してください。
-              PDF本文読取、HEIC直接読取、AIによる高精度な項目分類は次工程で実装します。
+              OCR前処理（拡大・グレースケール・コントラスト強調）を適用します。
+              AI整理で候補を複数表示し、正しいものを選択してフォームへ反映できます。
+              金額・日付・住所・元請名は必ず原本で確認してください。
             </p>
           </div>
 
-          {/* ── スキャン種別選択 ── */}
+          {/* スキャン種別選択 */}
           <div className="space-y-2">
             <h2 className="px-1 text-sm font-bold text-stone-700">スキャン種別を選んでください</h2>
             {SCAN_TYPES.map((type) => {
@@ -544,7 +627,7 @@ export default function ScanPage() {
             })}
           </div>
 
-          {/* ── ファイル選択 ── */}
+          {/* ファイル選択 */}
           <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
             <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">ファイルを選択</h2>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={handleFileChange} className="hidden" />
@@ -583,9 +666,7 @@ export default function ScanPage() {
                       <p className="text-sm font-bold text-orange-800">iPhone写真（HEIC形式）が選択されています</p>
                     </div>
                     <div className="bg-orange-50 px-4 py-3 space-y-2">
-                      <p className="text-xs leading-relaxed text-orange-700">
-                        HEIC形式は一部のブラウザでプレビューできませんが、読取はそのまま続行できます。
-                      </p>
+                      <p className="text-xs leading-relaxed text-orange-700">HEIC形式は一部のブラウザでプレビューできませんが、読取はそのまま続行できます。</p>
                       <div className="rounded-lg bg-white px-3 py-2.5 ring-1 ring-orange-200 space-y-1.5">
                         <p className="text-xs font-bold text-stone-700">スクリーンショットで代替する方法</p>
                         <ol className="text-xs leading-relaxed text-stone-500 list-decimal list-inside space-y-0.5">
@@ -616,13 +697,13 @@ export default function ScanPage() {
             <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 ring-1 ring-red-200">先にファイルを選択してください。</div>
           )}
 
-          {/* ── 読取ボタン ── */}
+          {/* 読取ボタン */}
           <button type="button" onClick={handleScan} disabled={isOcrLoading}
             className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50">
             {isOcrLoading ? "読み取り中…" : "画像を読み取る"}
           </button>
 
-          {/* ── OCR処理中 ── */}
+          {/* OCR処理中 */}
           {isOcrLoading && (
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
               <div className="flex items-center gap-3">
@@ -650,7 +731,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ══ 元請書類フォーム ══ */}
+          {/* 元請書類フォーム */}
           {hasScanned && scanType === "agency" && (
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
               <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">読取結果（元請書類）</h2>
@@ -668,7 +749,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ══ レシートフォーム ══ */}
+          {/* レシートフォーム */}
           {hasScanned && scanType === "receipt" && (
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
               <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">読取結果（レシート）</h2>
@@ -686,7 +767,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ══ 発注書・注文書フォーム ══ */}
+          {/* 発注書・注文書フォーム */}
           {hasScanned && scanType === "order" && (
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
               <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">読取結果（発注書・注文書）</h2>
@@ -704,7 +785,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ══ その他書類フォーム ══ */}
+          {/* その他書類フォーム */}
           {hasScanned && scanType === "other" && (
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
               <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">読取結果（その他書類）</h2>
@@ -737,7 +818,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ── 読取内容確認カード ── */}
+          {/* 読取内容確認カード */}
           {hasScanned && (
             <div className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200 space-y-3">
               <h3 className="text-sm font-bold text-amber-800">読取内容確認</h3>
@@ -758,7 +839,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* ── スキャン下書き一覧リンク ── */}
+          {/* スキャン下書き一覧リンク */}
           <Link href="/scan/drafts"
             className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-stone-100 active:opacity-75">
             <div className="flex items-center gap-3">
