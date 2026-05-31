@@ -20,7 +20,7 @@ export interface ScanDraft {
   extractedData: Record<string, string>;
   memo: string;
   ocrText?: string;
-  aiStructuredData?: Record<string, string | number | null> | null;
+  aiStructuredData?: Record<string, unknown> | null;
   aiStatus?: AiStatus;
 }
 

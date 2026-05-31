@@ -14,7 +14,7 @@ export interface OrderDraft {
   updatedAt: string;
   status: "draft" | "confirmed";
   ocrText?: string;
-  aiStructuredData?: Record<string, string | number | null> | null;
+  aiStructuredData?: Record<string, unknown> | null;
   aiStatus?: "not_started" | "pending" | "completed" | "failed";
 }
 
