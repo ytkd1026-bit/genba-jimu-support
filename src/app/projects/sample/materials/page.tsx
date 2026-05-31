@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { getTestMode } from "@/app/utils/testMode";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -271,8 +272,19 @@ function MaterialCard({
 
 // ─── メインページ ─────────────────────────────────────────────
 export default function MaterialsPage() {
-  const [rows, setRows] = useState<MaterialRow[]>(initialRows);
-  const [nextId, setNextId] = useState(4);
+  const [isDemo, setIsDemo] = useState(false);
+  const [rows, setRows]   = useState<MaterialRow[]>([]);
+  const [nextId, setNextId] = useState(1);
+
+  // demo モードだけサンプル行をセット
+  useEffect(() => {
+    const demo = getTestMode() === "demo";
+    setIsDemo(demo);
+    if (demo) {
+      setRows(initialRows);
+      setNextId(initialRows.length + 1);
+    }
+  }, []);
 
   // 案件検索
   const [searchDate,    setSearchDate]    = useState("");
@@ -320,13 +332,18 @@ export default function MaterialsPage() {
     nonSuppliedRows.some((r) => r.deliveryDate) ? "搬入待ち" :
     "発注済み";
 
-  // 表示用の案件情報
-  const displayProject = selectedProject ?? {
+  // 表示用の案件情報（demo モードだけサンプル値を使用）
+  const displayProject = selectedProject ?? (isDemo ? {
     projectName: "〇〇マンション クロス貼替",
     siteAddress: "大阪府堺市〇〇区",
     workContent: "クロス・床",
     sekouDate:   "2026-06-10",
-  };
+  } : {
+    projectName: "（案件未選択）",
+    siteAddress: "",
+    workContent: "",
+    sekouDate:   "",
+  });
 
   // 検索絞り込み（ボタン押下後のみ表示）
   const filteredProjects = useMemo(() => {
@@ -476,6 +493,14 @@ export default function MaterialsPage() {
             </div>
           </div>
 
+          {rows.length === 0 && (
+            <div className="rounded-xl border-2 border-dashed border-teal-200 py-8 text-center">
+              <p className="text-sm text-stone-500">まだ材料計算する明細はありません。</p>
+              <p className="mt-1.5 text-xs text-stone-400">
+                案件検索、または見積作成から材料計算を始めてください。
+              </p>
+            </div>
+          )}
           {rows.map((row, index) => (
             <MaterialCard
               key={row.id} row={row} index={index} canDelete={rows.length > 1}

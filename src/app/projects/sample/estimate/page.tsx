@@ -8,6 +8,7 @@ import {
   storagePdfFileName,
 } from "@/app/utils/pdfFileName";
 import { upsertEstimate, setSelectedEstimateId } from "@/app/utils/savedEstimates";
+import { getTestMode } from "@/app/utils/testMode";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
 const PDF_CLIENT_NAME   = "△△工務店";
@@ -319,10 +320,10 @@ function CostCard({ cost, index, canDelete, onUpdate, onDelete, onDuplicate }: {
 
 // ─── メインページ ─────────────────────────────────────────────
 export default function EstimatePage() {
-  const [lines, setLines] = useState<LineItem[]>(initialLines);
-  const [nextLineId, setNextLineId] = useState(4);
-  const [costs, setCosts] = useState<CostItem[]>(initialCosts);
-  const [nextCostId, setNextCostId] = useState(6);
+  const [lines, setLines] = useState<LineItem[]>([]);
+  const [nextLineId, setNextLineId] = useState(1);
+  const [costs, setCosts] = useState<CostItem[]>([]);
+  const [nextCostId, setNextCostId] = useState(1);
   const [costSectionOpen, setCostSectionOpen] = useState(false);
   const [summaryInternalOpen, setSummaryInternalOpen] = useState(false);
   // null = 生成中なし / 'estimate' = 見積書 / 'order' = 見積書兼注文書 / 'storage' = 保存用
@@ -330,9 +331,9 @@ export default function EstimatePage() {
   const [draftSavedMsg, setDraftSavedMsg] = useState("");
   const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
   // 提出先・案件名・現場住所（編集可能・案件検索で自動セット可能）
-  const [submitTo,       setSubmitTo]       = useState(PDF_CLIENT_NAME + " 御中");
-  const [estProjectName, setEstProjectName] = useState(PDF_PROJECT_NAME);
-  const [estAddress,     setEstAddress]     = useState("大阪府堺市〇〇区");
+  const [submitTo,       setSubmitTo]       = useState("");
+  const [estProjectName, setEstProjectName] = useState("");
+  const [estAddress,     setEstAddress]     = useState("");
   // 案件検索
   const [estSearchDate,    setEstSearchDate]    = useState("");
   const [estSearchProject, setEstSearchProject] = useState("");
@@ -371,6 +372,18 @@ export default function EstimatePage() {
     } catch {
       // 読み込み失敗時はデフォルト値のまま
     }
+  }, []);
+
+  // demo モードだけサンプルデータをセット
+  useEffect(() => {
+    if (getTestMode() !== "demo") return;
+    setSubmitTo(PDF_CLIENT_NAME + " 御中");
+    setEstProjectName(PDF_PROJECT_NAME);
+    setEstAddress("大阪府堺市〇〇区");
+    setLines(initialLines);
+    setCosts(initialCosts);
+    setNextLineId(initialLines.length + 1);
+    setNextCostId(initialCosts.length + 1);
   }, []);
 
   function updateLine(id: number, field: keyof LineItem, value: string) { setLines((p) => p.map((l) => l.id === id ? { ...l, [field]: value } : l)); }
@@ -680,6 +693,12 @@ export default function EstimatePage() {
             </div>
 
             <div className="space-y-3">
+              {lines.length === 0 && (
+                <div className="rounded-xl border-2 border-dashed border-stone-200 py-6 text-center">
+                  <p className="text-sm text-stone-500">まだ見積明細はありません。</p>
+                  <p className="mt-1 text-xs text-stone-400">明細行を追加してください。</p>
+                </div>
+              )}
               {lines.map((line, index) => (
                 <LineCard
                   key={line.id} line={line} index={index} canDelete={lines.length > 1}
