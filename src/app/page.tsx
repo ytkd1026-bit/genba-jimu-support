@@ -104,7 +104,7 @@ export default function Home() {
         {/* スキャン登録 エントリー */}
         <Link
           href="/scan"
-          className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-stone-100 active:opacity-75"
+          className="mb-1.5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-stone-100 active:opacity-75"
         >
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fdf0ec] text-xl">
@@ -116,6 +116,18 @@ export default function Home() {
             </div>
           </div>
           <span className="text-stone-300">›</span>
+        </Link>
+        <Link
+          href="/scan/drafts"
+          className="mb-3 flex items-center justify-between rounded-2xl bg-white px-4 py-2.5 shadow-sm ring-1 ring-stone-100 active:opacity-75"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#fdf0ec] text-sm">
+              📋
+            </span>
+            <p className="text-sm font-bold text-stone-600">スキャン下書き一覧</p>
+          </div>
+          <span className="text-stone-300 text-sm">›</span>
         </Link>
 
         {/* 情報カード一覧 */}

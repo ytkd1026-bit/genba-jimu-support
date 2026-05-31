@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
+import {
+  getOrderDrafts,
+  updateOrderDraft,
+  deleteOrderDraft,
+  type OrderDraft,
+} from "@/app/utils/orderDrafts";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -281,6 +287,11 @@ export default function MaterialsPage() {
   const [rows, setRows]   = useState<MaterialRow[]>([]);
   const [nextId, setNextId] = useState(1);
 
+  // 発注確認下書き
+  const [orderDrafts,   setOrderDrafts]   = useState<OrderDraft[]>([]);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [editOrderForm,  setEditOrderForm]  = useState<Partial<OrderDraft>>({});
+
   // demo モードだけサンプル行をセット
   useEffect(() => {
     const demo = getTestMode() === "demo";
@@ -289,7 +300,45 @@ export default function MaterialsPage() {
       setRows(initialRows);
       setNextId(initialRows.length + 1);
     }
+    setOrderDrafts(getOrderDrafts());
   }, []);
+
+  function reloadOrderDrafts() {
+    setOrderDrafts(getOrderDrafts());
+  }
+
+  function handleOrderConfirm(id: string) {
+    updateOrderDraft(id, { status: "confirmed" });
+    reloadOrderDrafts();
+  }
+
+  function handleOrderEditStart(d: OrderDraft) {
+    setEditingOrderId(d.id);
+    setEditOrderForm({ ...d });
+  }
+
+  function handleOrderEditSave() {
+    if (!editingOrderId) return;
+    updateOrderDraft(editingOrderId, editOrderForm);
+    setEditingOrderId(null);
+    setEditOrderForm({});
+    reloadOrderDrafts();
+  }
+
+  function handleOrderEditCancel() {
+    setEditingOrderId(null);
+    setEditOrderForm({});
+  }
+
+  function handleOrderDelete(id: string) {
+    if (!confirm("この発注確認下書きを削除しますか？")) return;
+    deleteOrderDraft(id);
+    reloadOrderDrafts();
+  }
+
+  function orderEditChange(field: string, value: string) {
+    setEditOrderForm((prev) => ({ ...prev, [field]: value }));
+  }
 
   // 案件検索
   const [searchDate,    setSearchDate]    = useState("");
@@ -482,6 +531,176 @@ export default function MaterialsPage() {
             発注数量だけでなく、発注済み・搬入予定日・支給材も確認してください。<br />
             支給材は材料費合計には含めません。
           </p>
+        </div>
+
+        {/* ── 発注書・注文書 読取下書き ── */}
+        <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+            <h2 className="text-sm font-bold text-stone-700">発注書・注文書 読取下書き</h2>
+            {orderDrafts.length > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                {orderDrafts.filter((d) => d.status === "draft").length}件 未確認
+              </span>
+            )}
+          </div>
+
+          {orderDrafts.length === 0 ? (
+            <div className="py-4 text-center">
+              <p className="text-sm text-stone-500">発注書・注文書の読取下書きはありません。</p>
+              <Link href="/scan" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#8B4A3C]">
+                スキャン登録から発注書を読み取る →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {orderDrafts.map((d) => (
+                <div key={d.id} className="overflow-hidden rounded-xl border border-stone-100">
+                  {editingOrderId === d.id ? (
+                    <div className="space-y-2 p-3">
+                      <p className="text-xs font-bold text-stone-600">発注確認を編集</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">元請名</p>
+                          <input
+                            type="text"
+                            value={editOrderForm.clientName ?? ""}
+                            onChange={(e) => orderEditChange("clientName", e.target.value)}
+                            className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">発注日</p>
+                          <input
+                            type="text"
+                            value={editOrderForm.orderDate ?? ""}
+                            onChange={(e) => orderEditChange("orderDate", e.target.value)}
+                            className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-0.5 text-xs text-stone-400">案件名</p>
+                        <input
+                          type="text"
+                          value={editOrderForm.projectName ?? ""}
+                          onChange={(e) => orderEditChange("projectName", e.target.value)}
+                          className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-0.5 text-xs text-stone-400">工事内容</p>
+                        <input
+                          type="text"
+                          value={editOrderForm.workDescription ?? ""}
+                          onChange={(e) => orderEditChange("workDescription", e.target.value)}
+                          className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">発注金額（円）</p>
+                          <input
+                            type="number"
+                            value={editOrderForm.orderAmount ?? ""}
+                            onChange={(e) => orderEditChange("orderAmount", e.target.value)}
+                            className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">支払条件</p>
+                          <input
+                            type="text"
+                            value={editOrderForm.paymentTerm ?? ""}
+                            onChange={(e) => orderEditChange("paymentTerm", e.target.value)}
+                            className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-0.5 text-xs text-stone-400">備考</p>
+                        <input
+                          type="text"
+                          value={editOrderForm.memo ?? ""}
+                          onChange={(e) => orderEditChange("memo", e.target.value)}
+                          className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleOrderEditSave}
+                          className="flex-1 rounded-xl bg-[#8B4A3C] py-2 text-sm font-bold text-white active:opacity-80"
+                        >
+                          保存
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleOrderEditCancel}
+                          className="flex-1 rounded-xl border border-stone-200 py-2 text-sm font-bold text-stone-500 active:opacity-70"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-stone-800 leading-tight">
+                            {d.projectName || "（案件名未入力）"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-stone-500">{d.clientName}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            d.status === "confirmed"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {d.status === "confirmed" ? "確認済み" : "未確認"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
+                        {d.orderDate && <span>発注日：{d.orderDate}</span>}
+                        {d.workDescription && <span>🔨 {d.workDescription}</span>}
+                        {d.orderAmount && (
+                          <span>💴 ¥{Number(d.orderAmount).toLocaleString("ja-JP")}</span>
+                        )}
+                        {d.paymentTerm && <span>支払：{d.paymentTerm}</span>}
+                        {d.memo && <span>備考：{d.memo}</span>}
+                      </div>
+                      <div className="flex gap-2 pt-0.5">
+                        {d.status !== "confirmed" && (
+                          <button
+                            type="button"
+                            onClick={() => handleOrderConfirm(d.id)}
+                            className="flex-1 rounded-xl bg-green-600 py-2 text-xs font-bold text-white active:opacity-80"
+                          >
+                            発注確認済みにする
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOrderEditStart(d)}
+                          className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-stone-500 active:opacity-70"
+                        >
+                          修正
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOrderDelete(d.id)}
+                          className="rounded-xl border border-red-100 px-3 py-2 text-xs font-bold text-red-400 active:opacity-70"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 材料行リスト */}

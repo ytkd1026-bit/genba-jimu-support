@@ -10,7 +10,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getScanDraftsByType, type ScanDraft } from "@/app/utils/scanDrafts";
 
 const IMPORT_DRAFT_KEY = "genba_jimu_import_draft";
 
@@ -26,16 +27,16 @@ const DOCUMENT_TYPES = [
 ];
 
 const INITIAL_DRAFT = {
-  clientName:     "△△工務店",
-  contactName:    "山田様",
-  projectName:    "〇〇マンション クロス貼替",
-  address:        "大阪府堺市〇〇区",
-  koujiContent:   "洋室クロス貼替・洗面所CF貼替",
-  gentyoDate:     "2026-05-30",
-  sekouDate:      "2026-06-03",
-  contractAmount: "105600",
-  paymentTerms:   "月末締め翌月末払い",
-  memo:           "FAX・PDF読取後は人が確認してから登録",
+  clientName:     "",
+  contactName:    "",
+  projectName:    "",
+  address:        "",
+  koujiContent:   "",
+  gentyoDate:     "",
+  sekouDate:      "",
+  contractAmount: "",
+  paymentTerms:   "",
+  memo:           "",
 };
 
 function ConfirmRow({ label, value }: { label: string; value: string }) {
@@ -51,6 +52,15 @@ export default function ImportProjectPage() {
   const router = useRouter();
   const [draft, setDraft] = useState(INITIAL_DRAFT);
   const [savedMsg, setSavedMsg] = useState("");
+
+  // スキャン下書き
+  const [scanDrafts, setScanDrafts] = useState<ScanDraft[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setScanDrafts(getScanDraftsByType("client_document"));
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setDraft((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -71,6 +81,30 @@ export default function ImportProjectPage() {
     }
   }
 
+  function handleLoadScanDraft(scanDraft: ScanDraft) {
+    const d = scanDraft.extractedData;
+    setDraft({
+      clientName:     d.clientName     ?? "",
+      contactName:    d.contactName    ?? "",
+      projectName:    d.projectName    ?? "",
+      address:        d.address        ?? "",
+      koujiContent:   d.workContent    ?? "",
+      gentyoDate:     "",
+      sekouDate:      (d.sekouDate ?? "").replace(/\//g, "-"),
+      contractAmount: d.contractAmount ?? "",
+      paymentTerms:   d.paymentTerms   ?? "",
+      memo:           d.memo           ?? "",
+    });
+    setSelectedDraftId(scanDraft.id);
+    setShowDrafts(false);
+    setSavedMsg("スキャン下書きを読み込みました。内容を確認・修正してください。");
+    setTimeout(() => setSavedMsg(""), 5000);
+  }
+
+  function fmtDate(iso: string) {
+    try { return new Date(iso).toLocaleDateString("ja-JP"); } catch { return iso; }
+  }
+
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
       <div className="mx-auto max-w-md px-4 py-4 sm:max-w-lg">
@@ -86,6 +120,75 @@ export default function ImportProjectPage() {
         </header>
 
         <div className="space-y-3">
+
+          {/* ── 保存済みスキャン下書きから登録 ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setShowDrafts((v) => !v)}
+              className="flex w-full items-center justify-between"
+            >
+              <div className="text-left">
+                <p className="text-sm font-bold text-stone-800">保存済みスキャン下書きから登録</p>
+                <p className="mt-0.5 text-xs text-stone-400">
+                  スキャン登録で保存した案件下書きを読み込みます
+                  {scanDrafts.length > 0 && `（${scanDrafts.length}件）`}
+                </p>
+              </div>
+              <span className={`ml-4 shrink-0 text-sm font-bold transition-transform ${showDrafts ? "rotate-90 text-[#8B4A3C]" : "text-stone-300"}`}>
+                ›
+              </span>
+            </button>
+
+            {showDrafts && (
+              <div className="mt-3 space-y-2">
+                {scanDrafts.length === 0 ? (
+                  <div className="rounded-xl border-2 border-dashed border-stone-200 py-6 text-center">
+                    <p className="text-xs text-stone-500">保存済みの案件下書きはありません。</p>
+                    <p className="mt-1 text-xs text-stone-400">スキャン登録から元請書類を読み取ってください。</p>
+                    <Link href="/scan" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#8B4A3C]">
+                      スキャン登録へ →
+                    </Link>
+                  </div>
+                ) : (
+                  scanDrafts.map((sd) => (
+                    <div
+                      key={sd.id}
+                      className={`rounded-xl border p-3 space-y-2 ${
+                        selectedDraftId === sd.id
+                          ? "border-[#8B4A3C] bg-[#fff8f5]"
+                          : "border-stone-100 bg-stone-50"
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm font-bold text-stone-800 leading-tight">
+                          {sd.extractedData.projectName || "（案件名未入力）"}
+                        </p>
+                        <p className="text-xs text-stone-500">{sd.extractedData.clientName}</p>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-stone-400">
+                          {sd.extractedData.address && <span>📍 {sd.extractedData.address}</span>}
+                          {sd.extractedData.workContent && <span>🔨 {sd.extractedData.workContent}</span>}
+                          {sd.extractedData.contractAmount && (
+                            <span>
+                              💴 ¥{Number(sd.extractedData.contractAmount).toLocaleString("ja-JP")}
+                            </span>
+                          )}
+                          <span>🗓 {fmtDate(sd.createdAt)}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleLoadScanDraft(sd)}
+                        className="w-full rounded-xl bg-[#8B4A3C] py-2.5 text-sm font-bold text-white active:opacity-80"
+                      >
+                        この下書きから案件登録
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           {/* 書類選択 */}
           <div className="rounded-2xl bg-white p-4 shadow-sm">
@@ -116,23 +219,23 @@ export default function ImportProjectPage() {
 
             <div>
               <label htmlFor="clientName" className={labelCls}>元請名</label>
-              <input id="clientName" name="clientName" type="text" value={draft.clientName} onChange={handleChange} className={inputCls} />
+              <input id="clientName" name="clientName" type="text" value={draft.clientName} onChange={handleChange} className={inputCls} placeholder="例：△△工務店" />
             </div>
             <div>
               <label htmlFor="contactName" className={labelCls}>担当者</label>
-              <input id="contactName" name="contactName" type="text" value={draft.contactName} onChange={handleChange} className={inputCls} />
+              <input id="contactName" name="contactName" type="text" value={draft.contactName} onChange={handleChange} className={inputCls} placeholder="例：山田様" />
             </div>
             <div>
               <label htmlFor="projectName" className={labelCls}>案件名</label>
-              <input id="projectName" name="projectName" type="text" value={draft.projectName} onChange={handleChange} className={inputCls} />
+              <input id="projectName" name="projectName" type="text" value={draft.projectName} onChange={handleChange} className={inputCls} placeholder="例：〇〇マンション クロス貼替" />
             </div>
             <div>
               <label htmlFor="address" className={labelCls}>現場住所</label>
-              <input id="address" name="address" type="text" value={draft.address} onChange={handleChange} className={inputCls} />
+              <input id="address" name="address" type="text" value={draft.address} onChange={handleChange} className={inputCls} placeholder="例：大阪府堺市〇〇区" />
             </div>
             <div>
               <label htmlFor="koujiContent" className={labelCls}>工事内容</label>
-              <textarea id="koujiContent" name="koujiContent" rows={3} value={draft.koujiContent} onChange={handleChange} className={inputCls + " resize-none"} />
+              <textarea id="koujiContent" name="koujiContent" rows={3} value={draft.koujiContent} onChange={handleChange} className={inputCls + " resize-none"} placeholder="例：洋室クロス貼替・洗面所CF貼替" />
             </div>
             <div>
               <label htmlFor="gentyoDate" className={labelCls}>現調予定日</label>
@@ -144,15 +247,15 @@ export default function ImportProjectPage() {
             </div>
             <div>
               <label htmlFor="contractAmount" className={labelCls}>請負金額（円）</label>
-              <input id="contractAmount" name="contractAmount" type="number" value={draft.contractAmount} onChange={handleChange} className={inputCls} />
+              <input id="contractAmount" name="contractAmount" type="number" value={draft.contractAmount} onChange={handleChange} className={inputCls} placeholder="例：105600" />
             </div>
             <div>
               <label htmlFor="paymentTerms" className={labelCls}>支払条件</label>
-              <input id="paymentTerms" name="paymentTerms" type="text" value={draft.paymentTerms} onChange={handleChange} className={inputCls} />
+              <input id="paymentTerms" name="paymentTerms" type="text" value={draft.paymentTerms} onChange={handleChange} className={inputCls} placeholder="例：月末締め翌月末払い" />
             </div>
             <div>
               <label htmlFor="memo" className={labelCls}>備考</label>
-              <textarea id="memo" name="memo" rows={3} value={draft.memo} onChange={handleChange} className={inputCls + " resize-none"} />
+              <textarea id="memo" name="memo" rows={3} value={draft.memo} onChange={handleChange} className={inputCls + " resize-none"} placeholder="備考（任意）" />
             </div>
           </div>
 

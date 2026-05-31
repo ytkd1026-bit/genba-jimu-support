@@ -1,12 +1,11 @@
 "use client";
 
-// TODO: /scan で読み取った元請書類データを /projects/import に渡す
-// TODO: レシート読取結果は expenses または receipts に保存する
-// TODO: Supabase storage にアップロードファイルを保存する
-// TODO: OCR/AI読取APIを後工程で接続する
-
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { saveScanDraft } from "@/app/utils/scanDrafts";
+import { saveExpenseDraft } from "@/app/utils/expenses";
+import { saveOrderDraft } from "@/app/utils/orderDrafts";
+import { saveStoredDocument } from "@/app/utils/documentStorage";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type ScanType = "agency" | "receipt" | "order" | "other" | null;
@@ -23,6 +22,8 @@ const SCAN_TYPES: { id: ScanType; icon: string; title: string; desc: string }[] 
   { id: "order",   icon: "📋", title: "発注書・注文書を読み取る", desc: "元請からの発注内容を確認する" },
   { id: "other",   icon: "📁", title: "その他書類を読み取る", desc: "後で分類する書類として保存する" },
 ];
+
+const DOCUMENT_CATEGORIES = ["元請資料", "現場写真", "発注関連", "請求関連", "レシート", "その他"];
 
 // ─── ファイル種別ユーティリティ ───────────────────────────────
 function getFileTypeLabel(file: File): string {
@@ -52,12 +53,18 @@ function formatFileSize(bytes: number): string {
 
 // ─── コンポーネント ───────────────────────────────────────────
 export default function ScanPage() {
-  const [scanType,    setScanType]    = useState<ScanType>(null);
+  const [scanType,     setScanType]     = useState<ScanType>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
-  const [hasScanned,  setHasScanned]  = useState(false);
-  const [noFileWarn,  setNoFileWarn]  = useState(false);
+  const [previewUrl,   setPreviewUrl]   = useState<string | null>(null);
+  const [hasScanned,   setHasScanned]   = useState(false);
+  const [noFileWarn,   setNoFileWarn]   = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 保存済みフラグ
+  const [agencySaved,  setAgencySaved]  = useState(false);
+  const [receiptSaved, setReceiptSaved] = useState(false);
+  const [orderSaved,   setOrderSaved]   = useState(false);
+  const [otherSaved,   setOtherSaved]   = useState(false);
 
   // objectURL のメモリ後始末
   useEffect(() => {
@@ -101,6 +108,14 @@ export default function ScanPage() {
     memo:         "",
   });
 
+  // ── その他書類フォーム ────────────────────────────────────
+  const [otherForm, setOtherForm] = useState({
+    documentName:   "",
+    category:       "その他",
+    relatedProject: "",
+    memo:           "",
+  });
+
   // ── 確認チェックボックス ─────────────────────────────────
   const [checks, setChecks] = useState({
     amount:  false,
@@ -109,16 +124,20 @@ export default function ScanPage() {
     client:  false,
   });
 
+  function resetSavedStates() {
+    setAgencySaved(false);
+    setReceiptSaved(false);
+    setOrderSaved(false);
+    setOtherSaved(false);
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
-
-    // 古いURLを解放
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-
     setSelectedFile(file);
     setHasScanned(false);
     setNoFileWarn(false);
-
+    resetSavedStates();
     if (file && isPreviewableImage(file)) {
       setPreviewUrl(URL.createObjectURL(file));
     } else {
@@ -138,6 +157,10 @@ export default function ScanPage() {
     setHasScanned(true);
     setNoFileWarn(false);
     setChecks({ amount: false, date: false, address: false, client: false });
+    resetSavedStates();
+    if (scanType === "other" && selectedFile) {
+      setOtherForm((prev) => ({ ...prev, documentName: selectedFile.name }));
+    }
   }
 
   function agencyChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -148,6 +171,70 @@ export default function ScanPage() {
   }
   function orderChange(e: React.ChangeEvent<HTMLInputElement>) {
     setOrderForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+  function otherChange(field: string, value: string) {
+    setOtherForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  // ── 保存ハンドラ ─────────────────────────────────────────
+  function handleAgencySave() {
+    saveScanDraft({
+      scanType:      "client_document",
+      fileName:      selectedFile?.name ?? "",
+      fileType:      selectedFile?.type ?? "",
+      fileSize:      selectedFile?.size ?? 0,
+      status:        "draft",
+      extractedData: { ...agencyForm },
+      memo:          agencyForm.memo,
+    });
+    setAgencySaved(true);
+  }
+
+  function handleReceiptSave() {
+    saveExpenseDraft({
+      date:          receiptForm.date,
+      vendor:        receiptForm.payee,
+      amount:        receiptForm.amount,
+      taxType:       receiptForm.taxCategory,
+      category:      receiptForm.category,
+      linkedProject: receiptForm.projectLink,
+      memo:          receiptForm.memo,
+      fileName:      selectedFile?.name ?? "",
+      fileType:      selectedFile?.type ?? "",
+      fileSize:      selectedFile?.size ?? 0,
+      status:        "draft",
+    });
+    setReceiptSaved(true);
+  }
+
+  function handleOrderSave() {
+    saveOrderDraft({
+      clientName:      orderForm.clientName,
+      orderDate:       orderForm.orderDate,
+      projectName:     orderForm.projectName,
+      workDescription: orderForm.workContent,
+      orderAmount:     orderForm.orderAmount,
+      paymentTerm:     orderForm.paymentTerms,
+      memo:            orderForm.memo,
+      fileName:        selectedFile?.name ?? "",
+      fileType:        selectedFile?.type ?? "",
+      fileSize:        selectedFile?.size ?? 0,
+      status:          "draft",
+    });
+    setOrderSaved(true);
+  }
+
+  function handleOtherSave() {
+    saveStoredDocument({
+      documentName:   otherForm.documentName || selectedFile?.name || "（無題書類）",
+      category:       otherForm.category,
+      relatedProject: otherForm.relatedProject,
+      memo:           otherForm.memo,
+      fileName:       selectedFile?.name ?? "",
+      fileType:       selectedFile?.type ?? "",
+      fileSize:       selectedFile?.size ?? 0,
+    });
+    setOtherSaved(true);
   }
 
   return (
@@ -171,9 +258,9 @@ export default function ScanPage() {
           <div className="rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-200">
             <h2 className="mb-1.5 text-sm font-bold text-stone-700">読取精度について</h2>
             <p className="text-xs leading-relaxed text-stone-500">
-              現在はスキャン機能の初期版です。
-              選択した画像やPDFの内容を実際にOCRで読み取る機能は、次工程で実装します。
-              今はファイル選択・プレビュー・仮読取結果・確認編集までを確認できます。
+              現在はOCR未実装です。
+              選択した画像やPDFの文字を自動で読み取る機能は次工程で実装します。
+              今はファイル選択・プレビュー・仮読取結果・確認編集・下書き保存まで確認できます。
             </p>
           </div>
 
@@ -186,7 +273,11 @@ export default function ScanPage() {
                 <button
                   key={type.id}
                   type="button"
-                  onClick={() => { setScanType(type.id); setHasScanned(false); }}
+                  onClick={() => {
+                    setScanType(type.id);
+                    setHasScanned(false);
+                    resetSavedStates();
+                  }}
                   className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left shadow-sm active:opacity-75 transition-colors ${
                     isSelected
                       ? "bg-[#8B4A3C] ring-2 ring-[#8B4A3C]"
@@ -392,12 +483,34 @@ export default function ScanPage() {
                   />
                 </div>
               ))}
-              <Link
-                href="/projects/import"
-                className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
-              >
-                案件登録へ進む
-              </Link>
+
+              {!agencySaved ? (
+                <button
+                  type="button"
+                  onClick={handleAgencySave}
+                  className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                >
+                  案件下書きとして保存
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                    <p className="text-sm font-bold text-green-700">✓ 案件下書きを保存しました。</p>
+                  </div>
+                  <Link
+                    href="/projects/import"
+                    className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                  >
+                    案件登録へ進む
+                  </Link>
+                  <Link
+                    href="/scan/drafts"
+                    className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3.5 text-sm font-bold text-stone-600 shadow-sm active:opacity-80"
+                  >
+                    スキャン下書き一覧を見る
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -430,12 +543,34 @@ export default function ScanPage() {
                   />
                 </div>
               ))}
-              <Link
-                href="/reports/monthly"
-                className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
-              >
-                支出登録へ進む
-              </Link>
+
+              {!receiptSaved ? (
+                <button
+                  type="button"
+                  onClick={handleReceiptSave}
+                  className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                >
+                  支出下書きとして保存
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                    <p className="text-sm font-bold text-green-700">✓ 支出下書きを保存しました。</p>
+                  </div>
+                  <Link
+                    href="/reports/monthly"
+                    className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                  >
+                    月次収支へ進む
+                  </Link>
+                  <Link
+                    href="/reports/monthly"
+                    className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3.5 text-sm font-bold text-stone-600 shadow-sm active:opacity-80"
+                  >
+                    支出下書き一覧を見る
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -468,37 +603,120 @@ export default function ScanPage() {
                   />
                 </div>
               ))}
-              <Link
-                href="/projects/sample"
-                className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
-              >
-                案件詳細へ進む
-              </Link>
+
+              {!orderSaved ? (
+                <button
+                  type="button"
+                  onClick={handleOrderSave}
+                  className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                >
+                  発注確認下書きとして保存
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                    <p className="text-sm font-bold text-green-700">✓ 発注確認下書きを保存しました。</p>
+                  </div>
+                  <Link
+                    href="/projects/sample/materials"
+                    className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                  >
+                    材料・発注管理へ進む
+                  </Link>
+                  <Link
+                    href="/scan/drafts"
+                    className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3.5 text-sm font-bold text-stone-600 shadow-sm active:opacity-80"
+                  >
+                    発注確認下書き一覧を見る
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── その他書類 仮読取結果 ── */}
           {hasScanned && scanType === "other" && (
-            <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
+            <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">
               <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
                 仮読取結果（その他書類）
               </h2>
               <p className="rounded-xl bg-stone-50 px-3 py-2 text-xs text-stone-500">
-                後で分類する書類として仮保存します。
+                書類名・分類を入力して保存してください。後から一覧で確認できます。
               </p>
-              <div className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 space-y-1">
-                <p className="text-xs text-stone-500">
-                  ファイル：{selectedFile?.name ?? "（未選択）"}
-                </p>
-                <p className="text-xs text-stone-400">分類：未分類</p>
-                <p className="text-xs text-stone-400">ステータス：保存待ち</p>
+
+              <div>
+                <label className={labelCls}>書類名</label>
+                <input
+                  type="text"
+                  value={otherForm.documentName}
+                  onChange={(e) => otherChange("documentName", e.target.value)}
+                  placeholder="例：〇〇マンション 発注書"
+                  className={inputCls}
+                />
               </div>
-              <Link
-                href="/"
-                className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
-              >
-                ホームへ戻る
-              </Link>
+
+              <div>
+                <label className={labelCls}>分類</label>
+                <select
+                  value={otherForm.category}
+                  onChange={(e) => otherChange("category", e.target.value)}
+                  className={inputCls}
+                >
+                  {DOCUMENT_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>関連案件</label>
+                <input
+                  type="text"
+                  value={otherForm.relatedProject}
+                  onChange={(e) => otherChange("relatedProject", e.target.value)}
+                  placeholder="例：〇〇マンション クロス貼替"
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>メモ</label>
+                <input
+                  type="text"
+                  value={otherForm.memo}
+                  onChange={(e) => otherChange("memo", e.target.value)}
+                  placeholder="メモ（任意）"
+                  className={inputCls}
+                />
+              </div>
+
+              {!otherSaved ? (
+                <button
+                  type="button"
+                  onClick={handleOtherSave}
+                  className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                >
+                  書類として保存
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                    <p className="text-sm font-bold text-green-700">✓ 書類を保存しました。</p>
+                  </div>
+                  <Link
+                    href="/scan/drafts"
+                    className="flex w-full items-center justify-center rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
+                  >
+                    書類一覧を見る
+                  </Link>
+                  <Link
+                    href="/"
+                    className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3.5 text-sm font-bold text-stone-600 shadow-sm active:opacity-80"
+                  >
+                    ホームへ戻る
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -536,6 +754,23 @@ export default function ScanPage() {
               </div>
             </div>
           )}
+
+          {/* ── スキャン下書き一覧リンク ── */}
+          <Link
+            href="/scan/drafts"
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-sm ring-1 ring-stone-100 active:opacity-75"
+          >
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fdf0ec] text-lg">
+                📋
+              </span>
+              <div>
+                <p className="text-sm font-bold text-stone-700">スキャン下書き一覧を見る</p>
+                <p className="text-xs text-stone-400">保存済みの下書きを確認・登録へ進む</p>
+              </div>
+            </div>
+            <span className="text-stone-300">›</span>
+          </Link>
 
           {/* ── テスト感想入力リンク ── */}
           <div className="flex justify-end pb-2">

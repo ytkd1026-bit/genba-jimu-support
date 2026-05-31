@@ -8,6 +8,12 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getTestMode } from "@/app/utils/testMode";
+import {
+  getExpenseDrafts,
+  updateExpenseDraft,
+  deleteExpenseDraft,
+  type ExpenseDraft,
+} from "@/app/utils/expenses";
 
 // ---- 型定義 ----
 
@@ -164,6 +170,9 @@ function confirmBadge(s: ConfirmStatus) {
   return "bg-green-100 text-green-800";
 }
 
+const inputSm =
+  "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:border-[#8B4A3C] focus:outline-none";
+
 // ---- コンポーネント ----
 
 export default function MonthlyReportPage() {
@@ -173,13 +182,56 @@ export default function MonthlyReportPage() {
   const [showExpenses, setShowExpenses] = useState(false);
   const [docMsg,       setDocMsg]       = useState("");
 
+  // 支出下書き
+  const [expenseDrafts,   setExpenseDrafts]   = useState<ExpenseDraft[]>([]);
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [editForm,        setEditForm]        = useState<Partial<ExpenseDraft>>({});
+
   useEffect(() => {
     setIsDemo(getTestMode() === "demo");
+    setExpenseDrafts(getExpenseDrafts());
   }, []);
+
+  function reloadDrafts() {
+    setExpenseDrafts(getExpenseDrafts());
+  }
 
   function handleDocumentAdd() {
     setDocMsg("書類アップロードとAI読取は次工程で追加します。");
     setTimeout(() => setDocMsg(""), 4000);
+  }
+
+  function handleConfirm(id: string) {
+    updateExpenseDraft(id, { status: "confirmed" });
+    reloadDrafts();
+  }
+
+  function handleEditStart(d: ExpenseDraft) {
+    setEditingId(d.id);
+    setEditForm({ ...d });
+  }
+
+  function handleEditSave() {
+    if (!editingId) return;
+    updateExpenseDraft(editingId, editForm);
+    setEditingId(null);
+    setEditForm({});
+    reloadDrafts();
+  }
+
+  function handleEditCancel() {
+    setEditingId(null);
+    setEditForm({});
+  }
+
+  function handleDelete(id: string) {
+    if (!confirm("この支出下書きを削除しますか？")) return;
+    deleteExpenseDraft(id);
+    reloadDrafts();
+  }
+
+  function editChange(field: string, value: string) {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   }
 
   return (
@@ -373,6 +425,188 @@ export default function MonthlyReportPage() {
               <p className="mt-1.5 text-sm text-stone-500">レシート読取、または支出登録を試してください。</p>
             </div>
           )}
+
+          {/* ── レシート読取・支出下書き ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <h2 className="text-sm font-bold text-stone-700">レシート読取・支出下書き</h2>
+              {expenseDrafts.length > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+                  {expenseDrafts.filter((d) => d.status === "draft").length}件 未確定
+                </span>
+              )}
+            </div>
+
+            {expenseDrafts.length === 0 ? (
+              <div className="py-4 text-center">
+                <p className="text-sm text-stone-500">レシート読取の支出下書きはありません。</p>
+                <Link href="/scan" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#8B4A3C]">
+                  スキャン登録からレシートを読み取る →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {expenseDrafts.map((d) => (
+                  <div
+                    key={d.id}
+                    className="overflow-hidden rounded-xl border border-stone-100"
+                  >
+                    {editingId === d.id ? (
+                      /* 編集フォーム */
+                      <div className="space-y-2 p-3">
+                        <p className="text-xs font-bold text-stone-600">支出を編集</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="mb-0.5 text-xs text-stone-400">日付</p>
+                            <input
+                              type="text"
+                              value={editForm.date ?? ""}
+                              onChange={(e) => editChange("date", e.target.value)}
+                              className={inputSm}
+                            />
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-xs text-stone-400">支払先</p>
+                            <input
+                              type="text"
+                              value={editForm.vendor ?? ""}
+                              onChange={(e) => editChange("vendor", e.target.value)}
+                              className={inputSm}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="mb-0.5 text-xs text-stone-400">金額（円）</p>
+                            <input
+                              type="number"
+                              value={editForm.amount ?? ""}
+                              onChange={(e) => editChange("amount", e.target.value)}
+                              className={inputSm}
+                            />
+                          </div>
+                          <div>
+                            <p className="mb-0.5 text-xs text-stone-400">税区分</p>
+                            <input
+                              type="text"
+                              value={editForm.taxType ?? ""}
+                              onChange={(e) => editChange("taxType", e.target.value)}
+                              className={inputSm}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">分類</p>
+                          <input
+                            type="text"
+                            value={editForm.category ?? ""}
+                            onChange={(e) => editChange("category", e.target.value)}
+                            className={inputSm}
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">案件紐づけ</p>
+                          <input
+                            type="text"
+                            value={editForm.linkedProject ?? ""}
+                            onChange={(e) => editChange("linkedProject", e.target.value)}
+                            className={inputSm}
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-xs text-stone-400">メモ</p>
+                          <input
+                            type="text"
+                            value={editForm.memo ?? ""}
+                            onChange={(e) => editChange("memo", e.target.value)}
+                            className={inputSm}
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleEditSave}
+                            className="flex-1 rounded-xl bg-[#8B4A3C] py-2 text-sm font-bold text-white active:opacity-80"
+                          >
+                            保存
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleEditCancel}
+                            className="flex-1 rounded-xl border border-stone-200 py-2 text-sm font-bold text-stone-500 active:opacity-70"
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 通常表示 */
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-stone-800 leading-tight">
+                              {d.vendor || "（支払先未入力）"}
+                            </p>
+                            <p className="mt-0.5 text-xs text-stone-400">{d.date}</p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              d.status === "confirmed"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {d.status === "confirmed" ? "確認済み" : "下書き"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-stone-500">
+                          {d.amount && (
+                            <span>¥{Number(d.amount).toLocaleString("ja-JP")}</span>
+                          )}
+                          {d.category && <span>{d.category}</span>}
+                          {d.taxType && <span>税区分：{d.taxType}</span>}
+                          {d.linkedProject && <span>案件：{d.linkedProject}</span>}
+                          {d.memo && <span>メモ：{d.memo}</span>}
+                        </div>
+                        <div className="flex gap-2 pt-0.5">
+                          {d.status !== "confirmed" && (
+                            <button
+                              type="button"
+                              onClick={() => handleConfirm(d.id)}
+                              className="flex-1 rounded-xl bg-green-600 py-2 text-xs font-bold text-white active:opacity-80"
+                            >
+                              支出として確定
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEditStart(d)}
+                            className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-stone-500 active:opacity-70"
+                          >
+                            修正
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(d.id)}
+                            className="rounded-xl border border-red-100 px-3 py-2 text-xs font-bold text-red-400 active:opacity-70"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Link
+              href="/scan"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 py-2.5 text-xs font-bold text-stone-500 active:opacity-70"
+            >
+              <span>🧾</span> レシートをスキャンして追加
+            </Link>
+          </div>
 
           {/* 書類・証憑管理 */}
           <div className="rounded-2xl bg-white p-4 shadow-sm">
