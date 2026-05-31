@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getTestMode } from "@/app/utils/testMode";
 
 // ─── localStorage キー ─────────────────────────────────────────
 const UNBILLED_PROJECTS_STORAGE_KEY = "genba_jimu_unbilled_projects";
@@ -38,7 +39,7 @@ type UnbilledProject = {
   paymentTerms: string;
 };
 
-// ─── 初期データ ────────────────────────────────────────────────
+// ─── デモ用初期データ ──────────────────────────────────────────
 const initialInvoiceProjects: UnbilledProject[] = [
   {
     id: "project-1",
@@ -219,28 +220,38 @@ function ProjectCard({
 // ─── メインページ ─────────────────────────────────────────────
 export default function UnbilledPage() {
   const router = useRouter();
-  const [invoiceProjects, setInvoiceProjects] = useState<UnbilledProject[]>(initialInvoiceProjects);
+  const [isDemo,          setIsDemo]          = useState(false);
+  const [loaded,          setLoaded]          = useState(false);
+  const [invoiceProjects, setInvoiceProjects] = useState<UnbilledProject[]>([]);
   const [searchClient,    setSearchClient]    = useState("");
   const [searchProject,   setSearchProject]   = useState("");
   const [selectedStatus,  setSelectedStatus]  = useState("すべて");
 
-  // 初回：localStorage から復元
+  // 初回：testMode を確認してデータを設定
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(UNBILLED_PROJECTS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as UnbilledProject[];
-        setInvoiceProjects(parsed);
+    const demo = getTestMode() === "demo";
+    setIsDemo(demo);
+    if (demo) {
+      try {
+        const saved = localStorage.getItem(UNBILLED_PROJECTS_STORAGE_KEY);
+        if (saved) {
+          setInvoiceProjects(JSON.parse(saved) as UnbilledProject[]);
+        } else {
+          setInvoiceProjects(initialInvoiceProjects);
+        }
+      } catch {
+        setInvoiceProjects(initialInvoiceProjects);
       }
-    } catch {
-      setInvoiceProjects(initialInvoiceProjects);
     }
+    // normal/first_user: [] のまま
+    setLoaded(true);
   }, []);
 
-  // 状態変更のたびに localStorage へ保存
+  // デモモードのみ localStorage へ保存
   useEffect(() => {
+    if (!loaded || !isDemo) return;
     localStorage.setItem(UNBILLED_PROJECTS_STORAGE_KEY, JSON.stringify(invoiceProjects));
-  }, [invoiceProjects]);
+  }, [invoiceProjects, isDemo, loaded]);
 
   // 単体請求済みに変更
   function handleSingleInvoice(id: string) {
@@ -278,8 +289,9 @@ export default function UnbilledPage() {
       "請求状態を初期状態に戻しますか？この画面の仮保存データがリセットされます。"
     );
     if (!ok) return;
-    setInvoiceProjects(initialInvoiceProjects);
-    localStorage.removeItem(UNBILLED_PROJECTS_STORAGE_KEY);
+    const resetData = isDemo ? initialInvoiceProjects : [];
+    setInvoiceProjects(resetData);
+    if (isDemo) localStorage.removeItem(UNBILLED_PROJECTS_STORAGE_KEY);
     window.alert("請求状態を初期状態に戻しました。");
   }
 
@@ -358,15 +370,17 @@ export default function UnbilledPage() {
             </div>
           </div>
 
-          {/* 注意カード（仮保存について） */}
-          <div className="rounded-2xl bg-yellow-50 p-4 shadow-sm ring-1 ring-yellow-200">
-            <h3 className="mb-1.5 text-sm font-bold text-yellow-800">請求状態の仮保存について</h3>
-            <p className="text-sm leading-relaxed text-yellow-700">
-              現在は localStorage に仮保存しています。<br />
-              同じブラウザでは再読み込み後も状態が残りますが、別端末や別ブラウザには共有されません。<br />
-              本運用では Supabase と連携して保存する予定です。
-            </p>
-          </div>
+          {isDemo && (
+            /* 注意カード（仮保存について） */
+            <div className="rounded-2xl bg-yellow-50 p-4 shadow-sm ring-1 ring-yellow-200">
+              <h3 className="mb-1.5 text-sm font-bold text-yellow-800">請求状態の仮保存について</h3>
+              <p className="text-sm leading-relaxed text-yellow-700">
+                現在は localStorage に仮保存しています。<br />
+                同じブラウザでは再読み込み後も状態が残りますが、別端末や別ブラウザには共有されません。<br />
+                本運用では Supabase と連携して保存する予定です。
+              </p>
+            </div>
+          )}
 
           {/* 絞り込み */}
           <div className="rounded-2xl bg-white p-4 shadow-sm space-y-2.5">
@@ -397,6 +411,14 @@ export default function UnbilledPage() {
               ))}
             </select>
           </div>
+
+          {/* データなし（normal/first_user） */}
+          {!isDemo && invoiceProjects.length === 0 && (
+            <div className="rounded-2xl border-2 border-dashed border-stone-200 py-10 text-center">
+              <p className="text-sm text-stone-500">未請求案件はありません。</p>
+              <p className="mt-1.5 text-sm text-stone-500">案件登録・見積作成後、請求書作成を試してください。</p>
+            </div>
+          )}
 
           {/* ── 未請求 ── */}
           {unbilledList.length > 0 && (
@@ -464,8 +486,8 @@ export default function UnbilledPage() {
             </section>
           )}
 
-          {/* 未請求・一括・単体のいずれもない場合 */}
-          {unbilledList.length === 0 && bulkSelectedList.length === 0 && singleInvoicedList.length === 0 && (
+          {/* 未請求・一括・単体のいずれもない場合（デモモードで絞り込み結果が空のとき） */}
+          {isDemo && unbilledList.length === 0 && bulkSelectedList.length === 0 && singleInvoicedList.length === 0 && (
             <div className="rounded-2xl border-2 border-dashed border-stone-200 py-10 text-center">
               <p className="text-sm text-stone-400">該当する案件はありません</p>
             </div>

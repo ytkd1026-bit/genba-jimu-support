@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { getTestMode } from "@/app/utils/testMode";
 
-// ─── 案件仮データ（検索・登録一覧共用） ──────────────────────
-const PROJECTS_DATA = [
+// ─── デモ用案件データ ──────────────────────────────────────────
+const DEMO_PROJECTS_DATA = [
   {
     id: "p1",
     date: "2026/06/03",
@@ -33,8 +34,10 @@ const STATUS_STYLE: Record<string, string> = {
   完了:     "bg-green-100 text-green-700",
 };
 
+type ProjectData = typeof DEMO_PROJECTS_DATA[0];
+
 // ─── 案件カード ───────────────────────────────────────────────
-function ProjectCard({ p }: { p: typeof PROJECTS_DATA[0] }) {
+function ProjectCard({ p }: { p: ProjectData }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100">
       <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50 px-4 py-2.5">
@@ -68,20 +71,27 @@ function ProjectCard({ p }: { p: typeof PROJECTS_DATA[0] }) {
 
 // ─── ページ ───────────────────────────────────────────────────
 export default function ProjectRegisterPage() {
+  const [isDemo,        setIsDemo]        = useState(false);
   const [searchDate,    setSearchDate]    = useState("");
   const [searchProject, setSearchProject] = useState("");
   const [searchClient,  setSearchClient]  = useState("");
   const [hasSearched,   setHasSearched]   = useState(false);
 
+  useEffect(() => {
+    setIsDemo(getTestMode() === "demo");
+  }, []);
+
+  const projectsData = isDemo ? DEMO_PROJECTS_DATA : [];
+
   const searchResults = useMemo(() => {
     if (!hasSearched) return [];
-    return PROJECTS_DATA.filter((p) => {
+    return projectsData.filter((p) => {
       const md = searchDate    === "" || p.date.includes(searchDate);
       const mp = searchProject === "" || p.projectName.includes(searchProject);
       const mc = searchClient  === "" || p.clientName.includes(searchClient);
       return md && mp && mc;
     });
-  }, [hasSearched, searchDate, searchProject, searchClient]);
+  }, [hasSearched, searchDate, searchProject, searchClient, projectsData]);
 
   const inputCls = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
 
@@ -186,9 +196,16 @@ export default function ProjectRegisterPage() {
               <h2 className="text-base font-bold text-stone-800">登録案件一覧</h2>
               <p className="mt-0.5 text-xs text-stone-500">登録済みの案件から作業を開始できます。</p>
             </div>
-            {PROJECTS_DATA.map((p) => (
-              <ProjectCard key={p.id} p={p} />
-            ))}
+            {isDemo ? (
+              projectsData.map((p) => (
+                <ProjectCard key={p.id} p={p} />
+              ))
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-stone-200 py-8 text-center">
+                <p className="text-sm text-stone-500">まだ登録された案件はありません。</p>
+                <p className="mt-1.5 text-sm text-stone-500">スキャン登録、または新規案件登録から始めてください。</p>
+              </div>
+            )}
           </section>
 
           {/* テスト感想リンク */}

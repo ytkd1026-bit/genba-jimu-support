@@ -9,7 +9,7 @@ const MODES: { id: TestMode; title: string; desc: string; icon: string }[] = [
     id: "first_user",
     title: "初回ユーザーテストモード",
     icon: "👷",
-    desc: "初めて使う職人目線で、案件登録から見積・材料・請求・収支・スケジュールまで触れます。サンプル表示は最小限にし、必要な機能・不要な機能を確認します。",
+    desc: "職人仲間に初回ユーザーとして触ってもらうためのモードです。サンプルデータは表示せず、空の状態からスキャン登録・案件登録・見積・材料・請求・収支・スケジュールを試します。",
   },
   {
     id: "demo",
@@ -21,7 +21,7 @@ const MODES: { id: TestMode; title: string; desc: string; icon: string }[] = [
     id: "normal",
     title: "通常開発モード",
     icon: "⚙️",
-    desc: "開発中の通常表示に戻します。",
+    desc: "リリース前提の通常表示です。サンプルデータは表示せず、自分で登録したデータだけ表示します。",
   },
 ];
 

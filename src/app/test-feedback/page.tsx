@@ -274,12 +274,18 @@ export default function TestFeedbackPage() {
           </div>
 
           {/* 保存済み感想一覧 */}
-          {feedbacks.length > 0 && (
-            <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
-              <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
-                保存済み感想一覧
+          <div className="rounded-2xl bg-white p-4 shadow-sm space-y-3">
+            <h2 className="border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              保存済み感想一覧
+              {feedbacks.length > 0 && (
                 <span className="ml-2 text-xs font-normal text-stone-400">（{feedbacks.length}件）</span>
-              </h2>
+              )}
+            </h2>
+            {feedbacks.length === 0 ? (
+              <p className="py-4 text-center text-sm text-stone-400">
+                保存済み感想はまだありません。<br />テスト後に感想を入力してください。
+              </p>
+            ) : (
               <div className="space-y-3">
                 {feedbacks.map((fb) => (
                   <div key={fb.id} className="rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 space-y-1.5">
@@ -310,8 +316,8 @@ export default function TestFeedbackPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="pb-8 pt-2">
             <Link href="/"

@@ -11,7 +11,8 @@
 // TODO: Push通知・LINE通知・メール通知は次工程で対応する。
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getTestMode } from "@/app/utils/testMode";
 
 // ─── 定数 ────────────────────────────────────────────────────
 const CALENDAR_YEAR        = 2026;
@@ -55,8 +56,8 @@ interface MaterialAlert {
   alertMessage: string;
 }
 
-// ─── 仮データ ─────────────────────────────────────────────────
-const MONTH_EVENTS: ScheduleEvent[] = [
+// ─── デモ用仮データ ────────────────────────────────────────────
+const DEMO_MONTH_EVENTS: ScheduleEvent[] = [
   {
     id: "ev-1", date: "2026/06/01", weekday: "月", time: "09:00", kind: "現調",
     projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",
@@ -119,7 +120,7 @@ const MONTH_EVENTS: ScheduleEvent[] = [
   },
 ];
 
-const MATERIAL_ALERTS: MaterialAlert[] = [
+const DEMO_MATERIAL_ALERTS: MaterialAlert[] = [
   {
     id: "ma-1",
     projectName: "〇〇マンション クロス貼替", contractorName: "△△工務店",
@@ -215,16 +216,16 @@ function alertTextStyle(al: MaterialAlert): string {
   return "text-green-700";
 }
 
-// ─── カレンダーデータ事前計算（モジュール初期化時） ────────────
-function buildDayBadgesMap(): Record<number, CalBadge[]> {
+// ─── カレンダーデータ事前計算 ────────────────────────────────
+function buildDayBadgesMap(events: ScheduleEvent[], alerts: MaterialAlert[]): Record<number, CalBadge[]> {
   const map: Record<number, Set<CalBadge>> = {};
-  for (const ev of MONTH_EVENTS) {
+  for (const ev of events) {
     const day = parseDateToDayNum(ev.date);
     if (day === null) continue;
     if (!map[day]) map[day] = new Set();
     map[day].add(KIND_TO_CAL[ev.kind]);
   }
-  for (const al of MATERIAL_ALERTS) {
+  for (const al of alerts) {
     if (al.materialOrderStatus === "未発注") {
       const day = parseDateToDayNum(al.constructionDate);
       if (day !== null) {
@@ -241,8 +242,6 @@ function buildDayBadgesMap(): Record<number, CalBadge[]> {
   return result;
 }
 
-const DAY_BADGES_MAP = buildDayBadgesMap();
-
 const GRID_SIZE = Math.ceil((MONTH_START_OFFSET + DAYS_IN_MONTH) / 7) * 7;
 const CALENDAR_CELLS: (number | null)[] = Array.from({ length: GRID_SIZE }, (_, i) => {
   const day = i - MONTH_START_OFFSET + 1;
@@ -251,13 +250,23 @@ const CALENDAR_CELLS: (number | null)[] = Array.from({ length: GRID_SIZE }, (_, 
 
 // ─── ページコンポーネント ─────────────────────────────────────
 export default function SchedulePage() {
+  const [isDemo,      setIsDemo]      = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  useEffect(() => {
+    setIsDemo(getTestMode() === "demo");
+  }, []);
+
+  const monthEvents    = isDemo ? DEMO_MONTH_EVENTS    : [];
+  const materialAlerts = isDemo ? DEMO_MATERIAL_ALERTS : [];
+
+  const dayBadgesMap = buildDayBadgesMap(monthEvents, materialAlerts);
+
   const selectedEvents = selectedDay !== null
-    ? MONTH_EVENTS.filter((ev) => parseDateToDayNum(ev.date) === selectedDay)
+    ? monthEvents.filter((ev) => parseDateToDayNum(ev.date) === selectedDay)
     : [];
   const selectedAlerts = selectedDay !== null
-    ? MATERIAL_ALERTS.filter((al) => parseDateToDayNum(al.constructionDate) === selectedDay)
+    ? materialAlerts.filter((al) => parseDateToDayNum(al.constructionDate) === selectedDay)
     : [];
 
   return (
@@ -320,7 +329,7 @@ export default function SchedulePage() {
                 const isSat = colIdx === 5;
                 const isSun = colIdx === 6;
                 const isSelected = selectedDay === day;
-                const badges = DAY_BADGES_MAP[day] ?? [];
+                const badges = dayBadgesMap[day] ?? [];
 
                 return (
                   <button
@@ -451,36 +460,43 @@ export default function SchedulePage() {
             <p className="mb-3 text-xs text-stone-400">
               施工日から逆算して、材料発注の確認が必要な案件を表示します。
             </p>
-            <div className="space-y-2.5">
-              {MATERIAL_ALERTS.map((al) => (
-                <div key={al.id} className={`rounded-xl p-3 ${materialAlertCardStyle(al)}`}>
-                  <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialAlertBadgeStyle(al)}`}>
-                      {al.alertType}
-                    </span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialOrderBadgeStyle(al.materialOrderStatus)}`}>
-                      {al.materialOrderStatus}
-                    </span>
-                    {al.alertDate !== "-" && (
-                      <span className="ml-auto text-xs text-stone-500">⏰ {al.alertDate}</span>
-                    )}
+            {materialAlerts.length > 0 ? (
+              <div className="space-y-2.5">
+                {materialAlerts.map((al) => (
+                  <div key={al.id} className={`rounded-xl p-3 ${materialAlertCardStyle(al)}`}>
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialAlertBadgeStyle(al)}`}>
+                        {al.alertType}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${materialOrderBadgeStyle(al.materialOrderStatus)}`}>
+                        {al.materialOrderStatus}
+                      </span>
+                      {al.alertDate !== "-" && (
+                        <span className="ml-auto text-xs text-stone-500">⏰ {al.alertDate}</span>
+                      )}
+                    </div>
+                    <p className="mb-1 text-sm font-bold text-stone-800 leading-tight">{al.projectName}</p>
+                    <p className="mb-0.5 text-xs text-stone-400">{al.contractorName}</p>
+                    <div className="mb-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                      <span className="text-xs text-stone-500">施工日：{al.constructionDate}</span>
+                      <span className="text-xs text-stone-500">搬入予定：{al.materialDeliveryDate}</span>
+                    </div>
+                    <p className={`mb-2 text-sm font-bold leading-snug ${alertTextStyle(al)}`}>
+                      {al.alertMessage}
+                    </p>
+                    <Link href="/projects/sample"
+                      className="inline-flex items-center gap-1 rounded-lg bg-[#8B4A3C]/10 px-3 py-1.5 text-xs font-bold text-[#8B4A3C] active:opacity-70">
+                      案件を見る →
+                    </Link>
                   </div>
-                  <p className="mb-1 text-sm font-bold text-stone-800 leading-tight">{al.projectName}</p>
-                  <p className="mb-0.5 text-xs text-stone-400">{al.contractorName}</p>
-                  <div className="mb-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                    <span className="text-xs text-stone-500">施工日：{al.constructionDate}</span>
-                    <span className="text-xs text-stone-500">搬入予定：{al.materialDeliveryDate}</span>
-                  </div>
-                  <p className={`mb-2 text-sm font-bold leading-snug ${alertTextStyle(al)}`}>
-                    {al.alertMessage}
-                  </p>
-                  <Link href="/projects/sample"
-                    className="inline-flex items-center gap-1 rounded-lg bg-[#8B4A3C]/10 px-3 py-1.5 text-xs font-bold text-[#8B4A3C] active:opacity-70">
-                    案件を見る →
-                  </Link>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border-2 border-dashed border-stone-200 py-8 text-center">
+                <p className="text-sm text-stone-500">登録された予定はありません。</p>
+                <p className="mt-1.5 text-sm text-stone-500">案件登録後、施工予定や材料発注予定を確認できます。</p>
+              </div>
+            )}
           </div>
 
           {/* ── カレンダー連携について ── */}
