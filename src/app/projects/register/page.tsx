@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { getTestMode } from "@/app/utils/testMode";
+import {
+  getSavedEstimates,
+  setSelectedEstimateId,
+  STATUS_LABELS,
+  STATUS_STYLES,
+  type SavedEstimate,
+} from "@/app/utils/savedEstimates";
+import { useRouter } from "next/navigation";
 
 // ─── デモ用案件データ ──────────────────────────────────────────
 const DEMO_PROJECTS_DATA = [
@@ -53,16 +61,62 @@ function ProjectCard({ p }: { p: ProjectData }) {
       </div>
       <div className="grid grid-cols-3 gap-1.5 border-t border-stone-100 px-4 py-3">
         <Link href="/projects/sample"
-          className="flex items-center justify-center rounded-xl border border-stone-200 bg-white px-2 py-2 text-center text-xs font-bold text-stone-600 active:opacity-80">
+          className="flex min-h-[44px] items-center justify-center rounded-xl border border-stone-200 bg-white px-2 py-2 text-center text-xs font-bold text-stone-600 active:opacity-80">
           案件詳細<br />を見る
         </Link>
         <Link href="/projects/sample/estimate"
-          className="flex items-center justify-center rounded-xl bg-[#8B4A3C] px-2 py-2 text-center text-xs font-bold text-white active:opacity-80">
+          className="flex min-h-[44px] items-center justify-center rounded-xl bg-[#8B4A3C] px-2 py-2 text-center text-xs font-bold text-white active:opacity-80">
           見積作成<br />を開始
         </Link>
         <Link href="/projects/sample/single-invoice"
-          className="flex items-center justify-center rounded-xl border border-[#8B4A3C] bg-white px-2 py-2 text-center text-xs font-bold text-[#8B4A3C] active:opacity-80">
+          className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#8B4A3C] bg-white px-2 py-2 text-center text-xs font-bold text-[#8B4A3C] active:opacity-80">
           請求書<br />作成へ
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── 保存済み見積カード ───────────────────────────────────────
+function EstimateCard({ est }: { est: SavedEstimate }) {
+  const router = useRouter();
+
+  function handleOpen() {
+    setSelectedEstimateId(est.id);
+    router.push("/projects/sample/estimate");
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#8B4A3C]/20">
+      <div className="flex items-center justify-between border-b border-stone-100 bg-[#fff8f5] px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-[#8B4A3C]/10 px-2 py-0.5 text-xs font-bold text-[#8B4A3C]">
+            保存済み見積
+          </span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[est.status]}`}>
+            {STATUS_LABELS[est.status]}
+          </span>
+        </div>
+        <span className="text-xs text-stone-400">{est.updatedAt}</span>
+      </div>
+      <div className="px-4 py-3 space-y-0.5">
+        <p className="text-sm font-bold text-stone-800 leading-tight">{est.projectName || "（案件名なし）"}</p>
+        <p className="text-xs text-stone-500">{est.clientName}</p>
+        {est.siteAddress && <p className="text-xs text-stone-400">{est.siteAddress}</p>}
+        {est.workDescription && <p className="text-xs text-stone-400 line-clamp-1">{est.workDescription}</p>}
+        <div className="rounded-lg bg-[#fdf0ec] px-3 py-1.5 text-right">
+          <span className="text-xs text-[#8B4A3C]">税込合計　</span>
+          <span className="text-sm font-bold text-[#8B4A3C]">¥{est.total.toLocaleString("ja-JP")}</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 border-t border-stone-100 px-4 py-3">
+        <button type="button" onClick={handleOpen}
+          className="flex min-h-[44px] items-center justify-center rounded-xl bg-[#8B4A3C] px-2 py-2 text-center text-xs font-bold text-white active:opacity-80">
+          見積を開く
+        </button>
+        <Link href="/projects/sample/estimate"
+          className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#8B4A3C] bg-white px-2 py-2 text-center text-xs font-bold text-[#8B4A3C] active:opacity-80">
+          PDF作成へ進む
         </Link>
       </div>
     </div>
@@ -72,6 +126,7 @@ function ProjectCard({ p }: { p: ProjectData }) {
 // ─── ページ ───────────────────────────────────────────────────
 export default function ProjectRegisterPage() {
   const [isDemo,        setIsDemo]        = useState(false);
+  const [savedEstimates, setSavedEstimates] = useState<SavedEstimate[]>([]);
   const [searchDate,    setSearchDate]    = useState("");
   const [searchProject, setSearchProject] = useState("");
   const [searchClient,  setSearchClient]  = useState("");
@@ -79,11 +134,12 @@ export default function ProjectRegisterPage() {
 
   useEffect(() => {
     setIsDemo(getTestMode() === "demo");
+    setSavedEstimates(getSavedEstimates());
   }, []);
 
   const projectsData = isDemo ? DEMO_PROJECTS_DATA : [];
 
-  const searchResults = useMemo(() => {
+  const projectSearchResults = useMemo(() => {
     if (!hasSearched) return [];
     return projectsData.filter((p) => {
       const md = searchDate    === "" || p.date.includes(searchDate);
@@ -92,6 +148,18 @@ export default function ProjectRegisterPage() {
       return md && mp && mc;
     });
   }, [hasSearched, searchDate, searchProject, searchClient, projectsData]);
+
+  const estimateSearchResults = useMemo(() => {
+    if (!hasSearched) return [];
+    if (searchDate === "" && searchProject === "" && searchClient === "") return [];
+    return savedEstimates.filter((e) => {
+      const mp = searchProject === "" || e.projectName.includes(searchProject);
+      const mc = searchClient  === "" || e.clientName.includes(searchClient);
+      const ma = searchProject === "" || e.siteAddress.includes(searchProject) ||
+                 e.workDescription.includes(searchProject);
+      return mp || mc || ma;
+    });
+  }, [hasSearched, searchDate, searchProject, searchClient, savedEstimates]);
 
   const inputCls = "w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
 
@@ -156,7 +224,7 @@ export default function ProjectRegisterPage() {
           <section id="project-search" className="scroll-mt-4 space-y-3 pt-2">
             <div className="border-b border-stone-200 pb-2">
               <h2 className="text-base font-bold text-stone-800">案件検索</h2>
-              <p className="mt-0.5 text-xs text-stone-500">日付・案件名・元請名から登録案件を検索します。</p>
+              <p className="mt-0.5 text-xs text-stone-500">日付・案件名・元請名から登録案件と保存済み見積を検索します。</p>
             </div>
 
             <div className="rounded-2xl bg-white p-4 shadow-sm space-y-2.5">
@@ -179,12 +247,21 @@ export default function ProjectRegisterPage() {
                   <p className="py-3 text-center text-xs text-stone-400">
                     検索条件を入力して「検索」を押してください。
                   </p>
-                ) : searchResults.length === 0 ? (
-                  <p className="py-3 text-center text-xs text-stone-400">該当する案件はありません。</p>
+                ) : projectSearchResults.length === 0 && estimateSearchResults.length === 0 ? (
+                  <p className="py-3 text-center text-xs text-stone-400">該当する案件・見積はありません。</p>
                 ) : (
-                  searchResults.map((p) => (
-                    <ProjectCard key={p.id} p={p} />
-                  ))
+                  <>
+                    {projectSearchResults.map((p) => (
+                      <ProjectCard key={p.id} p={p} />
+                    ))}
+                    {estimateSearchResults.length > 0 && (
+                      <>
+                        {estimateSearchResults.map((e) => (
+                          <EstimateCard key={e.id} est={e} />
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -204,6 +281,19 @@ export default function ProjectRegisterPage() {
               <div className="rounded-2xl border-2 border-dashed border-stone-200 py-8 text-center">
                 <p className="text-sm text-stone-500">まだ登録された案件はありません。</p>
                 <p className="mt-1.5 text-sm text-stone-500">スキャン登録、または新規案件登録から始めてください。</p>
+              </div>
+            )}
+
+            {/* 保存済み見積一覧 */}
+            {savedEstimates.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <div className="border-b border-stone-200 pb-2">
+                  <h3 className="text-sm font-bold text-stone-700">保存済み見積</h3>
+                  <p className="mt-0.5 text-xs text-stone-500">下書き保存した見積から作業を再開できます。</p>
+                </div>
+                {savedEstimates.map((e) => (
+                  <EstimateCard key={e.id} est={e} />
+                ))}
               </div>
             )}
           </section>

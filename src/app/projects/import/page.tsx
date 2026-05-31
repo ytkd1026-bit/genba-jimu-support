@@ -12,6 +12,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const IMPORT_DRAFT_KEY = "genba_jimu_import_draft";
+
 const labelCls = "block text-sm font-bold text-stone-700 mb-1";
 const inputCls =
   "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
@@ -48,6 +50,7 @@ function ConfirmRow({ label, value }: { label: string; value: string }) {
 export default function ImportProjectPage() {
   const router = useRouter();
   const [draft, setDraft] = useState(INITIAL_DRAFT);
+  const [savedMsg, setSavedMsg] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setDraft((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,6 +58,17 @@ export default function ImportProjectPage() {
 
   function handleDocumentSelect() {
     alert("書類アップロードとAI読取は次工程で追加します。");
+  }
+
+  function handleDraftSave() {
+    try {
+      const data = { ...draft, savedAt: new Date().toLocaleString("ja-JP") };
+      localStorage.setItem(IMPORT_DRAFT_KEY, JSON.stringify(data));
+      setSavedMsg("下書きを保存しました。");
+      setTimeout(() => setSavedMsg(""), 4000);
+    } catch {
+      setSavedMsg("保存に失敗しました。");
+    }
   }
 
   return (
@@ -181,11 +195,16 @@ export default function ImportProjectPage() {
           <div className="space-y-3 pb-8 pt-1">
             <button
               type="button"
-              onClick={() => alert("下書きを保存しました。")}
+              onClick={handleDraftSave}
               className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
             >
               下書き保存
             </button>
+            {savedMsg && (
+              <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                <p className="text-sm font-bold text-green-700">{savedMsg}</p>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => {

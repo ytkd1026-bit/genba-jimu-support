@@ -62,13 +62,19 @@ const STATUS_STYLE: Record<string, string> = {
 
 // ─── コンポーネント ───────────────────────────────────────────
 export default function Home() {
-  const [mode, setMode] = useState<TestMode>("normal");
+  const [mode,    setMode]    = useState<TestMode>("normal");
+  const [infoMsg, setInfoMsg] = useState("");
 
   useEffect(() => {
     setMode(getTestMode());
   }, []);
 
   const isDemo = mode === "demo";
+
+  function showInfo(msg: string) {
+    setInfoMsg(msg);
+    setTimeout(() => setInfoMsg(""), 4000);
+  }
 
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
@@ -221,13 +227,22 @@ export default function Home() {
                 <span className="text-stone-300">›</span>
               </Link>
               <div className="flex gap-2 px-2 pt-1">
-                <button type="button" className="flex-1 rounded-xl border border-stone-200 py-2 text-xs font-bold text-stone-400 active:opacity-70">
+                <button type="button"
+                  onClick={() => showInfo("テンプレ集は次工程で実装します。")}
+                  className="flex-1 rounded-xl border border-stone-200 py-2 text-xs font-bold text-stone-400 active:opacity-70">
                   📋 テンプレ集
                 </button>
-                <button type="button" className="flex-1 rounded-xl border border-stone-200 py-2 text-xs font-bold text-stone-400 active:opacity-70">
+                <button type="button"
+                  onClick={() => showInfo("使い方ガイドは次工程で実装します。")}
+                  className="flex-1 rounded-xl border border-stone-200 py-2 text-xs font-bold text-stone-400 active:opacity-70">
                   📖 使い方を見る
                 </button>
               </div>
+              {infoMsg && (
+                <div className="mx-2 mt-1 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-500 ring-1 ring-stone-200">
+                  {infoMsg}
+                </div>
+              )}
             </div>
           </div>
 

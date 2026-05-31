@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const DRAFT_PROJECT_KEY = "genba_jimu_new_project_draft";
+
 const KOUJI_TYPES = [
   "クロス", "クッションフロア", "フロアタイル", "長尺シート",
   "タイルカーペット", "ダイノック・化粧シート", "ガラスフィルム", "雑工事", "その他",
@@ -27,6 +29,7 @@ function ConfirmRow({ label, value }: { label: string; value: string }) {
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const [savedMsg, setSavedMsg] = useState("");
   const [form, setForm] = useState({
     projectName:    "",
     clientName:     "",
@@ -46,6 +49,17 @@ export default function NewProjectPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function handleDraftSave() {
+    try {
+      const draft = { ...form, savedAt: new Date().toLocaleString("ja-JP") };
+      localStorage.setItem(DRAFT_PROJECT_KEY, JSON.stringify(draft));
+      setSavedMsg("案件を下書き保存しました。");
+      setTimeout(() => setSavedMsg(""), 4000);
+    } catch {
+      setSavedMsg("保存に失敗しました。");
+    }
   }
 
   return (
@@ -169,11 +183,16 @@ export default function NewProjectPage() {
           <div className="space-y-3 pb-8 pt-1">
             <button
               type="button"
-              onClick={() => alert("案件を仮保存しました。")}
+              onClick={handleDraftSave}
               className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
             >
               仮保存
             </button>
+            {savedMsg && (
+              <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+                <p className="text-sm font-bold text-green-700">{savedMsg}</p>
+              </div>
+            )}
             <Link
               href="/projects/sample/estimate"
               className="flex w-full items-center justify-center rounded-2xl border-2 border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"

@@ -7,6 +7,7 @@ import {
   estimateOrderPdfFileName,
   storagePdfFileName,
 } from "@/app/utils/pdfFileName";
+import { upsertEstimate, setSelectedEstimateId } from "@/app/utils/savedEstimates";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
 const PDF_CLIENT_NAME   = "△△工務店";
@@ -297,6 +298,7 @@ export default function EstimatePage() {
   const [summaryInternalOpen, setSummaryInternalOpen] = useState(false);
   // null = 生成中なし / 'estimate' = 見積書 / 'order' = 見積書兼注文書 / 'storage' = 保存用
   const [pdfLoading, setPdfLoading] = useState<null | 'estimate' | 'order' | 'storage'>(null);
+  const [draftSavedMsg, setDraftSavedMsg] = useState("");
   const [companyInfo, setCompanyInfo] = useState<CompanyInfoState>(DEFAULT_COMPANY_INFO);
   // 提出先・案件名・現場住所（編集可能・案件検索で自動セット可能）
   const [submitTo,       setSubmitTo]       = useState(PDF_CLIENT_NAME + " 御中");
@@ -370,6 +372,33 @@ export default function EstimatePage() {
   const costSum = costs.reduce((acc, c) => acc + toNum(c.qty) * toNum(c.costUnitPrice), 0);
   const grossProfit = subtotalSum - costSum;
   const grossMarginRate = subtotalSum > 0 ? (grossProfit / subtotalSum) * 100 : 0;
+
+  // ── 下書き保存 ──────────────────────────────────────────────
+  function handleDraftSave() {
+    const now = new Date().toLocaleString("ja-JP");
+    const id = `est-${Date.now()}`;
+    upsertEstimate({
+      id,
+      createdAt: now,
+      updatedAt: now,
+      estimateNo: `EST-${Date.now()}`,
+      projectId: selectedEstProject?.id ?? "draft",
+      projectName: estProjectName,
+      clientName: submitTo,
+      siteAddress: estAddress,
+      workDescription: lines.map((l) => l.koujiContent).filter(Boolean).join("、"),
+      estimateItems: lines,
+      subtotal: subtotalSum,
+      tax: taxSum,
+      total: totalWithTax,
+      status: "draft",
+      version: 1,
+      memo: "",
+    });
+    setSelectedEstimateId(id);
+    setDraftSavedMsg("見積を下書き保存しました。");
+    setTimeout(() => setDraftSavedMsg(""), 6000);
+  }
 
   // ── PDF ダウンロード共通処理 ──────────────────────────────────
   async function downloadPdf(blob: Blob, filename: string) {
@@ -913,17 +942,35 @@ export default function EstimatePage() {
             </span>
           </button>
 
-          {/* 仮保存・戻る */}
+          {/* 下書き保存 */}
           <button
             type="button"
-            onClick={() => alert("見積を仮保存しました。次工程で保存・PDF出力を追加します。")}
-            className="w-full rounded-2xl border border-stone-300 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
+            onClick={handleDraftSave}
+            className="w-full rounded-2xl border-2 border-stone-300 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
           >
-            仮保存
+            見積を下書き保存
           </button>
+
+          {/* 下書き保存後メッセージ */}
+          {draftSavedMsg && (
+            <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
+              <p className="text-sm font-bold text-green-700">{draftSavedMsg}</p>
+              <Link href="/estimates/saved" className="mt-1 block text-xs text-green-600 underline underline-offset-2">
+                保存済み見積一覧を見る →
+              </Link>
+            </div>
+          )}
+
+          <Link
+            href="/estimates/saved"
+            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3 text-sm font-bold text-stone-500 shadow-sm active:opacity-80"
+          >
+            保存済み見積一覧へ
+          </Link>
+
           <Link
             href="/projects/sample"
-            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-4 text-base font-bold text-stone-500 shadow-sm active:opacity-80"
+            className="flex w-full items-center justify-center rounded-2xl border border-stone-200 bg-white py-3 text-sm font-bold text-stone-400 shadow-sm active:opacity-80"
           >
             案件詳細へ戻る
           </Link>

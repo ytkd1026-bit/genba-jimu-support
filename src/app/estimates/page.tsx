@@ -12,15 +12,14 @@ const menuCards = [
     icon: "📝",
     title: "下書き確認",
     desc: "作成途中の見積下書きを確認",
-    href: "/projects/sample/estimate",
+    href: "/estimates/saved",
     accent: false,
   },
   {
-    // TODO: 将来的に /estimates/saved を作り、保存済み見積一覧を表示する。
     icon: "🗂️",
     title: "保存済み見積確認",
-    desc: "過去に作成・保存した見積を確認",
-    href: "/projects/sample/estimate",
+    desc: "下書き保存・保存済みの見積を一覧で確認",
+    href: "/estimates/saved",
     accent: false,
   },
 ];
