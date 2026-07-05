@@ -10,6 +10,8 @@ import {
 import { upsertEstimate, setSelectedEstimateId, getSavedEstimates, STATUS_LABELS } from "@/app/utils/savedEstimates";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft, type SaveStatus } from "@/hooks/useAutoDraft";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
 const PDF_CLIENT_NAME   = "△△工務店";
@@ -167,13 +169,39 @@ function formatYen(n: number): string { return "¥" + n.toLocaleString("ja-JP");
 
 // ─── スタイル定数 ─────────────────────────────────────────────
 // 提出用（白エリア）
-const fldInput = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
-const fldSelect = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:border-[#8B4A3C] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30";
-const lbl = "mb-0.5 block text-xs text-stone-400";
+const fldInput = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm leading-[1.35] text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30 min-h-[44px] [word-break:keep-all] [overflow-wrap:anywhere]";
+const fldSelect = "w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm leading-[1.35] text-stone-800 focus:border-[#8B4A3C] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30 min-h-[44px]";
+const lbl = "mb-0.5 block text-xs leading-[1.35] text-stone-400";
 // 内部管理（黄エリア）
-const costInput = "w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-300/50";
-const costSelect = "w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-stone-800 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-300/50";
-const costLbl = "mb-0.5 block text-xs text-amber-700";
+const costInput = "w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-[1.35] text-stone-800 placeholder:text-stone-300 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-300/50 min-h-[44px] [word-break:keep-all] [overflow-wrap:anywhere]";
+const costSelect = "w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-[1.35] text-stone-800 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-amber-300/50 min-h-[44px]";
+const costLbl = "mb-0.5 block text-xs leading-[1.35] text-amber-700";
+
+// ─── 自動下書き保存 設定 ─────────────────────────────────────
+const ESTIMATE_DRAFT_KEY = draftKey('estimate', 'new');
+
+type EstimateDraftData = {
+  lines: LineItem[];
+  costs: CostItem[];
+  nextLineId: number;
+  nextCostId: number;
+  submitTo: string;
+  estProjectName: string;
+  estAddress: string;
+};
+
+function saveBadge(status: SaveStatus, savedAt: Date | null): { label: string; cls: string } {
+  switch (status) {
+    case 'dirty':  return { label: '入力中（自動保存します）',  cls: 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' };
+    case 'saving': return { label: '下書き保存中...',           cls: 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' };
+    case 'saved':  return {
+      label: `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}`,
+      cls: 'bg-green-50 text-green-600 ring-1 ring-green-200',
+    };
+    case 'error':  return { label: '保存エラー',               cls: 'bg-red-50 text-red-600 ring-1 ring-red-200' };
+    default:       return { label: '',                          cls: '' };
+  }
+}
 
 // ─── 見積明細カード（白） ─────────────────────────────────────
 function LineCard({ line, index, canDelete, onUpdate, onDelete, onDuplicate }: {
@@ -342,6 +370,25 @@ export default function EstimatePage() {
   const [estHasSearched,   setEstHasSearched]   = useState(false);
   const [selectedEstProject, setSelectedEstProject] = useState<EstSearchProject | null>(null);
 
+  // ── 自動下書き保存関連 state ──────────────────────────────────
+  const [isDemoMode,        setIsDemoMode]        = useState<boolean | null>(null);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  // PDF発行前本保存の進捗（null=未着手 / saving=保存中 / saved=成功 / failed=失敗）
+  const [pdfSaveStatus, setPdfSaveStatus] = useState<null | 'saving' | 'saved' | 'failed'>(null);
+  // 本保存済みの見積ID（セッション内で維持し、同じ見積への重複登録を防ぐ）
+  const [currentEstimateId, setCurrentEstimateId] = useState<string | null>(null);
+
+  // 保存対象データ（useMemo で内容変化のみ追跡）
+  const draftData = useMemo<EstimateDraftData>(() => ({
+    lines, costs, nextLineId, nextCostId, submitTo, estProjectName, estAddress,
+  }), [lines, costs, nextLineId, nextCostId, submitTo, estProjectName, estAddress]);
+
+  const autoDraftEnabled = isDemoMode === false;
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<EstimateDraftData>(
+    ESTIMATE_DRAFT_KEY, 'estimate', 'new', draftData,
+    { enabled: autoDraftEnabled, debounceMs: 800 },
+  );
+
   const estFilteredProjects = useMemo(() => {
     if (!estHasSearched) return [];
     const source = getTestMode() === "demo" ? EST_SEARCH_PROJECTS : [];
@@ -388,6 +435,36 @@ export default function EstimatePage() {
     setNextCostId(initialCosts.length + 1);
   }, []);
 
+  // デモモードかどうかを検知（自動下書きの有効無効判定に使用）
+  useEffect(() => {
+    setIsDemoMode(getTestMode() === 'demo');
+  }, []);
+
+  // 下書き復元バナー表示（非デモ・実入力データなし・下書きあり の場合）
+  useEffect(() => {
+    if (isDemoMode !== false) return;
+    if (!restoredDraft) return;
+    // 空行だけでは「既存データあり」と見なさない。工事名・工事内容・単価のどれかが入っている場合のみ上書きしない
+    const hasMeaningfulContent = lines.some(
+      (l) => l.koujiName.trim() !== '' || l.koujiContent.trim() !== '' || toNum(l.unitPrice) > 0
+    );
+    if (hasMeaningfulContent) return;
+    setShowRestoreBanner(true);
+  }, [isDemoMode, restoredDraft, lines]);
+
+  // ブラウザバック・リロード時の未保存警告
+  useEffect(() => {
+    if (!autoDraftEnabled) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'dirty' && lines.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveStatus, lines.length, autoDraftEnabled]);
+
   function updateLine(id: number, field: keyof LineItem, value: string) { setLines((p) => p.map((l) => l.id === id ? { ...l, [field]: value } : l)); }
   function addLine() { setLines((p) => [...p, emptyLine(nextLineId)]); setNextLineId((n) => n + 1); }
   function removeLine(id: number) { setLines((p) => p.filter((l) => l.id !== id)); }
@@ -410,6 +487,25 @@ export default function EstimatePage() {
     setNextCostId((n) => n + 1);
   }
 
+  // ── 下書き復元・破棄 ─────────────────────────────────────────
+  function handleRestoreDraft() {
+    if (!restoredDraft) return;
+    const d = restoredDraft.data;
+    setLines(d.lines);
+    setCosts(d.costs);
+    setNextLineId(d.nextLineId);
+    setNextCostId(d.nextCostId);
+    setSubmitTo(d.submitTo);
+    setEstProjectName(d.estProjectName);
+    setEstAddress(d.estAddress);
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
+
   const subtotalSum = lines.reduce((acc, l) => acc + toNum(l.qty) * toNum(l.unitPrice), 0);
   const taxSum = Math.floor(subtotalSum * 0.1);
   const totalWithTax = subtotalSum + taxSum;
@@ -420,12 +516,16 @@ export default function EstimatePage() {
   // ── 下書き保存 ──────────────────────────────────────────────
   function handleDraftSave() {
     const now = new Date().toLocaleString("ja-JP");
-    const id = `est-${Date.now()}`;
+    // 既存保存済みIDがある場合は上書き。ない場合のみ新規ID
+    const id = currentEstimateId ?? `est-${Date.now()}`;
+    const existing = currentEstimateId
+      ? getSavedEstimates().find((e) => e.id === currentEstimateId)
+      : null;
     upsertEstimate({
       id,
-      createdAt: now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-      estimateNo: `EST-${Date.now()}`,
+      estimateNo: existing?.estimateNo ?? `EST-${Date.now()}`,
       projectId: selectedEstProject?.id ?? "draft",
       projectName: estProjectName,
       clientName: submitTo,
@@ -439,8 +539,10 @@ export default function EstimatePage() {
       version: 1,
       memo: "",
     });
+    setCurrentEstimateId(id);
     setSelectedEstimateId(id);
     setDraftSavedMsg("見積を下書き保存しました。");
+    clearDraft(); // 自動下書きを削除（本保存済みのため不要）
     setTimeout(() => setDraftSavedMsg(""), 6000);
   }
 
@@ -456,9 +558,66 @@ export default function EstimatePage() {
     URL.revokeObjectURL(url);
   }
 
+  // ── PDF発行前 本保存共通処理 ──────────────────────────────────
+  // 処理順：二重実行ガード → バリデーション → upsertEstimate → clearDraft → true を返す
+  // 失敗時は alert を出して false を返し、呼び出し元でPDF生成を中断する
+  async function saveBeforePdf(): Promise<boolean> {
+    // 保存中・PDF生成中の二重実行を防ぐ
+    if (pdfSaveStatus === 'saving' || pdfLoading !== null) return false;
+
+    const hasContent = lines.some(
+      (l) => l.koujiName.trim() !== '' || l.koujiContent.trim() !== '' || toNum(l.unitPrice) > 0
+    );
+    if (lines.length === 0 || !hasContent) {
+      alert('見積明細を1件以上入力してからPDFを発行してください。');
+      return false;
+    }
+
+    setPdfSaveStatus('saving');
+    try {
+      const now = new Date().toLocaleString('ja-JP');
+      // 既存保存済みIDがある場合は上書き。ない場合のみ新規ID（重複登録防止）
+      const id = currentEstimateId ?? `est-${Date.now()}`;
+      const existing = currentEstimateId
+        ? getSavedEstimates().find((e) => e.id === currentEstimateId)
+        : null;
+      upsertEstimate({
+        id,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        estimateNo: existing?.estimateNo ?? `EST-${Date.now()}`,
+        projectId: selectedEstProject?.id ?? 'draft',
+        projectName: estProjectName,
+        clientName: submitTo,
+        siteAddress: estAddress,
+        workDescription: lines.map((l) => l.koujiContent).filter(Boolean).join('、'),
+        estimateItems: lines,
+        subtotal: subtotalSum,
+        tax: taxSum,
+        total: totalWithTax,
+        status: 'draft',
+        version: 1,
+        memo: '',
+      });
+      setCurrentEstimateId(id);
+      setSelectedEstimateId(id);
+      clearDraft();
+      setPdfSaveStatus('saved');
+      return true;
+    } catch (err) {
+      console.error('PDF発行前保存エラー:', err);
+      alert('保存に失敗しました。PDFは発行していません。入力内容は下書きとして残っています。');
+      setPdfSaveStatus('failed');
+      return false;
+    }
+  }
+
   // ── 見積書PDF 生成（提出用のみ・原価非表示） ──────────────────
+  // 処理順: 1.本保存 → 2.保存確認 → 3.PDF生成
   async function handleEstimatePDF() {
-    if (pdfLoading) return;
+    if (pdfLoading || pdfSaveStatus === 'saving') return;
+    const saved = await saveBeforePdf();
+    if (!saved) return;
     setPdfLoading('estimate');
     try {
       const { pdf } = await import('@react-pdf/renderer');
@@ -472,6 +631,7 @@ export default function EstimatePage() {
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
+      setPdfSaveStatus(null);
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
@@ -481,8 +641,11 @@ export default function EstimatePage() {
   }
 
   // ── 保存用PDF 生成（原価・粗利・粗利率を含む自分用控え） ────────
+  // 処理順: 1.本保存 → 2.保存確認 → 3.PDF生成
   async function handleStoragePDF() {
-    if (pdfLoading) return;
+    if (pdfLoading || pdfSaveStatus === 'saving') return;
+    const saved = await saveBeforePdf();
+    if (!saved) return;
     setPdfLoading('storage');
     try {
       const { pdf } = await import('@react-pdf/renderer');
@@ -509,6 +672,7 @@ export default function EstimatePage() {
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
+      setPdfSaveStatus(null);
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
@@ -518,8 +682,11 @@ export default function EstimatePage() {
   }
 
   // ── 見積書兼注文書PDF 生成（提出用のみ・原価非表示） ───────────
+  // 処理順: 1.本保存 → 2.保存確認 → 3.PDF生成
   async function handleEstimateOrderPDF() {
-    if (pdfLoading) return;
+    if (pdfLoading || pdfSaveStatus === 'saving') return;
+    const saved = await saveBeforePdf();
+    if (!saved) return;
     setPdfLoading('order');
     try {
       const { pdf } = await import('@react-pdf/renderer');
@@ -533,6 +700,7 @@ export default function EstimatePage() {
         workContent: PDF_WORK_CONTENT,
         date:        PDF_ESTIMATE_DATE,
       }));
+      setPdfSaveStatus(null);
     } catch (err) {
       console.error('PDF生成エラー:', err);
       alert('PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。');
@@ -555,6 +723,51 @@ export default function EstimatePage() {
             白い部分は提出用、黄色い部分は保存用の内部管理です。
           </p>
         </header>
+
+        {/* ── 自動下書き保存ステータスバー ── */}
+        {saveStatus !== 'idle' && (() => {
+          const { label, cls } = saveBadge(saveStatus, savedAt);
+          return (
+            <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${cls}`}>
+              <span className="shrink-0">
+                {saveStatus === 'dirty'  ? '✏️' :
+                 saveStatus === 'saving' ? '⏳' :
+                 saveStatus === 'saved'  ? '✓' : '⚠️'}
+              </span>
+              <span>{label}</span>
+            </div>
+          );
+        })()}
+
+        {/* ── 下書き復元バナー ── */}
+        {showRestoreBanner && restoredDraft && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50 shadow-sm">
+            <div className="border-b border-amber-200 bg-amber-100 px-4 py-2.5">
+              <p className="text-sm font-bold text-amber-800">前回入力途中の下書きがあります</p>
+            </div>
+            <div className="space-y-2 px-4 py-3">
+              <p className="text-xs text-amber-700">
+                最終更新：{new Date(restoredDraft.updatedAt).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleRestoreDraft}
+                  className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white active:opacity-80"
+                >
+                  下書きを復元する
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="flex-1 rounded-xl border border-amber-300 bg-white py-2.5 text-sm font-bold text-amber-700 active:opacity-80"
+                >
+                  破棄して新しく作る
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── 案件検索 ── */}
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm space-y-3">
@@ -909,6 +1122,25 @@ export default function EstimatePage() {
         {/* ── PDF出力エリア ── */}
         <div className="mt-4 space-y-3 pb-8">
 
+          {/* PDF発行前本保存ステータス */}
+          {pdfSaveStatus === 'saving' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+              <p className="text-sm font-bold text-blue-700">PDF発行前に見積を保存しています...</p>
+            </div>
+          )}
+          {pdfSaveStatus === 'saved' && (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <p className="text-sm font-bold text-green-700">保存が完了しました。PDFを発行します。</p>
+            </div>
+          )}
+          {pdfSaveStatus === 'failed' && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+              <p className="text-sm font-bold text-red-700">
+                保存に失敗しました。PDFは発行していません。入力内容は下書きとして残っています。
+              </p>
+            </div>
+          )}
+
           {/* PDF出力の種類 説明カード */}
           <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <h3 className="mb-2 text-sm font-bold text-stone-700">PDF出力の種類</h3>
@@ -951,7 +1183,7 @@ export default function EstimatePage() {
           <button
             type="button"
             onClick={handleEstimatePDF}
-            disabled={pdfLoading !== null}
+            disabled={pdfLoading !== null || pdfSaveStatus === 'saving'}
             className="w-full rounded-2xl border-2 border-[#8B4A3C] bg-white py-3.5 text-[#8B4A3C] shadow-sm active:opacity-80 disabled:opacity-50"
           >
             <span className="block text-base font-bold">
@@ -966,7 +1198,7 @@ export default function EstimatePage() {
           <button
             type="button"
             onClick={handleEstimateOrderPDF}
-            disabled={pdfLoading !== null}
+            disabled={pdfLoading !== null || pdfSaveStatus === 'saving'}
             className="w-full rounded-2xl bg-[#8B4A3C] py-3.5 text-white shadow-sm active:opacity-80 disabled:opacity-50"
           >
             <span className="block text-base font-bold">
@@ -981,7 +1213,7 @@ export default function EstimatePage() {
           <button
             type="button"
             onClick={handleStoragePDF}
-            disabled={pdfLoading !== null}
+            disabled={pdfLoading !== null || pdfSaveStatus === 'saving'}
             className="w-full rounded-2xl border-2 border-amber-400 bg-amber-50 py-3.5 text-amber-700 shadow-sm active:opacity-80 disabled:opacity-50"
           >
             <span className="block text-base font-bold">
