@@ -12,6 +12,9 @@ import { useState, useEffect, useMemo } from "react";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
+import { draftKey } from "@/app/utils/draftStorage";
+import { upsertInvoice, getSavedInvoices } from "@/app/utils/savedInvoices";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
 
 const SETTINGS_STORAGE_KEY = "genba_settings";
 
@@ -44,6 +47,23 @@ const DEFAULT_BANK: BankInfo = {
   accountNumber: "1234567", accountHolder: "ヤマダ タロウ",
 };
 const INVOICE_NO = "INV-S-0001";
+
+// ─── 自動下書き保存設定 ────────────────────────────────────────
+const INVOICE_DRAFT_KEY = draftKey('invoice', 'new');
+
+// 保存対象フィールドの根拠：
+//   invoiceDate / dueDate / selectedProjectId → ユーザーが画面で変更できる
+//   note        → const（編集不可）なので保存不要
+//   bank        → genba_settings から読み込む固定値。編集不可なので保存不要
+//   companyInfo → 同上
+//   invoiceItems (INVOICE_LINES) → ページ内定数。編集不可なので保存不要
+//   subtotal/tax/total → INVOICE_LINES から計算。編集不可なので保存不要
+type InvoiceDraftData = {
+  invoiceId?: string;
+  invoiceDate: string;
+  dueDate: string;
+  selectedProjectId?: string;
+};
 
 // ─── 案件検索用仮データ ───────────────────────────────────────
 const SEARCH_PROJECTS: SearchableProject[] = [
@@ -112,6 +132,97 @@ export default function SingleInvoicePage() {
   const [bank,         setBank]         = useState<BankInfo>(DEFAULT_BANK);
   const [saveMsg,      setSaveMsg]      = useState("");
 
+  // ── 自動下書き保存関連 state ──────────────────────────────────
+  const [isDemoMode,         setIsDemoMode]         = useState<boolean | null>(null);
+  const [showRestoreBanner,  setShowRestoreBanner]  = useState(false);
+  const [currentInvoiceId,   setCurrentInvoiceId]   = useState<string | null>(null);
+  const [invoicePdfSaveStatus, setInvoicePdfSaveStatus] = useState<null | 'saving' | 'saved' | 'failed'>(null);
+
+  const draftData = useMemo<InvoiceDraftData>(() => ({
+    invoiceId: currentInvoiceId ?? undefined,
+    invoiceDate,
+    dueDate,
+    selectedProjectId: selectedProject?.id,
+  }), [currentInvoiceId, invoiceDate, dueDate, selectedProject?.id]);
+
+  const autoDraftEnabled = isDemoMode === false;
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<InvoiceDraftData>(
+    INVOICE_DRAFT_KEY, 'invoice', 'new', draftData,
+    { enabled: autoDraftEnabled, debounceMs: 800 },
+  );
+
+  // デモモード検知・下書き復元バナー・beforeunload
+  useEffect(() => { setIsDemoMode(getTestMode() === 'demo'); }, []);
+
+  useEffect(() => {
+    if (isDemoMode !== false || !restoredDraft) return;
+    setShowRestoreBanner(true);
+  }, [isDemoMode, restoredDraft]);
+
+  useEffect(() => {
+    if (!autoDraftEnabled) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'dirty') { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveStatus, autoDraftEnabled]);
+
+  function handleRestoreInvoiceDraft() {
+    if (!restoredDraft) return;
+    const d = restoredDraft.data;
+    if (d.invoiceId) setCurrentInvoiceId(d.invoiceId);
+    setInvoiceDate(d.invoiceDate);
+    setDueDate(d.dueDate);
+    if (d.selectedProjectId) {
+      const found = SEARCH_PROJECTS.find((p) => p.id === d.selectedProjectId);
+      if (found) setSelectedProject(found);
+    }
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardInvoiceDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
+
+  async function saveBeforeInvoicePdf(): Promise<boolean> {
+    if (invoicePdfSaveStatus === 'saving' || isPdfLoading) return false;
+    setInvoicePdfSaveStatus('saving');
+    try {
+      const now = new Date().toLocaleString('ja-JP');
+      const id = currentInvoiceId ?? `inv-${Date.now()}`;
+      const existing = currentInvoiceId
+        ? getSavedInvoices().find((e) => e.id === currentInvoiceId)
+        : null;
+      upsertInvoice({
+        id,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        invoiceNo: existing?.invoiceNo ?? INVOICE_NO,
+        projectId: selectedProject?.id,
+        projectName: displayProject.projectName,
+        clientName: displayProject.clientName,
+        invoiceDate,
+        dueDate,
+        subtotal: subtotalSum,
+        tax: taxSum,
+        total: totalWithTax,
+        status: 'draft',
+        memo: note,
+      });
+      setCurrentInvoiceId(id);
+      clearDraft();
+      setInvoicePdfSaveStatus('saved');
+      return true;
+    } catch (err) {
+      console.error('請求書PDF発行前保存エラー:', err);
+      alert('保存に失敗しました。PDFは発行していません。入力内容は下書きとして残っています。');
+      setInvoicePdfSaveStatus('failed');
+      return false;
+    }
+  }
+
   // 事業者設定を localStorage から読み込む
   useEffect(() => {
     try {
@@ -165,9 +276,11 @@ export default function SingleInvoicePage() {
   };
   const displayClientName = displayProject.clientName + " 御中";
 
-  // PDF 生成
+  // PDF 生成（発行前に本保存）
   async function handlePDF() {
-    if (isPdfLoading) return;
+    if (isPdfLoading || invoicePdfSaveStatus === 'saving') return;
+    const saved = await saveBeforeInvoicePdf();
+    if (!saved) return;
     setIsPdfLoading(true);
     try {
       const { pdf } = await import("@react-pdf/renderer");
@@ -210,6 +323,7 @@ export default function SingleInvoicePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setInvoicePdfSaveStatus(null);
     } catch (err) {
       console.error("PDF生成エラー:", err);
       alert("PDFの生成に失敗しました。ネットワーク接続を確認してから再試行してください。");
@@ -229,6 +343,50 @@ export default function SingleInvoicePage() {
           <h1 className="text-xl font-bold text-stone-800">単体請求書作成</h1>
           <p className="mt-1 text-sm text-stone-500">この案件だけの請求書を作成します。</p>
         </header>
+
+        {/* ── 自動下書き保存ステータスバー ── */}
+        {saveStatus !== 'idle' && (
+          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
+            saveStatus === 'error'  ? 'bg-red-50 text-red-600 ring-1 ring-red-200' :
+            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
+            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
+            'bg-green-50 text-green-600 ring-1 ring-green-200'
+          }`}>
+            <span className="shrink-0">
+              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
+            </span>
+            <span>
+              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
+               saveStatus === 'saving' ? '下書き保存中...' :
+               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
+               '保存エラー'}
+            </span>
+          </div>
+        )}
+
+        {/* ── 下書き復元バナー ── */}
+        {showRestoreBanner && restoredDraft && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50 shadow-sm">
+            <div className="border-b border-amber-200 bg-amber-100 px-4 py-2.5">
+              <p className="text-sm font-bold text-amber-800">前回入力途中の下書きがあります</p>
+            </div>
+            <div className="space-y-2 px-4 py-3">
+              <p className="text-xs text-amber-700">
+                最終更新：{new Date(restoredDraft.updatedAt).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleRestoreInvoiceDraft}
+                  className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white active:opacity-80">
+                  下書きを復元する
+                </button>
+                <button type="button" onClick={handleDiscardInvoiceDraft}
+                  className="flex-1 rounded-xl border border-amber-300 bg-white py-2.5 text-sm font-bold text-amber-700 active:opacity-80">
+                  破棄して新しく作る
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
 
@@ -372,7 +530,18 @@ export default function SingleInvoicePage() {
 
           {/* ── 4. ボタン4種類 ── */}
           <div className="space-y-3 pb-8 pt-1">
-            <button type="button" onClick={handlePDF} disabled={isPdfLoading}
+            {invoicePdfSaveStatus === 'saving' && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                <p className="text-sm font-bold text-blue-700">PDF発行前に請求書を保存しています...</p>
+              </div>
+            )}
+            {invoicePdfSaveStatus === 'failed' && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-bold text-red-700">保存に失敗しました。PDFは発行していません。</p>
+              </div>
+            )}
+            <button type="button" onClick={handlePDF}
+              disabled={isPdfLoading || invoicePdfSaveStatus === 'saving'}
               className="w-full rounded-2xl bg-[#8B4A3C] py-3.5 text-white shadow-sm active:opacity-80 disabled:opacity-50">
               <span className="block text-base font-bold">
                 {isPdfLoading ? "生成中..." : "請求書PDFを作る"}

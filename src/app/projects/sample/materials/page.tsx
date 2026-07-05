@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
 import {
@@ -10,6 +10,8 @@ import {
   deleteOrderDraft,
   type OrderDraft,
 } from "@/app/utils/orderDrafts";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -71,6 +73,16 @@ const SEARCH_PROJECTS: SearchableProject[] = [
     sekouDate: "2026-06-20", status: "材料手配中",
   },
 ];
+
+// ─── 自動下書き保存設定 ──────────────────────────────────────
+const MATERIAL_DRAFT_KEY = draftKey('material-order', 'new');
+
+type MaterialDraftData = {
+  orderId?: string;
+  selectedProjectId?: string;
+  rows: MaterialRow[];
+  nextId: number;
+};
 
 // ─── ステータス色 ─────────────────────────────────────────────
 const MATERIAL_STATUS_STYLE: Record<MaterialStatus, string> = {
@@ -292,6 +304,31 @@ export default function MaterialsPage() {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editOrderForm,  setEditOrderForm]  = useState<Partial<OrderDraft>>({});
 
+  // ── 自動下書き保存関連 state ──────────────────────────────────
+  const [currentOrderId,    setCurrentOrderId]   = useState<string | null>(null);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [selectedProject,   setSelectedProject]  = useState<SearchableProject | null>(null);
+
+  // セッション内で一貫した orderId を持つための ref
+  // currentOrderId が null（新規セッション）の場合にフォールバックとして使用する
+  // 下書き復元時は handleRestoreMaterialDraft() で currentOrderId に引き継がれる
+  const stableOrderIdRef = useRef<string>(`mat-${Date.now()}`);
+
+  const draftData = useMemo<MaterialDraftData>(() => ({
+    // currentOrderId があれば使用（復元済み）、なければセッション固有の安定IDを使用
+    orderId: currentOrderId ?? stableOrderIdRef.current,
+    selectedProjectId: selectedProject?.id,
+    rows,
+    nextId,
+  }), [currentOrderId, selectedProject?.id, rows, nextId]);
+
+  // demo モードでは自動下書き保存を無効化
+  const autoDraftEnabled = !isDemo;
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<MaterialDraftData>(
+    MATERIAL_DRAFT_KEY, 'material-order', 'new', draftData,
+    { enabled: autoDraftEnabled, debounceMs: 800 },
+  );
+
   // demo モードだけサンプル行をセット
   useEffect(() => {
     const demo = getTestMode() === "demo";
@@ -302,6 +339,42 @@ export default function MaterialsPage() {
     }
     setOrderDrafts(getOrderDrafts());
   }, []);
+
+  // 下書き復元バナー（非デモ・実データあり・下書きあり の場合）
+  useEffect(() => {
+    if (isDemo || !restoredDraft) return;
+    const hasContent = restoredDraft.data.rows.some((r) => r.itemName.trim() !== '' || r.location1.trim() !== '');
+    if (!hasContent) return;
+    setShowRestoreBanner(true);
+  }, [isDemo, restoredDraft]);
+
+  // beforeunload 警告
+  useEffect(() => {
+    if (!autoDraftEnabled) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'dirty' && rows.length > 0) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveStatus, rows.length, autoDraftEnabled]);
+
+  function handleRestoreMaterialDraft() {
+    if (!restoredDraft) return;
+    const d = restoredDraft.data;
+    if (d.orderId) setCurrentOrderId(d.orderId);
+    setRows(d.rows);
+    setNextId(d.nextId);
+    if (d.selectedProjectId) {
+      const found = SEARCH_PROJECTS.find((p) => p.id === d.selectedProjectId);
+      if (found) setSelectedProject(found);
+    }
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardMaterialDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
 
   function reloadOrderDrafts() {
     setOrderDrafts(getOrderDrafts());
@@ -340,12 +413,11 @@ export default function MaterialsPage() {
     setEditOrderForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // 案件検索
+  // 案件検索（selectedProject は上のauto-draft stateで定義済みのため重複を除去）
   const [searchDate,    setSearchDate]    = useState("");
   const [searchProject, setSearchProject] = useState("");
   const [searchClient,  setSearchClient]  = useState("");
   const [hasSearched,   setHasSearched]   = useState(false);
-  const [selectedProject, setSelectedProject] = useState<SearchableProject | null>(null);
   const [infoMsg, setInfoMsg] = useState("");
 
   function updateRow(id: number, updates: Partial<MaterialRow>) {
@@ -426,6 +498,50 @@ export default function MaterialsPage() {
             見積数量から、ロス率を含めた発注数量と材料費を確認します。
           </p>
         </header>
+
+        {/* ── 自動下書き保存ステータスバー ── */}
+        {saveStatus !== 'idle' && !isDemo && (
+          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
+            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
+            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
+            saveStatus === 'saved'  ? 'bg-green-50 text-green-600 ring-1 ring-green-200' :
+            'bg-red-50 text-red-600 ring-1 ring-red-200'
+          }`}>
+            <span className="shrink-0">
+              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
+            </span>
+            <span>
+              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
+               saveStatus === 'saving' ? '下書き保存中...' :
+               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
+               '保存エラー'}
+            </span>
+          </div>
+        )}
+
+        {/* ── 下書き復元バナー ── */}
+        {showRestoreBanner && restoredDraft && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-teal-300 bg-teal-50 shadow-sm">
+            <div className="border-b border-teal-200 bg-teal-100 px-4 py-2.5">
+              <p className="text-sm font-bold text-teal-800">前回入力途中の下書きがあります</p>
+            </div>
+            <div className="space-y-2 px-4 py-3">
+              <p className="text-xs text-teal-700">
+                最終更新：{new Date(restoredDraft.updatedAt).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleRestoreMaterialDraft}
+                  className="flex-1 rounded-xl bg-teal-600 py-2.5 text-sm font-bold text-white active:opacity-80">
+                  下書きを復元する
+                </button>
+                <button type="button" onClick={handleDiscardMaterialDraft}
+                  className="flex-1 rounded-xl border border-teal-300 bg-white py-2.5 text-sm font-bold text-teal-700 active:opacity-80">
+                  破棄して新しく作る
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── 案件検索 ── */}
         <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm space-y-3">

@@ -2,10 +2,29 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getCustomers, type Customer } from "@/app/utils/customers";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
 
+// 2つのキーの役割：
+//   DRAFT_PROJECT_KEY       → 「下書き保存」ボタン押下時の手動保存先（旧来のキー。後方互換のため維持）
+//                              形式は独自 JSON（koujiTypeLabel など結合値も含む）
+//   PROJECT_AUTO_DRAFT_KEY  → useAutoDraft による自動下書き保存先（新規キー）
+//                              手動保存が完了したら clearDraft() で削除する
 const DRAFT_PROJECT_KEY = "genba_jimu_new_project_draft";
+const PROJECT_AUTO_DRAFT_KEY = draftKey('project', 'new');
+
+type ProjectDraftData = {
+  projectId?: string;
+  form: {
+    projectName: string; clientName: string; contactName: string; address: string;
+    koujiTypes: string[]; koujiTypeOther: string; koujiContents: string[];
+    koujiContentCustom: string; koujiContentMemo: string; scaleNote: string;
+    parkingNote: string; sekouDate: string; mitsumoriState: string; seikyuuState: string; memo: string;
+  };
+  selectedCustomerId: string;
+};
 
 // ─── 工事種別（複数選択） ────────────────────────────────────────
 const KOUJI_TYPE_OPTIONS = [
@@ -54,6 +73,10 @@ export default function NewProjectPage() {
   // 保存メッセージ
   const [savedMsg, setSavedMsg] = useState("");
 
+  // ── 自動下書き保存関連 state ──────────────────────────────────
+  const [currentProjectId,  setCurrentProjectId]  = useState<string | null>(null);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+
   // フォーム
   const [form, setForm] = useState({
     projectName:        "",
@@ -73,9 +96,52 @@ export default function NewProjectPage() {
     memo:               "",
   });
 
+  const draftData = useMemo<ProjectDraftData>(() => ({
+    projectId: currentProjectId ?? undefined,
+    form,
+    selectedCustomerId,
+  }), [currentProjectId, form, selectedCustomerId]);
+
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<ProjectDraftData>(
+    PROJECT_AUTO_DRAFT_KEY, 'project', 'new', draftData,
+    { enabled: true, debounceMs: 800 },
+  );
+
   useEffect(() => {
     setCustomers(getCustomers());
   }, []);
+
+  // 下書き復元バナー（初回のみ）
+  useEffect(() => {
+    if (!restoredDraft) return;
+    const hasContent = restoredDraft.data.form.projectName.trim() !== '' ||
+      restoredDraft.data.form.clientName.trim() !== '';
+    if (!hasContent) return;
+    setShowRestoreBanner(true);
+  }, [restoredDraft]);
+
+  // beforeunload 警告
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'dirty') { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveStatus]);
+
+  function handleRestoreProjectDraft() {
+    if (!restoredDraft) return;
+    const d = restoredDraft.data;
+    if (d.projectId) setCurrentProjectId(d.projectId);
+    setForm(d.form);
+    setSelectedCustomerId(d.selectedCustomerId);
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardProjectDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
 
   // ─── テキスト系フィールド ────────────────────────────────────────
   function handleChange(
@@ -131,13 +197,17 @@ export default function NewProjectPage() {
   // ─── 下書き保存 ─────────────────────────────────────────────────
   function handleDraftSave() {
     try {
+      const id = currentProjectId ?? `proj-${Date.now()}`;
       const draft = {
         ...form,
+        projectId:         id,
         koujiTypeLabel:    koujiTypeLabel(),
         koujiContentLabel: koujiContentLabel(),
         savedAt:           new Date().toLocaleString("ja-JP"),
       };
       localStorage.setItem(DRAFT_PROJECT_KEY, JSON.stringify(draft));
+      setCurrentProjectId(id);
+      clearDraft(); // 自動下書きを削除（手動保存完了）
       setSavedMsg("案件を下書き保存しました。");
       setTimeout(() => setSavedMsg(""), 4000);
     } catch {
@@ -159,6 +229,50 @@ export default function NewProjectPage() {
             現場名・工事内容・予定を登録して、見積と請求の入口を作ります。
           </p>
         </header>
+
+        {/* ── 自動下書き保存ステータスバー ── */}
+        {saveStatus !== 'idle' && (
+          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
+            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
+            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
+            saveStatus === 'saved'  ? 'bg-green-50 text-green-600 ring-1 ring-green-200' :
+            'bg-red-50 text-red-600 ring-1 ring-red-200'
+          }`}>
+            <span className="shrink-0">
+              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
+            </span>
+            <span>
+              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
+               saveStatus === 'saving' ? '下書き保存中...' :
+               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
+               '保存エラー'}
+            </span>
+          </div>
+        )}
+
+        {/* ── 下書き復元バナー ── */}
+        {showRestoreBanner && restoredDraft && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50 shadow-sm">
+            <div className="border-b border-amber-200 bg-amber-100 px-4 py-2.5">
+              <p className="text-sm font-bold text-amber-800">前回入力途中の下書きがあります</p>
+            </div>
+            <div className="space-y-2 px-4 py-3">
+              <p className="text-xs text-amber-700">
+                最終更新：{new Date(restoredDraft.updatedAt).toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'short' })}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleRestoreProjectDraft}
+                  className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white active:opacity-80">
+                  下書きを復元する
+                </button>
+                <button type="button" onClick={handleDiscardProjectDraft}
+                  className="flex-1 rounded-xl border border-amber-300 bg-white py-2.5 text-sm font-bold text-amber-700 active:opacity-80">
+                  破棄して新しく作る
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
 

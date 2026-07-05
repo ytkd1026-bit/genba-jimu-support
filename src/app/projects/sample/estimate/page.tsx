@@ -181,6 +181,7 @@ const costLbl = "mb-0.5 block text-xs leading-[1.35] text-amber-700";
 const ESTIMATE_DRAFT_KEY = draftKey('estimate', 'new');
 
 type EstimateDraftData = {
+  estimateId?: string; // リロード後も同じ見積に上書き保存するためIDを含める
   lines: LineItem[];
   costs: CostItem[];
   nextLineId: number;
@@ -379,9 +380,11 @@ export default function EstimatePage() {
   const [currentEstimateId, setCurrentEstimateId] = useState<string | null>(null);
 
   // 保存対象データ（useMemo で内容変化のみ追跡）
+  // estimateId を含めることでリロード後もドラフト復元時に同じIDで上書き保存できる
   const draftData = useMemo<EstimateDraftData>(() => ({
+    estimateId: currentEstimateId ?? undefined,
     lines, costs, nextLineId, nextCostId, submitTo, estProjectName, estAddress,
-  }), [lines, costs, nextLineId, nextCostId, submitTo, estProjectName, estAddress]);
+  }), [currentEstimateId, lines, costs, nextLineId, nextCostId, submitTo, estProjectName, estAddress]);
 
   const autoDraftEnabled = isDemoMode === false;
   const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<EstimateDraftData>(
@@ -491,6 +494,8 @@ export default function EstimatePage() {
   function handleRestoreDraft() {
     if (!restoredDraft) return;
     const d = restoredDraft.data;
+    // 下書きに estimateId が含まれている場合は復元してリロード後も同じIDで上書き保存する
+    if (d.estimateId) setCurrentEstimateId(d.estimateId);
     setLines(d.lines);
     setCosts(d.costs);
     setNextLineId(d.nextLineId);
