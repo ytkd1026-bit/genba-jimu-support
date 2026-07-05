@@ -11,10 +11,13 @@ import { upsertEstimate, setSelectedEstimateId, getSavedEstimates, STATUS_LABELS
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
 import { draftKey } from "@/app/utils/draftStorage";
-import { useAutoDraft, type SaveStatus } from "@/hooks/useAutoDraft";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
-const PDF_CLIENT_NAME   = "△△工務店";
+// 注：PDFフォント（Noto Sans JP）は△□◇等の記号グリフを収録していないため、
+//     プレースホルダー文言には「〇〇」を使用する（文字化け防止）
+const PDF_CLIENT_NAME   = "〇〇工務店";
 const PDF_PROJECT_NAME  = "〇〇マンション クロス貼替";
 const PDF_WORK_CONTENT  = "洋室クロス貼替・洗面所CF貼替";
 const PDF_ESTIMATE_DATE = "2026-05-30";
@@ -44,14 +47,14 @@ const EST_STATUS_STYLE: Record<string, string> = {
 const EST_SEARCH_PROJECTS: EstSearchProject[] = [
   {
     id: "ep1", date: "2026/06/03",
-    projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",
+    projectName: "〇〇マンション クロス貼替", clientName: "〇〇工務店",
     siteAddress: "大阪府堺市〇〇区", workContent: "洋室クロス貼替・洗面所CF貼替",
     sekouDate: "2026/06/03", status: "見積中",
   },
   {
     id: "ep2", date: "2026/06/05",
-    projectName: "□□店舗 床補修", clientName: "□□リフォーム",
-    siteAddress: "大阪府大阪市□□区", workContent: "店舗床補修",
+    projectName: "〇〇店舗 床補修", clientName: "〇〇リフォーム",
+    siteAddress: "大阪府大阪市〇〇区", workContent: "店舗床補修",
     sekouDate: "2026/06/05", status: "下書き",
   },
 ];
@@ -190,19 +193,6 @@ type EstimateDraftData = {
   estProjectName: string;
   estAddress: string;
 };
-
-function saveBadge(status: SaveStatus, savedAt: Date | null): { label: string; cls: string } {
-  switch (status) {
-    case 'dirty':  return { label: '入力中（自動保存します）',  cls: 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' };
-    case 'saving': return { label: '下書き保存中...',           cls: 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' };
-    case 'saved':  return {
-      label: `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}`,
-      cls: 'bg-green-50 text-green-600 ring-1 ring-green-200',
-    };
-    case 'error':  return { label: '保存エラー',               cls: 'bg-red-50 text-red-600 ring-1 ring-red-200' };
-    default:       return { label: '',                          cls: '' };
-  }
-}
 
 // ─── 見積明細カード（白） ─────────────────────────────────────
 function LineCard({ line, index, canDelete, onUpdate, onDelete, onDuplicate }: {
@@ -729,20 +719,20 @@ export default function EstimatePage() {
           </p>
         </header>
 
+        {/* ── この画面でできること ── */}
+        <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[#8B4A3C]">
+            <span>💡</span>この画面でできること
+          </p>
+          <p className="text-sm leading-relaxed text-stone-700">
+            この画面では、見積明細を入力してPDFを作れます。<br />
+            入力内容は自動で下書き保存されます。<br />
+            PDFを作る前に見積データを保存します。
+          </p>
+        </div>
+
         {/* ── 自動下書き保存ステータスバー ── */}
-        {saveStatus !== 'idle' && (() => {
-          const { label, cls } = saveBadge(saveStatus, savedAt);
-          return (
-            <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${cls}`}>
-              <span className="shrink-0">
-                {saveStatus === 'dirty'  ? '✏️' :
-                 saveStatus === 'saving' ? '⏳' :
-                 saveStatus === 'saved'  ? '✓' : '⚠️'}
-              </span>
-              <span>{label}</span>
-            </div>
-          );
-        })()}
+        <SaveStatusBar status={saveStatus} savedAt={savedAt} />
 
         {/* ── 下書き復元バナー ── */}
         {showRestoreBanner && restoredDraft && (

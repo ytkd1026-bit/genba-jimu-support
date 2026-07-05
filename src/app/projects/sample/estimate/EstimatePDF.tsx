@@ -3,17 +3,17 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// 日本語フォント（jsDelivr CDN 経由）
-// 本番環境では /public/fonts/ にローカルコピーを配置することを推奨
+// フォントは /public/fonts にローカル配置した完全版Noto Sans JPを使用する。
+// 旧CDN（noto-sans-japanese@1.0.0）はグリフ収録が不完全で「△」等の記号が文字化けしていたため置き換えた。
 Font.register({
   family: 'NotoSansJP',
   fonts: [
     {
-      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Regular.woff2',
+      src: '/fonts/NotoSansJP-Regular.ttf',
       fontWeight: 400,
     },
     {
-      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Bold.woff2',
+      src: '/fonts/NotoSansJP-Bold.ttf',
       fontWeight: 700,
     },
   ],
@@ -317,7 +317,7 @@ const s = StyleSheet.create({
 });
 
 function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
-  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayClient  = clientName  ?? '〇〇工務店 御中';
   const displayProject = projectName ?? '〇〇マンション クロス貼替';
   const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
@@ -576,7 +576,7 @@ const o = StyleSheet.create({
 
 // ─── 見積書兼注文書 PDF コンポーネント ───────────────────────
 function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
-  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayClient  = clientName  ?? '〇〇工務店 御中';
   const displayProject = projectName ?? '〇〇マンション クロス貼替';
   const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
@@ -974,7 +974,7 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
     return { name, sales, cost, profit, margin };
   });
 
-  const displayClient  = clientName  ?? '△△工務店 御中';
+  const displayClient  = clientName  ?? '〇〇工務店 御中';
   const displayProject = projectName ?? '〇〇マンション クロス貼替';
   const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (

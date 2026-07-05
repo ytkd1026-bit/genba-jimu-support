@@ -9,8 +9,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
 
-// ─── 主要ボタン ───────────────────────────────────────────────
-const mainButtons = [
+// ─── よく使う作業（作業名で案内） ─────────────────────────────
+const primaryActions = [
+  { title: "新しい案件を登録する", desc: "現場名・元請・住所を登録します。",       icon: "📝", href: "/projects/new" },
+  { title: "見積を作る",           desc: "工事内容を入力してPDFを作ります。",     icon: "📋", href: "/projects/sample/estimate" },
+  { title: "請求書を作る",         desc: "完了した案件の請求書を作ります。",       icon: "📄", href: "/projects/sample/single-invoice" },
+  { title: "未請求を確認する",     desc: "請求漏れがないか確認します。",           icon: "⚠️", href: "/invoices/unbilled" },
+  { title: "材料を計算する",       desc: "クロス・CF・FTなどの材料を拾います。",   icon: "📐", href: "/projects/sample/materials" },
+];
+
+// ─── メニューから探す（従来の機能別入口。ここからも同じ画面へ行ける） ─
+const menuButtons = [
   { label: "案件検索・登録",   desc: "案件を探す・新しく作る",   icon: "🔍", href: "/projects/register" },
   { label: "請求書関係",       desc: "未請求確認・請求書作成",   icon: "📄", href: "/invoices" },
   { label: "見積・注文書関係", desc: "見積書・注文書を作成",     icon: "📝", href: "/estimates" },
@@ -86,17 +95,23 @@ export default function Home() {
           <p className="mt-0.5 text-sm text-stone-500">見積・材料・請求・予定を、スマホでひとまとめ。</p>
         </header>
 
-        {/* メインボタン 2×3 */}
-        <section className="mb-3 grid grid-cols-2 gap-2.5">
-          {mainButtons.map((btn) => (
+        {/* よく使う作業（作業名で案内） */}
+        <section className="mb-3 space-y-2">
+          <h2 className="px-1 text-xs font-bold text-stone-400">よく使う作業</h2>
+          {primaryActions.map((action) => (
             <Link
-              key={btn.label}
-              href={btn.href}
-              className="flex min-h-[76px] w-full flex-col items-center justify-center gap-0.5 rounded-2xl bg-[#8B4A3C] px-3 py-3 text-white shadow-sm active:opacity-80"
+              key={action.title}
+              href={action.href}
+              className="flex items-center gap-3 rounded-2xl bg-[#8B4A3C] px-4 py-3.5 text-white shadow-sm active:opacity-80"
             >
-              <span className="text-2xl leading-none">{btn.icon}</span>
-              <span className="text-sm font-bold">{btn.label}</span>
-              <span className="text-center text-xs text-amber-100 leading-tight">{btn.desc}</span>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">
+                {action.icon}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold">{action.title}</p>
+                <p className="mt-0.5 text-xs leading-snug text-amber-100">{action.desc}</p>
+              </div>
+              <span className="ml-auto shrink-0 text-white/50">›</span>
             </Link>
           ))}
         </section>
@@ -129,6 +144,24 @@ export default function Home() {
           </div>
           <span className="text-stone-300 text-sm">›</span>
         </Link>
+
+        {/* メニューから探す（機能別の入口。よく使う作業と同じ画面へ行けます） */}
+        <section className="mb-3">
+          <h2 className="mb-2 px-1 text-xs font-bold text-stone-400">メニューから探す</h2>
+          <div className="grid grid-cols-2 gap-2.5">
+            {menuButtons.map((btn) => (
+              <Link
+                key={btn.label}
+                href={btn.href}
+                className="flex min-h-[76px] w-full flex-col items-center justify-center gap-0.5 rounded-2xl bg-white px-3 py-3 text-stone-700 shadow-sm ring-1 ring-stone-100 active:opacity-80"
+              >
+                <span className="text-2xl leading-none">{btn.icon}</span>
+                <span className="text-sm font-bold">{btn.label}</span>
+                <span className="text-center text-xs text-stone-400 leading-tight">{btn.desc}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {/* 情報カード一覧 */}
         <section className="space-y-2.5">

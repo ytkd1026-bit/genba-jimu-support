@@ -12,6 +12,8 @@ import {
 } from "@/app/utils/orderDrafts";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
+import { getSavedMaterialOrders, upsertMaterialOrder } from "@/app/utils/savedMaterialOrders";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type MaterialRow = {
@@ -376,6 +378,38 @@ export default function MaterialsPage() {
     setShowRestoreBanner(false);
   }
 
+  // ─── 材料計算行の本保存（savedMaterialOrders） ─────────────────
+  // 既存IDがある場合は同じIDで上書き保存する（重複登録防止）
+  function handleSaveMaterialOrder() {
+    const hasContent = rows.some((r) => r.itemName.trim() !== '' || r.location1.trim() !== '');
+    if (rows.length === 0 || !hasContent) {
+      alert('材料行を1件以上入力してから保存してください。');
+      return;
+    }
+    try {
+      const now = new Date().toLocaleString('ja-JP');
+      const id = currentOrderId ?? stableOrderIdRef.current;
+      const existing = getSavedMaterialOrders().find((o) => o.id === id);
+      upsertMaterialOrder({
+        id,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        projectId: selectedProject?.id,
+        projectName: displayProject.projectName,
+        rows,
+        totalMaterialCost,
+      });
+      setCurrentOrderId(id);
+      clearDraft(); // 自動下書きを削除（本保存済みのため不要）
+      setShowSavedOrderLink(true);
+      setInfoMsg('材料計算を保存しました。');
+      setTimeout(() => setInfoMsg(''), 4000);
+    } catch {
+      setShowSavedOrderLink(false);
+      setInfoMsg('保存に失敗しました。');
+    }
+  }
+
   function reloadOrderDrafts() {
     setOrderDrafts(getOrderDrafts());
   }
@@ -419,6 +453,7 @@ export default function MaterialsPage() {
   const [searchClient,  setSearchClient]  = useState("");
   const [hasSearched,   setHasSearched]   = useState(false);
   const [infoMsg, setInfoMsg] = useState("");
+  const [showSavedOrderLink, setShowSavedOrderLink] = useState(false);
 
   function updateRow(id: number, updates: Partial<MaterialRow>) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...updates } : r));
@@ -499,25 +534,20 @@ export default function MaterialsPage() {
           </p>
         </header>
 
+        {/* ── この画面でできること ── */}
+        <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[#8B4A3C]">
+            <span>💡</span>この画面でできること
+          </p>
+          <p className="text-sm leading-relaxed text-stone-700">
+            この画面では、材料の数量を計算できます。<br />
+            入力途中の内容は自動で下書き保存されます。<br />
+            「材料計算を保存」を押すと、保存済み材料計算一覧に登録されます。
+          </p>
+        </div>
+
         {/* ── 自動下書き保存ステータスバー ── */}
-        {saveStatus !== 'idle' && !isDemo && (
-          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
-            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
-            saveStatus === 'saved'  ? 'bg-green-50 text-green-600 ring-1 ring-green-200' :
-            'bg-red-50 text-red-600 ring-1 ring-red-200'
-          }`}>
-            <span className="shrink-0">
-              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
-            </span>
-            <span>
-              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
-               saveStatus === 'saving' ? '下書き保存中...' :
-               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
-               '保存エラー'}
-            </span>
-          </div>
-        )}
+        {!isDemo && <SaveStatusBar status={saveStatus} savedAt={savedAt} />}
 
         {/* ── 下書き復元バナー ── */}
         {showRestoreBanner && restoredDraft && (
@@ -958,7 +988,7 @@ export default function MaterialsPage() {
           <div className="bg-[#fff8f5] px-4 pb-4">
             <button
               type="button"
-              onClick={() => { setInfoMsg("材料発注PDF出力は次工程で実装します。"); setTimeout(() => setInfoMsg(""), 4000); }}
+              onClick={() => { setShowSavedOrderLink(false); setInfoMsg("材料発注PDF出力は次工程で実装します。"); setTimeout(() => setInfoMsg(""), 4000); }}
               className="w-full rounded-2xl border-2 border-[#8B4A3C] bg-white py-3.5 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
             >
               材料発注PDFを作る
@@ -988,14 +1018,19 @@ export default function MaterialsPage() {
           {infoMsg && (
             <div className="rounded-xl bg-stone-50 px-4 py-3 ring-1 ring-stone-200">
               <p className="text-sm text-stone-600">{infoMsg}</p>
+              {showSavedOrderLink && (
+                <Link href="/materials/saved" className="mt-1 block text-xs text-[#8B4A3C] underline underline-offset-2">
+                  保存済み材料計算一覧を見る →
+                </Link>
+              )}
             </div>
           )}
           <button
             type="button"
-            onClick={() => { setInfoMsg("材料計算を仮保存しました。次工程で保存機能を追加します。"); setTimeout(() => setInfoMsg(""), 4000); }}
+            onClick={handleSaveMaterialOrder}
             className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
           >
-            仮保存
+            材料計算を保存
           </button>
           <Link
             href="/projects/sample"

@@ -4,15 +4,17 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
+// フォントは /public/fonts にローカル配置した完全版Noto Sans JPを使用する。
+// 旧CDN（noto-sans-japanese@1.0.0）はグリフ収録が不完全で「△」等の記号が文字化けしていたため置き換えた。
 Font.register({
   family: 'NotoSansJP',
   fonts: [
     {
-      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Regular.woff2',
+      src: '/fonts/NotoSansJP-Regular.ttf',
       fontWeight: 400,
     },
     {
-      src: 'https://cdn.jsdelivr.net/npm/noto-sans-japanese@1.0.0/fonts/NotoSansJP-Bold.woff2',
+      src: '/fonts/NotoSansJP-Bold.ttf',
       fontWeight: 700,
     },
   ],

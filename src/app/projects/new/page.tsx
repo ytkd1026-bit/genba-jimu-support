@@ -6,6 +6,8 @@ import { useState, useEffect, useMemo } from "react";
 import { getCustomers, type Customer } from "@/app/utils/customers";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
+import { getSavedProjects, upsertProject } from "@/app/utils/savedProjects";
 
 // 2つのキーの役割：
 //   DRAFT_PROJECT_KEY       → 「下書き保存」ボタン押下時の手動保存先（旧来のキー。後方互換のため維持）
@@ -72,6 +74,7 @@ export default function NewProjectPage() {
 
   // 保存メッセージ
   const [savedMsg, setSavedMsg] = useState("");
+  const [showSavedLink, setShowSavedLink] = useState(false);
 
   // ── 自動下書き保存関連 state ──────────────────────────────────
   const [currentProjectId,  setCurrentProjectId]  = useState<string | null>(null);
@@ -208,9 +211,55 @@ export default function NewProjectPage() {
       localStorage.setItem(DRAFT_PROJECT_KEY, JSON.stringify(draft));
       setCurrentProjectId(id);
       clearDraft(); // 自動下書きを削除（手動保存完了）
+      setShowSavedLink(false);
       setSavedMsg("案件を下書き保存しました。");
       setTimeout(() => setSavedMsg(""), 4000);
     } catch {
+      setSavedMsg("保存に失敗しました。");
+    }
+  }
+
+  // ─── 案件として本保存（savedProjects） ─────────────────────────
+  // 既存IDがある場合は同じIDで上書き保存する（重複登録防止）
+  function handleSaveProject() {
+    if (!form.projectName.trim()) {
+      alert("案件名を入力してから保存してください。");
+      return;
+    }
+    try {
+      const now = new Date().toLocaleString("ja-JP");
+      const id = currentProjectId ?? `proj-${Date.now()}`;
+      const existing = currentProjectId
+        ? getSavedProjects().find((p) => p.id === currentProjectId)
+        : null;
+      upsertProject({
+        id,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        projectName:        form.projectName,
+        clientName:         form.clientName,
+        contactName:        form.contactName,
+        address:            form.address,
+        koujiTypes:         form.koujiTypes,
+        koujiTypeOther:     form.koujiTypeOther,
+        koujiContents:      form.koujiContents,
+        koujiContentCustom: form.koujiContentCustom,
+        koujiContentMemo:   form.koujiContentMemo,
+        scaleNote:          form.scaleNote,
+        parkingNote:        form.parkingNote,
+        sekouDate:          form.sekouDate,
+        mitsumoriState:     form.mitsumoriState,
+        seikyuuState:       form.seikyuuState,
+        memo:               form.memo,
+        selectedCustomerId,
+      });
+      setCurrentProjectId(id);
+      clearDraft(); // 自動下書きを削除（本保存済みのため不要）
+      setShowSavedLink(true);
+      setSavedMsg("案件として保存しました。");
+      setTimeout(() => setSavedMsg(""), 4000);
+    } catch {
+      setShowSavedLink(false);
       setSavedMsg("保存に失敗しました。");
     }
   }
@@ -230,25 +279,20 @@ export default function NewProjectPage() {
           </p>
         </header>
 
+        {/* ── この画面でできること ── */}
+        <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[#8B4A3C]">
+            <span>💡</span>この画面でできること
+          </p>
+          <p className="text-sm leading-relaxed text-stone-700">
+            この画面では、新しい案件情報を登録します。<br />
+            入力途中の内容は自動で下書き保存されます。<br />
+            「案件として保存」を押すと、保存済み案件一覧に登録されます。
+          </p>
+        </div>
+
         {/* ── 自動下書き保存ステータスバー ── */}
-        {saveStatus !== 'idle' && (
-          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
-            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
-            saveStatus === 'saved'  ? 'bg-green-50 text-green-600 ring-1 ring-green-200' :
-            'bg-red-50 text-red-600 ring-1 ring-red-200'
-          }`}>
-            <span className="shrink-0">
-              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
-            </span>
-            <span>
-              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
-               saveStatus === 'saving' ? '下書き保存中...' :
-               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
-               '保存エラー'}
-            </span>
-          </div>
-        )}
+        <SaveStatusBar status={saveStatus} savedAt={savedAt} />
 
         {/* ── 下書き復元バナー ── */}
         {showRestoreBanner && restoredDraft && (
@@ -570,15 +614,28 @@ export default function NewProjectPage() {
           <div className="space-y-3 pb-8 pt-1">
             <button
               type="button"
-              onClick={handleDraftSave}
+              onClick={handleSaveProject}
               className="w-full rounded-2xl bg-[#8B4A3C] py-4 text-base font-bold text-white shadow-sm active:opacity-80"
             >
-              仮保存
+              案件として保存
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDraftSave}
+              className="w-full rounded-2xl border border-stone-300 bg-white py-3 text-sm font-bold text-stone-500 shadow-sm active:opacity-80"
+            >
+              仮保存（下書きのみ）
             </button>
 
             {savedMsg && (
               <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
                 <p className="text-sm font-bold text-green-700">{savedMsg}</p>
+                {showSavedLink && (
+                  <Link href="/projects/saved" className="mt-1 block text-xs text-green-600 underline underline-offset-2">
+                    保存済み案件一覧を見る →
+                  </Link>
+                )}
               </div>
             )}
 

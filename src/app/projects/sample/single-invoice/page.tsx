@@ -15,6 +15,7 @@ import { matchesKeyword } from "@/app/utils/search";
 import { draftKey } from "@/app/utils/draftStorage";
 import { upsertInvoice, getSavedInvoices } from "@/app/utils/savedInvoices";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 const SETTINGS_STORAGE_KEY = "genba_settings";
 
@@ -66,23 +67,25 @@ type InvoiceDraftData = {
 };
 
 // ─── 案件検索用仮データ ───────────────────────────────────────
+// 注：PDFフォント（Noto Sans JP）は△□◇等の記号グリフを収録していないため、
+//     プレースホルダー文言には「〇〇」を使用する（文字化け防止）
 const SEARCH_PROJECTS: SearchableProject[] = [
   {
     id: "sp1", date: "2026/05/20",
-    projectName: "〇〇マンション クロス貼替", clientName: "△△工務店",
+    projectName: "〇〇マンション クロス貼替", clientName: "〇〇工務店",
     siteAddress: "大阪府堺市〇〇区", workContent: "洋室クロス貼替・洗面所CF貼替",
     completedAt: "2026-05-20", totalAmount: 105600,
   },
   {
     id: "sp2", date: "2026/06/05",
-    projectName: "□□店舗 床補修", clientName: "□□リフォーム",
-    siteAddress: "大阪府大阪市□□区", workContent: "店舗床補修",
+    projectName: "〇〇店舗 床補修", clientName: "〇〇リフォーム",
+    siteAddress: "大阪府大阪市〇〇区", workContent: "店舗床補修",
     completedAt: "2026-06-05", totalAmount: 88000,
   },
   {
     id: "sp3", date: "2026/06/10",
-    projectName: "◇◇マンション 雑工事", clientName: "〇〇建設",
-    siteAddress: "大阪府堺市□□区", workContent: "雑工事一式",
+    projectName: "〇〇マンション 雑工事", clientName: "〇〇建設",
+    siteAddress: "大阪府堺市〇〇区", workContent: "雑工事一式",
     completedAt: "2026-06-10", totalAmount: 22000,
   },
 ];
@@ -269,7 +272,7 @@ export default function SingleInvoicePage() {
   // 表示用の案件情報
   const displayProject = selectedProject ?? {
     projectName: "〇〇マンション クロス貼替",
-    clientName:  "△△工務店",
+    clientName:  "〇〇工務店",
     siteAddress: "大阪府堺市〇〇区",
     workContent: "洋室クロス貼替・洗面所CF貼替",
     completedAt: "2026-05-20",
@@ -344,25 +347,20 @@ export default function SingleInvoicePage() {
           <p className="mt-1 text-sm text-stone-500">この案件だけの請求書を作成します。</p>
         </header>
 
+        {/* ── この画面でできること ── */}
+        <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">
+          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-[#8B4A3C]">
+            <span>💡</span>この画面でできること
+          </p>
+          <p className="text-sm leading-relaxed text-stone-700">
+            この画面では、1件の案件に対する請求書を作れます。<br />
+            入力内容は自動で下書き保存されます。<br />
+            PDFを作る前に請求書データを保存します。
+          </p>
+        </div>
+
         {/* ── 自動下書き保存ステータスバー ── */}
-        {saveStatus !== 'idle' && (
-          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-            saveStatus === 'error'  ? 'bg-red-50 text-red-600 ring-1 ring-red-200' :
-            saveStatus === 'dirty'  ? 'bg-stone-50 text-stone-400 ring-1 ring-stone-200' :
-            saveStatus === 'saving' ? 'bg-blue-50 text-blue-500 ring-1 ring-blue-200' :
-            'bg-green-50 text-green-600 ring-1 ring-green-200'
-          }`}>
-            <span className="shrink-0">
-              {saveStatus === 'dirty' ? '✏️' : saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : '⚠️'}
-            </span>
-            <span>
-              {saveStatus === 'dirty'  ? '入力中（自動保存します）' :
-               saveStatus === 'saving' ? '下書き保存中...' :
-               saveStatus === 'saved'  ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : ''}` :
-               '保存エラー'}
-            </span>
-          </div>
-        )}
+        <SaveStatusBar status={saveStatus} savedAt={savedAt} />
 
         {/* ── 下書き復元バナー ── */}
         {showRestoreBanner && restoredDraft && (
