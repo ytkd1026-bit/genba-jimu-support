@@ -1,37 +1,25 @@
 // 見積書PDF ドキュメントコンポーネント
 // 提出用のみ — 原価・粗利・利益率は一切含まない
+//
+// ヘッダー・自社情報・明細テーブル・合計のスタイルは共通部品
+// （src/components/pdf/PdfCommon.tsx）へ分解した。デザインは分解前と同一。
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import {
+  ACCENT,
+  BORDER,
+  GRAY,
+  toNum,
+  fmtYen,
+  safePdfUnit,
+  pdfPageStyle,
+  pdfTableStyle,
+  PdfDocumentHeader,
+  PdfTaxSummary,
+  type CompanyInfoForPDF,
+} from '@/components/pdf/PdfCommon';
 
-// フォントは /public/fonts にローカル配置した完全版Noto Sans JPを使用する。
-// 旧CDN（noto-sans-japanese@1.0.0）はグリフ収録が不完全で「△」等の記号が文字化けしていたため置き換えた。
-Font.register({
-  family: 'NotoSansJP',
-  fonts: [
-    {
-      src: '/fonts/NotoSansJP-Regular.ttf',
-      fontWeight: 400,
-    },
-    {
-      src: '/fonts/NotoSansJP-Bold.ttf',
-      fontWeight: 700,
-    },
-  ],
-});
-
-// TODO: company settings は将来的に Supabase の company_settings テーブルから取得する
-// TODO: 見積PDF・請求書PDF・注文書PDFは同じ company settings を参照する
-// TODO: localStorage または Supabase 保存後に、設定値を永続化する
-
-export type CompanyInfoForPDF = {
-  name: string;
-  postalCode: string;
-  address: string;
-  representative: string; // "代表　山田 太郎" 形式
-  tel: string;
-  email: string;
-  invoiceNumber: string;
-};
+export type { CompanyInfoForPDF };
 
 export type EstimatePDFProps = {
   lines: Array<{
@@ -53,210 +41,14 @@ export type EstimatePDFProps = {
   clientName?: string;
   projectName?: string;
   siteAddress?: string;
+  /** 見積番号（未指定時は従来どおりのサンプル番号） */
+  estimateNo?: string;
+  /** 作成日（未指定時は従来どおりのサンプル日付） */
+  createdDate?: string;
 };
 
-function toNum(v: string): number {
-  const n = parseFloat(v);
-  return isNaN(n) ? 0 : n;
-}
-
-function fmtYen(n: number): string {
-  return '¥' + n.toLocaleString('ja-JP');
-}
-
-// PDF出力時のみ特殊単位を安全な文字列に変換する（画面表示は変更しない）
-function safePdfUnit(unit: string): string {
-  return unit
-    .replace(/㎡/g, 'm2')
-    .replace(/㎥/g, 'm3')
-    .replace(/㍍/g, 'm')
-    .replace(/㎞/g, 'km')
-    .replace(/㎝/g, 'cm')
-    .replace(/㎜/g, 'mm')
-    .replace(/㎏/g, 'kg')
-    .replace(/㍑/g, 'L');
-}
-
-const ACCENT = '#8B4A3C';
-const ACCENT_BG = '#fdf0ec';
-const BORDER = '#e2e2e2';
-const GRAY = '#6b7280';
-const ROW_EVEN_BG = '#fdf8f2';
-
-const s = StyleSheet.create({
-  page: {
-    fontFamily: 'NotoSansJP',
-    fontSize: 8,
-    padding: 22,
-    backgroundColor: '#ffffff',
-    color: '#1a1a1a',
-  },
-
-  // ── ヘッダー ──────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-    paddingBottom: 8,
-    borderBottomWidth: 1.5,
-    borderBottomColor: ACCENT,
-  },
-  headerLeft: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  docTitle: {
-    fontSize: 16,
-    fontWeight: 700,
-    color: ACCENT,
-    marginBottom: 7,
-  },
-  clientRow: {
-    flexDirection: 'row',
-    marginBottom: 3,
-  },
-  clientLabel: {
-    width: 52,
-    fontSize: 7,
-    color: GRAY,
-  },
-  clientValueLg: {
-    fontSize: 9,
-    fontWeight: 700,
-  },
-  clientValue: {
-    fontSize: 8,
-  },
-  headerRight: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  docInfoRow: {
-    flexDirection: 'row',
-    marginBottom: 2,
-  },
-  docInfoLabel: {
-    fontSize: 7,
-    color: GRAY,
-    marginRight: 6,
-  },
-  docInfoValue: {
-    fontSize: 7,
-  },
-  totalBox: {
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    borderRadius: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center',
-    minWidth: 90,
-    marginTop: 4,
-  },
-  totalBoxLabel: {
-    fontSize: 7,
-    color: ACCENT,
-    marginBottom: 3,
-  },
-  totalBoxAmount: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: ACCENT,
-  },
-
-  // 自社情報ブロック（右列）— 原価・粗利は含まない
-  companyBlock: {
-    alignItems: 'flex-end',
-    marginTop: 5,
-    paddingTop: 4,
-    borderTopWidth: 0.5,
-    borderTopColor: BORDER,
-    width: '100%',
-  },
-  companyName: {
-    fontSize: 8,
-    fontWeight: 700,
-    color: '#1a1a1a',
-    textAlign: 'right',
-    marginBottom: 1,
-  },
-  companyRow: {
-    fontSize: 6.5,
-    color: '#444',
-    textAlign: 'right',
-    marginBottom: 0.8,
-  },
-  companyInvoiceNo: {
-    fontSize: 6.5,
-    color: ACCENT,
-    fontWeight: 700,
-    textAlign: 'right',
-    marginTop: 1,
-  },
-
-  // ── 明細テーブル ──────────────────────────────────
-  table: {
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: ACCENT,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-  },
-  tableRowEven: {
-    backgroundColor: ROW_EVEN_BG,
-  },
-  // ヘッダーセル
-  th: {
-    paddingVertical: 7,
-    paddingHorizontal: 4,
-    fontSize: 7,
-    fontWeight: 700,
-    color: '#ffffff',
-    borderRightWidth: 0.5,
-    borderRightColor: 'rgba(255,255,255,0.25)',
-    lineHeight: 1.25,
-  },
-  // データセル
-  td: {
-    paddingVertical: 7,
-    paddingHorizontal: 4,
-    fontSize: 7,
-    color: '#333',
-    borderRightWidth: 0.5,
-    borderRightColor: BORDER,
-    flexWrap: 'wrap',
-    lineHeight: 1.25,
-  },
-  tdR: {  // right-align
-    paddingVertical: 7,
-    paddingHorizontal: 4,
-    fontSize: 7,
-    color: '#333',
-    borderRightWidth: 0.5,
-    borderRightColor: BORDER,
-    textAlign: 'right',
-    lineHeight: 1.25,
-  },
-  tdC: {  // center-align
-    paddingVertical: 7,
-    paddingHorizontal: 4,
-    fontSize: 7,
-    color: '#333',
-    borderRightWidth: 0.5,
-    borderRightColor: BORDER,
-    textAlign: 'center',
-    lineHeight: 1.25,
-  },
-
-  // 列幅（合計 = 100%）
+// 列幅（合計 = 100%）
+const col = StyleSheet.create({
   cCat:   { width: '9%' },   // 項目
   cName:  { width: '11%' },  // 工事名
   cDesc:  { width: '24%' },  // 工事内容
@@ -267,171 +59,102 @@ const s = StyleSheet.create({
   cSub:   { width: '9%' },   // 小計
   cTax:   { width: '9%' },   // 消費税
   cNote:  { width: '8%' },   // 備考
-
-  // ── 合計 ──────────────────────────────────────────
-  summaryOuter: {
-    alignItems: 'flex-end',
-  },
-  summaryBox: {
-    width: 200,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 2,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  summaryRowTotal: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: ACCENT_BG,
-  },
-  summaryLabel: {
-    flex: 1,
-    fontSize: 8,
-    color: GRAY,
-  },
-  summaryAmt: {
-    fontSize: 8,
-    textAlign: 'right',
-    minWidth: 72,
-  },
-  summaryLabelBold: {
-    flex: 1,
-    fontSize: 10,
-    fontWeight: 700,
-    color: ACCENT,
-  },
-  summaryAmtBold: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: ACCENT,
-    textAlign: 'right',
-    minWidth: 72,
-  },
 });
 
-function EstimatePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
-  const displayClient  = clientName  ?? '〇〇工務店 御中';
-  const displayProject = projectName ?? '〇〇マンション クロス貼替';
-  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
+// 表示用デフォルト（従来の挙動を維持）
+function displayDefaults(p: EstimatePDFProps) {
+  return {
+    client:  p.clientName  ?? '〇〇工務店 御中',
+    project: p.projectName ?? '〇〇マンション クロス貼替',
+    address: p.siteAddress ?? '大阪府堺市〇〇区',
+    estimateNo: p.estimateNo ?? 'EST-0001',
+    createdDate: p.createdDate ?? '2026/05/30',
+  };
+}
+
+// ─── 見積ヘッダー（3帳票で共通利用） ──────────────────────────
+function EstimateHeader({
+  title,
+  props,
+}: {
+  title: string;
+  props: EstimatePDFProps;
+}) {
+  const d = displayDefaults(props);
+  return (
+    <PdfDocumentHeader
+      documentTitle={title}
+      submitTo={d.client}
+      projectName={d.project}
+      siteAddress={d.address}
+      documentInfo={[
+        { label: '見積番号', value: d.estimateNo },
+        { label: '作成日', value: d.createdDate },
+      ]}
+      companyInfo={props.companyInfo}
+      totalBox={{ label: '税込見積金額', amount: props.totalWithTax }}
+    />
+  );
+}
+
+// ─── 見積明細テーブル（3帳票で共通利用） ───────────────────────
+function EstimateLinesTable({ lines }: { lines: EstimatePDFProps['lines'] }) {
+  const t = pdfTableStyle;
+  return (
+    <View style={t.table}>
+      {/* ヘッダー行 */}
+      <View style={t.tableHeaderRow}>
+        <Text style={[t.th, col.cCat]}>項目</Text>
+        <Text style={[t.th, col.cName]}>工事名</Text>
+        <Text style={[t.th, col.cDesc]}>工事内容</Text>
+        <Text style={[t.th, col.cLoc]}>施工箇所</Text>
+        <Text style={[t.th, col.cQty, { textAlign: 'right' }]}>数量</Text>
+        <Text style={[t.th, col.cUnit, { textAlign: 'center' }]}>単位</Text>
+        <Text style={[t.th, col.cPrice, { textAlign: 'right' }]}>単価</Text>
+        <Text style={[t.th, col.cSub, { textAlign: 'right' }]}>小計</Text>
+        <Text style={[t.th, col.cTax, { textAlign: 'right' }]}>消費税</Text>
+        <Text style={[t.th, col.cNote]}>備考</Text>
+      </View>
+
+      {/* データ行 */}
+      {lines.map((line, i) => {
+        const subtotal = toNum(line.qty) * toNum(line.unitPrice);
+        const tax = Math.floor(subtotal * 0.1);
+        const location =
+          line.location1 && line.location2
+            ? `${line.location1} / ${line.location2}`
+            : line.location1 || line.location2 || '';
+        const rowStyle = i % 2 === 1
+          ? [t.tableRow, t.tableRowEven]
+          : t.tableRow;
+
+        return (
+          <View key={line.id} style={rowStyle}>
+            <Text style={[t.td, col.cCat]}>{line.category}</Text>
+            <Text style={[t.td, col.cName]}>{line.koujiName}</Text>
+            <Text style={[t.td, col.cDesc]}>{line.koujiContent}</Text>
+            <Text style={[t.td, col.cLoc]}>{location}</Text>
+            <Text style={[t.tdR, col.cQty]}>{line.qty}</Text>
+            <Text style={[t.tdC, col.cUnit]}>{safePdfUnit(line.unit)}</Text>
+            <Text style={[t.tdR, col.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
+            <Text style={[t.tdR, col.cSub]}>{fmtYen(subtotal)}</Text>
+            <Text style={[t.tdR, col.cTax]}>{fmtYen(tax)}</Text>
+            <Text style={[t.td, col.cNote]}>{line.note}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── 見積書PDF ────────────────────────────────────────────────
+function EstimatePDFDocument(props: EstimatePDFProps) {
   return (
     <Document>
-      <Page size="A4" orientation="landscape" style={s.page}>
-
-        {/* ─── ヘッダー ─────────────────────────── */}
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.docTitle}>見積明細書</Text>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>{displayClient}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>{displayProject}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>{displayAddress}</Text>
-            </View>
-          </View>
-          <View style={s.headerRight}>
-            <View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>見積番号</Text>
-                <Text style={s.docInfoValue}>EST-0001</Text>
-              </View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>作成日</Text>
-                <Text style={s.docInfoValue}>2026/05/30</Text>
-              </View>
-            </View>
-            {/* 自社情報 */}
-            <View style={s.companyBlock}>
-              <Text style={s.companyName}>{companyInfo.name}</Text>
-              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
-              <Text style={s.companyRow}>{companyInfo.address}</Text>
-              <Text style={s.companyRow}>{companyInfo.representative}</Text>
-              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
-              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
-              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
-            </View>
-            <View style={s.totalBox}>
-              <Text style={s.totalBoxLabel}>税込見積金額</Text>
-              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ─── 明細表 ──────────────────────────── */}
-        <View style={s.table}>
-          {/* ヘッダー行 */}
-          <View style={s.tableHeaderRow}>
-            <Text style={[s.th, s.cCat]}>項目</Text>
-            <Text style={[s.th, s.cName]}>工事名</Text>
-            <Text style={[s.th, s.cDesc]}>工事内容</Text>
-            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
-            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
-            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
-            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
-            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
-            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
-            <Text style={[s.th, s.cNote]}>備考</Text>
-          </View>
-
-          {/* データ行 */}
-          {lines.map((line, i) => {
-            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-            const tax = Math.floor(subtotal * 0.1);
-            const location =
-              line.location1 && line.location2
-                ? `${line.location1} / ${line.location2}`
-                : line.location1 || line.location2 || '';
-            const rowStyle = i % 2 === 1
-              ? [s.tableRow, s.tableRowEven]
-              : s.tableRow;
-
-            return (
-              <View key={line.id} style={rowStyle}>
-                <Text style={[s.td, s.cCat]}>{line.category}</Text>
-                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
-                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
-                <Text style={[s.td, s.cLoc]}>{location}</Text>
-                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
-                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
-                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
-                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
-                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
-                <Text style={[s.td, s.cNote]}>{line.note}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* ─── 合計 ─────────────────────────────── */}
-        <View style={s.summaryOuter}>
-          <View style={s.summaryBox}>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>小計合計</Text>
-              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
-            </View>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>消費税（10%）</Text>
-              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
-            </View>
-            <View style={s.summaryRowTotal}>
-              <Text style={s.summaryLabelBold}>税込合計</Text>
-              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
-
+      <Page size="A4" orientation="landscape" style={pdfPageStyle.page}>
+        <EstimateHeader title="見積明細書" props={props} />
+        <EstimateLinesTable lines={props.lines} />
+        <PdfTaxSummary subtotal={props.subtotalSum} tax={props.taxSum} total={props.totalWithTax} />
       </Page>
     </Document>
   );
@@ -444,14 +167,6 @@ export function makeEstimatePDF(props: EstimatePDFProps): React.ReactElement {
 
 // ─── 発注確認欄スタイル ───────────────────────────────────────
 const o = StyleSheet.create({
-  page: {
-    fontFamily: 'NotoSansJP',
-    fontSize: 8,
-    padding: 22,
-    backgroundColor: '#ffffff',
-    color: '#1a1a1a',
-  },
-
   // ── 発注確認セクション ──────────────────────────────────────
   sectionTitle: {
     fontSize: 11,
@@ -575,128 +290,27 @@ const o = StyleSheet.create({
 });
 
 // ─── 見積書兼注文書 PDF コンポーネント ───────────────────────
-function EstimateOrderPDFDocument({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName, projectName, siteAddress }: EstimatePDFProps) {
-  const displayClient  = clientName  ?? '〇〇工務店 御中';
-  const displayProject = projectName ?? '〇〇マンション クロス貼替';
-  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
+function EstimateOrderPDFDocument(props: EstimatePDFProps) {
+  const { companyInfo } = props;
+  const d = displayDefaults(props);
   return (
     <Document>
       {/* ─── 1ページ目：見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
-      <Page size="A4" orientation="landscape" style={s.page}>
-
-        {/* ヘッダー */}
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.docTitle}>見積書兼注文書</Text>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>{displayClient}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>{displayProject}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>{displayAddress}</Text>
-            </View>
-          </View>
-          <View style={s.headerRight}>
-            <View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>見積番号</Text>
-                <Text style={s.docInfoValue}>EST-0001</Text>
-              </View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>作成日</Text>
-                <Text style={s.docInfoValue}>2026/05/30</Text>
-              </View>
-            </View>
-            {/* 自社情報 */}
-            <View style={s.companyBlock}>
-              <Text style={s.companyName}>{companyInfo.name}</Text>
-              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
-              <Text style={s.companyRow}>{companyInfo.address}</Text>
-              <Text style={s.companyRow}>{companyInfo.representative}</Text>
-              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
-              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
-              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
-            </View>
-            <View style={s.totalBox}>
-              <Text style={s.totalBoxLabel}>税込見積金額</Text>
-              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 明細表 */}
-        <View style={s.table}>
-          <View style={s.tableHeaderRow}>
-            <Text style={[s.th, s.cCat]}>項目</Text>
-            <Text style={[s.th, s.cName]}>工事名</Text>
-            <Text style={[s.th, s.cDesc]}>工事内容</Text>
-            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
-            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
-            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
-            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
-            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
-            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
-            <Text style={[s.th, s.cNote]}>備考</Text>
-          </View>
-          {lines.map((line, i) => {
-            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-            const tax = Math.floor(subtotal * 0.1);
-            const location =
-              line.location1 && line.location2
-                ? `${line.location1} / ${line.location2}`
-                : line.location1 || line.location2 || '';
-            const rowStyle = i % 2 === 1 ? [s.tableRow, s.tableRowEven] : s.tableRow;
-            return (
-              <View key={line.id} style={rowStyle}>
-                <Text style={[s.td, s.cCat]}>{line.category}</Text>
-                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
-                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
-                <Text style={[s.td, s.cLoc]}>{location}</Text>
-                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
-                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
-                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
-                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
-                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
-                <Text style={[s.td, s.cNote]}>{line.note}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* 合計 */}
-        <View style={s.summaryOuter}>
-          <View style={s.summaryBox}>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>小計合計</Text>
-              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
-            </View>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>消費税（10%）</Text>
-              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
-            </View>
-            <View style={s.summaryRowTotal}>
-              <Text style={s.summaryLabelBold}>税込合計</Text>
-              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
-
+      <Page size="A4" orientation="landscape" style={pdfPageStyle.page}>
+        <EstimateHeader title="見積書兼注文書" props={props} />
+        <EstimateLinesTable lines={props.lines} />
+        <PdfTaxSummary subtotal={props.subtotalSum} tax={props.taxSum} total={props.totalWithTax} />
       </Page>
 
       {/* ─── 2ページ目：発注確認欄 ─── */}
-      <Page size="A4" orientation="landscape" style={o.page}>
+      <Page size="A4" orientation="landscape" style={pdfPageStyle.page}>
 
         {/* ページ補足ヘッダー */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: BORDER }}>
           <Text style={{ fontSize: 9, fontWeight: 700, color: ACCENT }}>見積書兼注文書 — 発注確認欄</Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Text style={{ fontSize: 7, color: GRAY }}>案件：{displayProject}</Text>
-            <Text style={{ fontSize: 7, color: GRAY }}>見積番号：EST-0001</Text>
+            <Text style={{ fontSize: 7, color: GRAY }}>案件：{d.project}</Text>
+            <Text style={{ fontSize: 7, color: GRAY }}>見積番号：{d.estimateNo}</Text>
           </View>
         </View>
 
@@ -949,7 +563,9 @@ const p = StyleSheet.create({
 });
 
 // ─── 保存用PDF コンポーネント ─────────────────────────────────
-function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate, companyInfo, clientName, projectName, siteAddress }: StoragePDFProps) {
+function StoragePDFDocument(props: StoragePDFProps) {
+  const { lines, subtotalSum, taxSum, totalWithTax, costs, costSum, grossProfit, grossMarginRate } = props;
+
   // 工事別利益サマリーの計算
   const salesByJob = new Map<string, number>();
   lines.forEach((line) => {
@@ -974,56 +590,11 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
     return { name, sales, cost, profit, margin };
   });
 
-  const displayClient  = clientName  ?? '〇〇工務店 御中';
-  const displayProject = projectName ?? '〇〇マンション クロス貼替';
-  const displayAddress = siteAddress ?? '大阪府堺市〇〇区';
   return (
     <Document>
       {/* ─── 1ページ目：提出用見積明細（見積書PDFと同内容、タイトルのみ変更） ─── */}
-      <Page size="A4" orientation="landscape" style={s.page}>
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Text style={s.docTitle}>保存用 見積明細</Text>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>提出先</Text>
-              <Text style={s.clientValueLg}>{displayClient}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>案件名</Text>
-              <Text style={s.clientValue}>{displayProject}</Text>
-            </View>
-            <View style={s.clientRow}>
-              <Text style={s.clientLabel}>現場住所</Text>
-              <Text style={s.clientValue}>{displayAddress}</Text>
-            </View>
-          </View>
-          <View style={s.headerRight}>
-            <View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>見積番号</Text>
-                <Text style={s.docInfoValue}>EST-0001</Text>
-              </View>
-              <View style={s.docInfoRow}>
-                <Text style={s.docInfoLabel}>作成日</Text>
-                <Text style={s.docInfoValue}>2026/05/30</Text>
-              </View>
-            </View>
-            {/* 自社情報 */}
-            <View style={s.companyBlock}>
-              <Text style={s.companyName}>{companyInfo.name}</Text>
-              <Text style={s.companyRow}>{companyInfo.postalCode}</Text>
-              <Text style={s.companyRow}>{companyInfo.address}</Text>
-              <Text style={s.companyRow}>{companyInfo.representative}</Text>
-              <Text style={s.companyRow}>TEL：{companyInfo.tel}</Text>
-              <Text style={s.companyRow}>MAIL：{companyInfo.email}</Text>
-              <Text style={s.companyInvoiceNo}>登録番号：{companyInfo.invoiceNumber}</Text>
-            </View>
-            <View style={s.totalBox}>
-              <Text style={s.totalBoxLabel}>税込見積金額</Text>
-              <Text style={s.totalBoxAmount}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
+      <Page size="A4" orientation="landscape" style={pdfPageStyle.page}>
+        <EstimateHeader title="保存用 見積明細" props={props} />
 
         {/* 1ページ目 注意文：元請けへの誤提出防止 */}
         <View style={p.page1Notice}>
@@ -1032,59 +603,8 @@ function StoragePDFDocument({ lines, subtotalSum, taxSum, totalWithTax, costs, c
           </Text>
         </View>
 
-        <View style={s.table}>
-          <View style={s.tableHeaderRow}>
-            <Text style={[s.th, s.cCat]}>項目</Text>
-            <Text style={[s.th, s.cName]}>工事名</Text>
-            <Text style={[s.th, s.cDesc]}>工事内容</Text>
-            <Text style={[s.th, s.cLoc]}>施工箇所</Text>
-            <Text style={[s.th, s.cQty, { textAlign: 'right' }]}>数量</Text>
-            <Text style={[s.th, s.cUnit, { textAlign: 'center' }]}>単位</Text>
-            <Text style={[s.th, s.cPrice, { textAlign: 'right' }]}>単価</Text>
-            <Text style={[s.th, s.cSub, { textAlign: 'right' }]}>小計</Text>
-            <Text style={[s.th, s.cTax, { textAlign: 'right' }]}>消費税</Text>
-            <Text style={[s.th, s.cNote]}>備考</Text>
-          </View>
-          {lines.map((line, i) => {
-            const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-            const tax = Math.floor(subtotal * 0.1);
-            const location = line.location1 && line.location2
-              ? `${line.location1} / ${line.location2}`
-              : line.location1 || line.location2 || '';
-            const rowStyle = i % 2 === 1 ? [s.tableRow, s.tableRowEven] : s.tableRow;
-            return (
-              <View key={line.id} style={rowStyle}>
-                <Text style={[s.td, s.cCat]}>{line.category}</Text>
-                <Text style={[s.td, s.cName]}>{line.koujiName}</Text>
-                <Text style={[s.td, s.cDesc]}>{line.koujiContent}</Text>
-                <Text style={[s.td, s.cLoc]}>{location}</Text>
-                <Text style={[s.tdR, s.cQty]}>{line.qty}</Text>
-                <Text style={[s.tdC, s.cUnit]}>{safePdfUnit(line.unit)}</Text>
-                <Text style={[s.tdR, s.cPrice]}>{fmtYen(toNum(line.unitPrice))}</Text>
-                <Text style={[s.tdR, s.cSub]}>{fmtYen(subtotal)}</Text>
-                <Text style={[s.tdR, s.cTax]}>{fmtYen(tax)}</Text>
-                <Text style={[s.td, s.cNote]}>{line.note}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={s.summaryOuter}>
-          <View style={s.summaryBox}>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>小計合計</Text>
-              <Text style={s.summaryAmt}>{fmtYen(subtotalSum)}</Text>
-            </View>
-            <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>消費税（10%）</Text>
-              <Text style={s.summaryAmt}>{fmtYen(taxSum)}</Text>
-            </View>
-            <View style={s.summaryRowTotal}>
-              <Text style={s.summaryLabelBold}>税込合計</Text>
-              <Text style={s.summaryAmtBold}>{fmtYen(totalWithTax)}</Text>
-            </View>
-          </View>
-        </View>
+        <EstimateLinesTable lines={lines} />
+        <PdfTaxSummary subtotal={subtotalSum} tax={taxSum} total={totalWithTax} />
       </Page>
 
       {/* ─── 2ページ目：内部管理（黄色背景） ─── */}

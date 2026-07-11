@@ -115,6 +115,51 @@ export function singleInvoicePdfFileName(p: {
 }
 
 /**
+ * 現地調査報告書PDF
+ * 形式: 元請名_案件名_日付_現地調査報告書.pdf
+ */
+export function surveyReportPdfFileName(p: {
+  clientName: string;
+  projectName: string;
+  date: string;
+}): string {
+  const c  = sanitize(p.clientName,  15);
+  const pr = sanitize(p.projectName, 20);
+  const d  = toDateStr(p.date);
+  return `${c}_${pr}_${d}_現地調査報告書.pdf`;
+}
+
+/**
+ * 写真報告台帳PDF
+ * 形式: 元請名_案件名_日付_写真台帳.pdf
+ */
+export function photoLedgerPdfFileName(p: {
+  clientName: string;
+  projectName: string;
+  date: string;
+}): string {
+  const c  = sanitize(p.clientName,  15);
+  const pr = sanitize(p.projectName, 20);
+  const d  = toDateStr(p.date);
+  return `${c}_${pr}_${d}_写真台帳.pdf`;
+}
+
+/**
+ * 作業報告書PDF
+ * 形式: 元請名_案件名_作業日_作業報告書.pdf
+ */
+export function workReportPdfFileName(p: {
+  clientName: string;
+  projectName: string;
+  workDate: string;
+}): string {
+  const c  = sanitize(p.clientName,  15);
+  const pr = sanitize(p.projectName, 20);
+  const d  = toDateStr(p.workDate);
+  return `${c}_${pr}_${d}_作業報告書.pdf`;
+}
+
+/**
  * 一括請求書PDF（複数案件を含むため月単位）
  * 形式: 元請名_対象月_一括請求書_請求日.pdf
  */

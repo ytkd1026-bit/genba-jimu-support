@@ -24,6 +24,9 @@ import {
 } from "@/app/utils/photoRecords";
 import { damageRecordsStore, type DamageRecord } from "@/app/utils/damageRecords";
 import { compressImageFile } from "@/app/utils/imageCompress";
+import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
+import { photoLedgerPdfFileName } from "@/app/utils/pdfFileName";
+import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { StructuredTextInput } from "@/components/StructuredTextInput";
 import { fldInput, fldSelect, lbl } from "@/components/formStyles";
@@ -51,6 +54,7 @@ export default function PhotoLedgerPage() {
   const [status, setStatus] = useState<PhotoSaveStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // テキスト編集の debounce 保存用
   const dirtyIdsRef = useRef<Set<string>>(new Set());
@@ -241,6 +245,64 @@ export default function PhotoLedgerPage() {
     }
   }
 
+  // ── 写真台帳PDF（未保存分を保存してから生成） ───────────────
+  async function handleLedgerPdf() {
+    if (!project || pdfLoading) return;
+    if (photos.length === 0) {
+      alert("写真を1枚以上追加してからPDFを発行してください。");
+      return;
+    }
+    // 保存待ちの編集があれば先に保存する（保存失敗時は発行しない）
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (dirtyIdsRef.current.size > 0) {
+      syncDirty();
+    }
+    const stored = getPhotosSorted(projectId);
+    if (stored.length === 0) {
+      alert("写真の保存に失敗しています。PDFは発行していません。");
+      return;
+    }
+    setPdfLoading(true);
+    try {
+      const { makePhotoLedgerPDF } = await import("@/components/pdf/PhotoLedgerPDF");
+      const doc = makePhotoLedgerPDF({
+        documentTitle: "写真報告台帳",
+        documentNumber: `PHT-${project.projectId}`,
+        createdDate: todaySlash(),
+        submitTo: project.submitTo || project.clientName || "",
+        projectName: project.projectName,
+        siteAddress: project.siteAddress,
+        companyInfo: getCompanyInfoForPdf(),
+        projectId: project.projectId,
+        photos: stored.map((p) => ({
+          photoId: p.photoId,
+          imageDataUrl: p.imageDataUrl,
+          location: p.location,
+          phaseLabel: PHOTO_PHASE_LABELS[p.phase],
+          description: p.description,
+          damageId: p.damageId,
+          capturedAt: p.capturedAt,
+        })),
+      });
+      await renderAndDownloadPdf(
+        doc,
+        photoLedgerPdfFileName({
+          clientName: project.clientName || project.submitTo,
+          projectName: project.projectName,
+          date: todayDash(),
+        }),
+      );
+    } catch (err) {
+      console.error("写真台帳PDF生成エラー:", err);
+      alert("PDFの生成に失敗しました。もう一度お試しください。");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   // 写真データの合計サイズ（目安表示）
   const approxTotalMb = useMemo(() => {
     const chars = photos.reduce((sum, p) => sum + (p.imageDataUrl?.length ?? 0), 0);
@@ -339,9 +401,19 @@ export default function PhotoLedgerPage() {
         >
           {busy ? "写真を処理中..." : "＋ 写真を追加する（複数選択可）"}
         </button>
-        <p className="mb-3 text-right text-xs text-stone-400">
+        <p className="mb-2 text-right text-xs text-stone-400">
           写真データ 約{approxTotalMb.toFixed(1)}MB（目安上限 5MB）
         </p>
+        {photos.length > 0 && (
+          <button
+            type="button"
+            disabled={pdfLoading || busy}
+            onClick={() => void handleLedgerPdf()}
+            className="mb-3 flex min-h-[44px] w-full items-center justify-center rounded-xl border border-[#8B4A3C] bg-white px-3 py-2 text-xs font-bold text-[#8B4A3C] active:opacity-80 disabled:opacity-50"
+          >
+            {pdfLoading ? "PDF作成中..." : "📄 写真台帳PDFを作成する（1ページ4枚）"}
+          </button>
+        )}
 
         {/* ── 写真カード一覧 ─────────────────────────────── */}
         <div className="space-y-3">

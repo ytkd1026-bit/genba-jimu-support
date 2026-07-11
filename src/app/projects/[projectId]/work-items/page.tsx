@@ -21,6 +21,10 @@ import {
 } from "@/app/utils/workItems";
 import { damageRecordsStore } from "@/app/utils/damageRecords";
 import { getSavedEstimates, type SavedEstimate } from "@/app/utils/savedEstimates";
+import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
+import { estimatePdfFileName, singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
+import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
+import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
@@ -159,6 +163,7 @@ export default function WorkItemsPage() {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const [openCostIds, setOpenCostIds] = useState<Set<string>>(new Set());
+  const [pdfLoading, setPdfLoading] = useState<null | "estimate" | "invoice">(null);
 
   // 既存見積からの取り込み
   const [legacyEstimates, setLegacyEstimates] = useState<SavedEstimate[]>([]);
@@ -316,7 +321,7 @@ export default function WorkItemsPage() {
   }
 
   // ── 本保存 ────────────────────────────────────────────────
-  function handleSave() {
+  function saveAll(): boolean {
     const now = new Date().toISOString();
     let allOk = true;
     for (const row of rows) {
@@ -329,11 +334,134 @@ export default function WorkItemsPage() {
       setDeletedIds([]);
       setRows(workItemsStore.getByProjectId(projectId).map(toEditable));
       clearDraft();
+    }
+    return allOk;
+  }
+
+  function handleSave() {
+    if (saveAll()) {
       setSaveMsg({ ok: true, text: "工事項目・原価を保存しました。" });
     } else {
       setSaveMsg({ ok: false, text: "一部保存に失敗しました。入力内容は下書きとして残っています。" });
     }
     setTimeout(() => setSaveMsg(null), 6000);
+  }
+
+  // ── 提出用PDF（保存 → 生成の順。原価・粗利は一切渡さない） ──
+  function buildSellingLines(): SellingLine[] {
+    return rows.map((row) => {
+      const a = rowAmounts(row);
+      return {
+        workItemId: row.workItemId,
+        category: row.category,
+        workName: row.workName,
+        workDescription: row.workDescription,
+        location1: row.location1,
+        location2: row.location2,
+        quantity: toNum(row.quantity),
+        unit: row.unit,
+        sellingUnitPrice: toNum(row.sellingUnitPrice),
+        sellingAmount: a.sellingAmount,
+        note: row.note,
+      };
+    });
+  }
+
+  function validateBeforePdf(): boolean {
+    const hasContent = rows.some(
+      (r) => r.workName.trim() !== "" || r.workDescription.trim() !== "" || toNum(r.sellingUnitPrice) > 0,
+    );
+    if (rows.length === 0 || !hasContent) {
+      alert("工事項目を1件以上入力してからPDFを発行してください。");
+      return false;
+    }
+    // PDF発行前の本保存（失敗したら発行しない）
+    if (!saveAll()) {
+      alert("保存に失敗しました。PDFは発行していません。");
+      return false;
+    }
+    return true;
+  }
+
+  async function handleEstimatePdf() {
+    if (!project || pdfLoading !== null) return;
+    if (!validateBeforePdf()) return;
+    setPdfLoading("estimate");
+    try {
+      const { makeWorkEstimatePDF } = await import("@/components/pdf/WorkEstimatePDF");
+      // 保険案件は「損害復旧工事 見積明細書」、通常案件は「見積明細書」
+      const title =
+        project.projectType === "insurance" ? "損害復旧工事 見積明細書" : "見積明細書";
+      const doc = makeWorkEstimatePDF({
+        documentTitle: title,
+        documentNumber: `EST-${project.projectId}`,
+        createdDate: todaySlash(),
+        submitTo: project.submitTo || project.clientName || "",
+        projectName: project.projectName,
+        siteAddress: project.siteAddress,
+        companyInfo: getCompanyInfoForPdf(),
+        projectId: project.projectId,
+        lines: buildSellingLines(),
+        subtotalSum: totals.selling,
+        taxSum: totals.tax,
+        totalWithTax: totals.totalWithTax,
+      });
+      await renderAndDownloadPdf(
+        doc,
+        estimatePdfFileName({
+          clientName: project.clientName || project.submitTo,
+          projectName: project.projectName,
+          workContent: rows[0]?.workName ?? "",
+          date: todayDash(),
+        }),
+      );
+    } catch (err) {
+      console.error("見積書PDF生成エラー:", err);
+      alert("PDFの生成に失敗しました。もう一度お試しください。");
+    } finally {
+      setPdfLoading(null);
+    }
+  }
+
+  async function handleInvoicePdf() {
+    if (!project || pdfLoading !== null) return;
+    if (!validateBeforePdf()) return;
+    setPdfLoading("invoice");
+    try {
+      const { makeProjectInvoicePDF } = await import("@/components/pdf/ProjectInvoicePDF");
+      const doc = makeProjectInvoicePDF({
+        documentTitle: "請求書",
+        documentNumber: `INV-${project.projectId}`,
+        createdDate: todaySlash(),
+        submitTo: project.submitTo || project.clientName || "",
+        projectName: project.projectName,
+        siteAddress: project.siteAddress,
+        companyInfo: getCompanyInfoForPdf(),
+        projectId: project.projectId,
+        lines: buildSellingLines(),
+        subtotalSum: totals.selling,
+        taxSum: totals.tax,
+        totalWithTax: totals.totalWithTax,
+        invoiceDate: todaySlash(),
+        dueDate: "",
+        bank: getBankSettings(),
+        invoiceNote: "お振込み手数料はご負担ください。ご確認よろしくお願いいたします。",
+      });
+      await renderAndDownloadPdf(
+        doc,
+        singleInvoicePdfFileName({
+          clientName: project.clientName || project.submitTo,
+          projectName: project.projectName,
+          workContent: rows[0]?.workName ?? "",
+          invoiceDate: todayDash(),
+        }),
+      );
+    } catch (err) {
+      console.error("請求書PDF生成エラー:", err);
+      alert("PDFの生成に失敗しました。もう一度お試しください。");
+    } finally {
+      setPdfLoading(null);
+    }
   }
 
   // ── 合計 ──────────────────────────────────────────────────
@@ -728,13 +856,40 @@ export default function WorkItemsPage() {
           </div>
         )}
         {rows.length > 0 && (
-          <button
-            type="button"
-            onClick={handleSave}
-            className="mt-3 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white shadow-sm active:opacity-80"
-          >
-            工事項目・原価を保存する
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="mt-3 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white shadow-sm active:opacity-80"
+            >
+              工事項目・原価を保存する
+            </button>
+
+            {/* 提出用PDF（原価・粗利は出ない） */}
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                disabled={pdfLoading !== null}
+                onClick={() => void handleEstimatePdf()}
+                className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[#8B4A3C] bg-white px-4 py-3 text-sm font-bold text-[#8B4A3C] active:opacity-80 disabled:opacity-50"
+              >
+                {pdfLoading === "estimate"
+                  ? "PDF作成中..."
+                  : `📄 ${project.projectType === "insurance" ? "損害復旧工事 見積明細書" : "見積明細書"}PDFを作成する（保存してから発行）`}
+              </button>
+              <button
+                type="button"
+                disabled={pdfLoading !== null}
+                onClick={() => void handleInvoicePdf()}
+                className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[#8B4A3C] bg-white px-4 py-3 text-sm font-bold text-[#8B4A3C] active:opacity-80 disabled:opacity-50"
+              >
+                {pdfLoading === "invoice" ? "PDF作成中..." : "📄 請求書PDFを作成する（保存してから発行）"}
+              </button>
+              <p className="text-center text-xs text-stone-400">
+                提出用PDFに原価・粗利は表示されません。
+              </p>
+            </div>
+          </>
         )}
 
       </div>

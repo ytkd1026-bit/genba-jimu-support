@@ -17,6 +17,10 @@ import {
 } from "@/app/utils/damageRecords";
 import { getPhotosSorted, PHOTO_PHASE_LABELS } from "@/app/utils/photoRecords";
 import { workItemsStore } from "@/app/utils/workItems";
+import { insuranceInfoStore, ACCIDENT_TYPE_LABELS } from "@/app/utils/insuranceInfo";
+import { getCompanyInfoForPdf, getCompanySettings } from "@/app/utils/companySettings";
+import { surveyReportPdfFileName } from "@/app/utils/pdfFileName";
+import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
@@ -32,6 +36,8 @@ const DAMAGE_CATEGORY_PRESETS = [
 type SurveyDraftData = {
   records: DamageRecord[];
   deletedIds: string[];
+  /** 現地調査報告書PDFの総括文（下書きにのみ保持） */
+  summary?: string;
 };
 
 // ─── 関連ID選択チップ ─────────────────────────────────────────
@@ -87,8 +93,10 @@ export default function SurveyPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [records, setRecords] = useState<DamageRecord[]>([]);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const [summary, setSummary] = useState("");
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // 関連付け候補（写真・工事項目）
   const [photoOptions, setPhotoOptions] = useState<Array<{ id: string; caption: string }>>([]);
@@ -121,8 +129,8 @@ export default function SurveyPage() {
   // ── 自動下書き保存 ────────────────────────────────────────
   const SURVEY_DRAFT_KEY = draftKey("survey", projectId);
   const draftData = useMemo<SurveyDraftData>(
-    () => ({ records, deletedIds }),
-    [records, deletedIds],
+    () => ({ records, deletedIds, summary }),
+    [records, deletedIds, summary],
   );
   const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<SurveyDraftData>(
     SURVEY_DRAFT_KEY, "survey", projectId, draftData,
@@ -148,6 +156,7 @@ export default function SurveyPage() {
     if (!restoredDraft?.data) return;
     setRecords(restoredDraft.data.records);
     setDeletedIds(restoredDraft.data.deletedIds);
+    setSummary(restoredDraft.data.summary ?? "");
     setShowRestoreBanner(false);
   }
 
@@ -203,7 +212,7 @@ export default function SurveyPage() {
 
   // 発行済みIDのうち採番だけして未入力のままの空カードは保存対象に含める
   // （IDの一貫性を保つため、保存時に除外はしない）
-  function handleSave() {
+  function saveAll(): boolean {
     const now = new Date().toISOString();
     let allOk = true;
     for (const r of records) {
@@ -216,11 +225,78 @@ export default function SurveyPage() {
       setDeletedIds([]);
       setRecords(damageRecordsStore.getByProjectId(projectId));
       clearDraft();
+    }
+    return allOk;
+  }
+
+  function handleSave() {
+    if (saveAll()) {
       setSaveMsg({ ok: true, text: "現地調査を保存しました。" });
     } else {
       setSaveMsg({ ok: false, text: "一部保存に失敗しました。入力内容は下書きとして残っています。" });
     }
     setTimeout(() => setSaveMsg(null), 6000);
+  }
+
+  // ── 現地調査報告書PDF（保存 → 生成の順） ───────────────────
+  async function handleSurveyReportPdf() {
+    if (!project || pdfLoading) return;
+    if (records.length === 0) {
+      alert("被害記録を1件以上入力してからPDFを発行してください。");
+      return;
+    }
+    // PDF発行前の本保存（失敗したら発行しない）
+    if (!saveAll()) {
+      alert("保存に失敗しました。PDFは発行していません。");
+      return;
+    }
+    setPdfLoading(true);
+    try {
+      const { makeSurveyReportPDF } = await import("@/components/pdf/SurveyReportPDF");
+      const insurance =
+        project.projectType === "insurance" ? insuranceInfoStore.getById(projectId) : null;
+      const doc = makeSurveyReportPDF({
+        documentTitle: "現地調査報告書",
+        documentNumber: `RPT-${project.projectId}`,
+        createdDate: todaySlash(),
+        submitTo: project.submitTo || project.clientName || "",
+        projectName: project.projectName,
+        siteAddress: project.siteAddress,
+        companyInfo: getCompanyInfoForPdf(),
+        projectId: project.projectId,
+        accident: insurance
+          ? {
+              accidentTypeLabel: ACCIDENT_TYPE_LABELS[insurance.accidentType],
+              suspectedCause: insurance.suspectedCause,
+              accidentDate: insurance.accidentDate.replace(/-/g, "/"),
+              surveyDate: insurance.surveyDate.replace(/-/g, "/"),
+            }
+          : null,
+        inspectorName: getCompanySettings().representative,
+        damages: records.map((r) => ({
+          damageId: r.damageId,
+          location: r.location,
+          confirmedFact: r.confirmedFact,
+          suspectedCause: r.suspectedCause,
+          requiredRestoration: r.requiredRestoration,
+          relatedPhotoIds: r.relatedPhotoIds,
+        })),
+        summaryText: summary,
+      });
+      await renderAndDownloadPdf(
+        doc,
+        surveyReportPdfFileName({
+          clientName: project.clientName || project.submitTo,
+          projectName: project.projectName,
+          date: todayDash(),
+        }),
+      );
+    } catch (err) {
+      console.error("現地調査報告書PDF生成エラー:", err);
+      alert("PDFの生成に失敗しました。もう一度お試しください。");
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   // ── 案件が見つからない場合 ────────────────────────────────
@@ -416,6 +492,29 @@ export default function SurveyPage() {
         >
           現地調査を保存する
         </button>
+
+        {/* ── 現地調査報告書PDF ───────────────────────────── */}
+        {records.length > 0 && (
+          <div className="mt-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
+            <h2 className="mb-2 text-sm font-bold text-stone-700">現地調査報告書PDF</h2>
+            <StructuredTextInput
+              label="総括（報告書の最後に載せる文章）"
+              value={summary}
+              onChange={setSummary}
+              placeholder="例：上階給水管からの漏水により天井・壁の復旧工事が必要と判断します。"
+              allowFutureVoiceInput
+              rows={3}
+            />
+            <button
+              type="button"
+              disabled={pdfLoading}
+              onClick={() => void handleSurveyReportPdf()}
+              className="mt-3 flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[#8B4A3C] bg-white px-4 py-3 text-sm font-bold text-[#8B4A3C] active:opacity-80 disabled:opacity-50"
+            >
+              {pdfLoading ? "PDF作成中..." : "📄 現地調査報告書PDFを作成する（保存してから発行）"}
+            </button>
+          </div>
+        )}
 
       </div>
     </div>
