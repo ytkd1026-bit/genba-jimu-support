@@ -35,7 +35,7 @@ type TabDef = {
 const TABS: TabDef[] = [
   { key: "detail",    no: "01", label: "案件詳細",       subPath: "" },
   { key: "survey",    no: "02", label: "現地調査",       subPath: "/survey" },
-  { key: "photos",    no: "03", label: "写真台帳",       disabled: true },
+  { key: "photos",    no: "03", label: "写真台帳",       subPath: "/photos" },
   { key: "workItems", no: "04", label: "工事項目・原価", disabled: true },
   { key: "estimate",  no: "05", label: "見積書",         externalHref: "/projects/sample/estimate" },
   { key: "invoice",   no: "06", label: "請求書",         externalHref: "/projects/sample/single-invoice" },
