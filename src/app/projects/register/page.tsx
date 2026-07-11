@@ -160,6 +160,7 @@ export default function ProjectRegisterPage() {
 
           {/* メニューカード */}
           {[
+            { icon: "🗂️", title: "案件一覧（一元管理）",    desc: "調査・写真・見積・請求を案件ごとに管理",  href: "/projects/list",        accent: false },
             { icon: "🔍", title: "案件検索",               desc: "日付・案件名・元請名で探す",              href: "#project-search",      accent: false },
             { icon: "📝", title: "新規案件登録",            desc: "手入力で案件を作る",                      href: "/projects/new",         accent: false },
             { icon: "📄", title: "書類・データから案件登録", desc: "PDF・FAX・LINE画像から案件の下書きを作る", href: "/projects/import",      accent: true  },
