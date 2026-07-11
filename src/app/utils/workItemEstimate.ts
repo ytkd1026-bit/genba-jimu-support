@@ -8,9 +8,19 @@
 
 import type { WorkItem } from "./workItems";
 import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
-import type { EstimateItem, SavedEstimate } from "./savedEstimates";
+import type { EstimateItem, SavedEstimate, LineSnapshot } from "./savedEstimates";
+import {
+  calculateTaxBreakdown,
+  normalizeTaxType,
+  normalizeTaxRate,
+  type TaxBreakdown,
+  type TaxType,
+  type TaxRate,
+} from "./taxCalculation";
 
-/** WorkItem[] を提出用の売価明細（原価なし）へ変換する */
+export type { LineSnapshot };
+
+/** WorkItem[] を提出用の売価明細（原価なし）へ変換する（税区分は安全に補完） */
 export function workItemsToSellingLines(workItems: WorkItem[]): SellingLine[] {
   return workItems.map((w) => ({
     workItemId: w.workItemId,
@@ -24,23 +34,59 @@ export function workItemsToSellingLines(workItems: WorkItem[]): SellingLine[] {
     sellingUnitPrice: w.sellingUnitPrice,
     sellingAmount: w.sellingAmount,
     note: w.note,
+    taxType: normalizeTaxType(w.taxType),
+    taxRate: normalizeTaxRate(w.taxRate),
   }));
+}
+
+/** WorkItem[] を保存用の明細スナップショットへ変換する */
+export function workItemsToSnapshots(workItems: WorkItem[]): LineSnapshot[] {
+  return workItems.map((w) => ({
+    workItemId: w.workItemId,
+    workName: w.workName,
+    quantity: w.quantity,
+    unit: w.unit,
+    unitPrice: w.sellingUnitPrice,
+    amount: w.sellingAmount,
+    taxType: normalizeTaxType(w.taxType),
+    taxRate: normalizeTaxRate(w.taxRate),
+  }));
+}
+
+/** 売価明細（税区分つき）から税率別の内訳を計算する（共通税計算関数を使用） */
+export function taxBreakdownOf(
+  lines: Array<{ sellingAmount: number; taxType: TaxType; taxRate: TaxRate }>,
+): TaxBreakdown {
+  return calculateTaxBreakdown(
+    lines.map((l) => ({
+      amount: l.sellingAmount,
+      taxType: normalizeTaxType(l.taxType),
+      taxRate: normalizeTaxRate(l.taxRate),
+    })),
+  );
 }
 
 export type EstimateTotals = {
   subtotal: number;
   tax: number;
   total: number;
+  breakdown: TaxBreakdown;
 };
 
 /**
- * 提出用明細から小計・消費税・税込合計を求める。
- * 既存見積と同じ丸め処理（税 = Math.floor(小計 × 0.1)）を使う。
+ * 提出用明細（税区分つき）から小計・消費税・税込合計を求める。
+ * 税計算は共通の calculateTaxBreakdown に委譲する（税率別に合算後 Math.floor）。
  */
-export function computeEstimateTotals(lines: Array<{ sellingAmount: number }>): EstimateTotals {
-  const subtotal = lines.reduce((acc, l) => acc + l.sellingAmount, 0);
-  const tax = Math.floor(subtotal * 0.1);
-  return { subtotal, tax, total: subtotal + tax };
+export function computeEstimateTotals(
+  lines: Array<{ sellingAmount: number; taxType: TaxType; taxRate: TaxRate }>,
+): EstimateTotals {
+  const breakdown = taxBreakdownOf(lines);
+  return {
+    subtotal: breakdown.subtotal,
+    tax: breakdown.taxTotal,
+    total: breakdown.total,
+    breakdown,
+  };
 }
 
 /**

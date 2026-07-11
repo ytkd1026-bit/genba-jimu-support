@@ -13,11 +13,19 @@ import {
   pdfPageStyle,
   pdfTableStyle,
   PdfDocumentHeader,
-  PdfTaxSummary,
+  PdfTaxBreakdownSummary,
   PdfFooter,
   PdfPageNumber,
   type CommonDocumentProps,
 } from './PdfCommon';
+import {
+  taxTypeLabel,
+  normalizeTaxType,
+  normalizeTaxRate,
+  type TaxType,
+  type TaxRate,
+  type TaxBreakdown,
+} from '@/app/utils/taxCalculation';
 
 /** 提出用の明細行（原価・粗利のフィールドを持たない） */
 export type SellingLine = {
@@ -32,6 +40,8 @@ export type SellingLine = {
   sellingUnitPrice: number;
   sellingAmount: number;
   note: string;
+  taxType: TaxType;
+  taxRate: TaxRate;
 };
 
 export type WorkEstimatePDFProps = CommonDocumentProps & {
@@ -39,7 +49,25 @@ export type WorkEstimatePDFProps = CommonDocumentProps & {
   subtotalSum: number;
   taxSum: number;
   totalWithTax: number;
+  taxBreakdown: TaxBreakdown;
 };
+
+/** 明細の消費税列（表示用・その行の税率のみ）。合計は breakdown 側で税率別に集計する */
+function lineTaxForDisplay(line: SellingLine): number {
+  const type = normalizeTaxType(line.taxType);
+  if (type !== 'taxable') return 0;
+  const rate = normalizeTaxRate(line.taxRate);
+  return Math.floor((line.sellingAmount * rate) / 100);
+}
+
+/** 備考へ付ける税区分マーク（課税10%は既定のため付けない） */
+function taxNoteMark(line: SellingLine): string {
+  const type = normalizeTaxType(line.taxType);
+  const rate = normalizeTaxRate(line.taxRate);
+  if (type === 'taxable' && rate === 10) return '';
+  if (type === 'taxable') return `課税${rate}%`;
+  return taxTypeLabel(type);
+}
 
 const col = StyleSheet.create({
   cCat:   { width: '9%' },
@@ -71,11 +99,13 @@ export function SellingLinesTable({ lines }: { lines: SellingLine[] }) {
         <Text style={[t.th, col.cNote]}>備考</Text>
       </View>
       {lines.map((line, i) => {
-        const tax = Math.floor(line.sellingAmount * 0.1);
+        const tax = lineTaxForDisplay(line);
         const location =
           line.location1 && line.location2
             ? `${line.location1} / ${line.location2}`
             : line.location1 || line.location2 || '';
+        const mark = taxNoteMark(line);
+        const noteText = [line.note, mark].filter(Boolean).join(mark && line.note ? ' / ' : '');
         const rowStyle = i % 2 === 1 ? [t.tableRow, t.tableRowEven] : t.tableRow;
         return (
           <View key={line.workItemId} style={rowStyle} wrap={false}>
@@ -88,7 +118,7 @@ export function SellingLinesTable({ lines }: { lines: SellingLine[] }) {
             <Text style={[t.tdR, col.cPrice]}>{fmtYen(line.sellingUnitPrice)}</Text>
             <Text style={[t.tdR, col.cSub]}>{fmtYen(line.sellingAmount)}</Text>
             <Text style={[t.tdR, col.cTax]}>{fmtYen(tax)}</Text>
-            <Text style={[t.td, col.cNote]}>{line.note}</Text>
+            <Text style={[t.td, col.cNote]}>{noteText}</Text>
           </View>
         );
       })}
@@ -113,7 +143,7 @@ function WorkEstimatePDFDocument(props: WorkEstimatePDFProps) {
           totalBox={{ label: '税込見積金額', amount: props.totalWithTax }}
         />
         <SellingLinesTable lines={props.lines} />
-        <PdfTaxSummary subtotal={props.subtotalSum} tax={props.taxSum} total={props.totalWithTax} />
+        <PdfTaxBreakdownSummary breakdown={props.taxBreakdown} />
         <PdfFooter projectId={props.projectId} documentNumber={props.documentNumber} />
         <PdfPageNumber />
       </Page>

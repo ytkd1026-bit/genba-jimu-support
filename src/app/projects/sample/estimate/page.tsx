@@ -484,6 +484,9 @@ export default function EstimatePage() {
   }
 
   const subtotalSum = lines.reduce((acc, l) => acc + toNum(l.qty) * toNum(l.unitPrice), 0);
+  // TODO(税区分): この画面は案件に紐づかない単体手入力フロー（LineItem に税区分なし）のため
+  //   全額を課税10%として計算する。税区分・税率対応は案件見積 /projects/[projectId]/estimate
+  //   （WorkItem＋共通 calculateTaxBreakdown）に実装済み。単体フローの税区分UIは今後対応。
   const taxSum = Math.floor(subtotalSum * 0.1);
   const totalWithTax = subtotalSum + taxSum;
   const costSum = costs.reduce((acc, c) => acc + toNum(c.qty) * toNum(c.costUnitPrice), 0);

@@ -233,6 +233,8 @@ export default function SingleInvoicePage() {
 
   // 金額計算（固定明細）
   const subtotalSum  = INVOICE_LINES.reduce((s, l) => s + toNum(l.unitPrice) * toNum(l.qty), 0);
+  // TODO(税区分): この単体請求フローは INVOICE_LINES（税区分なし）を全額課税10%で計算する。
+  //   税区分・税率対応は案件請求 /projects/[projectId]/invoice（WorkItem＋共通税計算）に実装済み。
   const taxSum       = Math.floor(subtotalSum * 0.1);
   const totalWithTax = subtotalSum + taxSum;
 

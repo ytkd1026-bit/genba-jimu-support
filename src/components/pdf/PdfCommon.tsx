@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { isMultiTax, type TaxBreakdown } from '@/app/utils/taxCalculation';
 
 // フォントは /public/fonts にローカル配置した完全版Noto Sans JPを使用する。
 // 旧CDN（noto-sans-japanese@1.0.0）はグリフ収録が不完全で「△」等の記号が文字化けしていたため置き換えた。
@@ -472,6 +473,78 @@ export function PdfTaxSummary({
         <View style={s.summaryRowTotal}>
           <Text style={s.summaryLabelBold}>{totalLabel}</Text>
           <Text style={s.summaryAmtBold}>{fmtYen(total)}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── 税区分・税率別の合計サマリー ─────────────────────────────
+// 税率が1種類だけなら「小計／消費税／合計」、複数あれば税率別に内訳を出す。
+// 0円の区分は表示しない。
+export function PdfTaxBreakdownSummary({
+  breakdown,
+  totalLabel = '税込合計',
+}: {
+  breakdown: TaxBreakdown;
+  totalLabel?: string;
+}) {
+  const s = pdfSummaryStyle;
+  const b = breakdown;
+
+  if (!isMultiTax(b)) {
+    // 単一区分: 従来どおり 小計／消費税／合計
+    return (
+      <View style={s.summaryOuter}>
+        <View style={s.summaryBox}>
+          <View style={s.summaryRow}>
+            <Text style={s.summaryLabel}>小計</Text>
+            <Text style={s.summaryAmt}>{fmtYen(b.subtotal)}</Text>
+          </View>
+          <View style={s.summaryRow}>
+            <Text style={s.summaryLabel}>消費税</Text>
+            <Text style={s.summaryAmt}>{fmtYen(b.taxTotal)}</Text>
+          </View>
+          <View style={s.summaryRowTotal}>
+            <Text style={s.summaryLabelBold}>{totalLabel}</Text>
+            <Text style={s.summaryAmtBold}>{fmtYen(b.total)}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const rows: Array<{ label: string; amount: number }> = [];
+  if (b.taxable10Subtotal > 0) {
+    rows.push({ label: '10%対象額', amount: b.taxable10Subtotal });
+    rows.push({ label: '消費税10%', amount: b.taxable10Tax });
+  }
+  if (b.taxable8Subtotal > 0) {
+    rows.push({ label: '8%対象額', amount: b.taxable8Subtotal });
+    rows.push({ label: '消費税8%', amount: b.taxable8Tax });
+  }
+  if (b.zeroRateSubtotal > 0) {
+    rows.push({ label: '0%対象額', amount: b.zeroRateSubtotal });
+  }
+  if (b.nonTaxableSubtotal > 0) {
+    rows.push({ label: '非課税額', amount: b.nonTaxableSubtotal });
+  }
+  if (b.taxExemptSubtotal > 0) {
+    rows.push({ label: '不課税額', amount: b.taxExemptSubtotal });
+  }
+
+  return (
+    <View style={s.summaryOuter}>
+      <View style={s.summaryBox}>
+        {rows.map((r) => (
+          <View key={r.label} style={s.summaryRow}>
+            <Text style={s.summaryLabel}>{r.label}</Text>
+            <Text style={s.summaryAmt}>{fmtYen(r.amount)}</Text>
+          </View>
+        ))}
+        <View style={s.summaryRowTotal}>
+          <Text style={s.summaryLabelBold}>{totalLabel}</Text>
+          <Text style={s.summaryAmtBold}>{fmtYen(b.total)}</Text>
         </View>
       </View>
     </View>

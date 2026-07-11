@@ -7,6 +7,7 @@
 
 import { createListStore } from "./listStore";
 import { issueRecordId } from "./idGenerator";
+import { normalizeTaxType, normalizeTaxRate, type TaxType, type TaxRate } from "./taxCalculation";
 import type { SavedEstimate } from "./savedEstimates";
 
 export const WORK_ITEMS_KEY = "genba_work_items_v1";
@@ -25,6 +26,8 @@ export type WorkItem = {
   sellingUnitPrice: number; // 売価単価
   sellingAmount: number;    // 売価金額 = quantity × sellingUnitPrice
   note: string;             // 備考
+  taxType: TaxType;         // 税区分（課税/非課税/不課税）
+  taxRate: TaxRate;         // 税率（課税のとき 10 or 8 or 0、非課税/不課税は 0）
   // ── 内部管理（帳票に出さない） ───────────────────────
   materialCost: number;     // 材料原価
   laborCost: number;        // 労務原価
@@ -115,6 +118,8 @@ export function createEmptyWorkItem(
     sellingUnitPrice: 0,
     sellingAmount: 0,
     note: "",
+    taxType: "taxable",
+    taxRate: 10,
     materialCost: 0,
     laborCost: 0,
     subcontractCost: 0,
@@ -180,6 +185,9 @@ export function migrateLegacyEstimateToWorkItems(
       unit: item.unit,
       sellingUnitPrice,
       note: item.note,
+      // 旧見積は税区分の概念が無いため課税10%として取り込む
+      taxType: "taxable",
+      taxRate: 10,
       materialCost: 0,
       laborCost: 0,
       subcontractCost: 0,

@@ -10,12 +10,13 @@ import {
   fmtYen,
   pdfPageStyle,
   PdfDocumentHeader,
-  PdfTaxSummary,
+  PdfTaxBreakdownSummary,
   PdfFooter,
   PdfPageNumber,
   type CommonDocumentProps,
 } from './PdfCommon';
 import { SellingLinesTable, type SellingLine } from './WorkEstimatePDF';
+import type { TaxBreakdown } from '@/app/utils/taxCalculation';
 
 export type BankInfoForPDF = {
   bankName: string;
@@ -30,6 +31,7 @@ export type ProjectInvoicePDFProps = CommonDocumentProps & {
   subtotalSum: number;
   taxSum: number;
   totalWithTax: number;
+  taxBreakdown: TaxBreakdown;
   invoiceDate: string;
   dueDate: string; // 未定の場合は空文字
   bank: BankInfoForPDF;
@@ -121,12 +123,7 @@ function ProjectInvoicePDFDocument(props: ProjectInvoicePDFProps) {
               <Text style={s.noteText}>{props.invoiceNote}</Text>
             )}
           </View>
-          <PdfTaxSummary
-            subtotal={props.subtotalSum}
-            tax={props.taxSum}
-            total={props.totalWithTax}
-            totalLabel="ご請求金額"
-          />
+          <PdfTaxBreakdownSummary breakdown={props.taxBreakdown} totalLabel="ご請求金額" />
         </View>
 
         <PdfFooter projectId={props.projectId} documentNumber={props.documentNumber} />

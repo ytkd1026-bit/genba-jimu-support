@@ -19,6 +19,7 @@ import {
 import {
   workItemsToSellingLines,
   workItemsToEstimateItems,
+  workItemsToSnapshots,
   computeEstimateTotals,
   projectDocumentNumber,
   nextEstimateSeq,
@@ -27,6 +28,7 @@ import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
 import { estimatePdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
+import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 
 function fmtYen(n: number): string {
   return "¥" + n.toLocaleString("ja-JP");
@@ -95,11 +97,13 @@ export default function ProjectEstimatePage() {
       workDescription: workItems.map((w) => w.workName).filter(Boolean).join("、"),
       estimateItems: workItemsToEstimateItems(workItems),
       subtotal: totals.subtotal,
-      tax: totals.tax,
+      tax: totals.tax, // = taxBreakdown.taxTotal
       total: totals.total,
       status: "saved",
       version: 1,
       memo: "",
+      taxBreakdown: totals.breakdown,
+      lineSnapshots: workItemsToSnapshots(workItems),
     };
     upsertEstimate(est);
     setCurrentEstimateId(id);
@@ -153,6 +157,7 @@ export default function ProjectEstimatePage() {
         subtotalSum: totals.subtotal,
         taxSum: totals.tax,
         totalWithTax: totals.total,
+        taxBreakdown: totals.breakdown,
       });
       await renderAndDownloadPdf(
         doc,
@@ -242,11 +247,9 @@ export default function ProjectEstimatePage() {
               ))}
             </div>
 
-            {/* 提出用合計（白） */}
-            <div className="mt-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
-              <div className="flex justify-between text-sm"><span className="text-stone-500">売価小計</span><span className="font-bold text-stone-800">{fmtYen(totals.subtotal)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-stone-500">消費税（10%）</span><span className="font-bold text-stone-800">{fmtYen(totals.tax)}</span></div>
-              <div className="mt-1 flex justify-between border-t border-stone-100 pt-1 text-sm"><span className="font-bold text-[#8B4A3C]">税込合計</span><span className="text-base font-bold text-[#8B4A3C]">{fmtYen(totals.total)}</span></div>
+            {/* 提出用合計（白・税区分別内訳） */}
+            <div className="mt-3">
+              <TaxTotalsBox breakdown={totals.breakdown} />
             </div>
 
             {/* 内部管理（画面のみ・PDF非表示） */}

@@ -17,6 +17,7 @@ import {
 } from "@/app/utils/savedInvoices";
 import {
   workItemsToSellingLines,
+  workItemsToSnapshots,
   computeEstimateTotals,
   projectDocumentNumber,
 } from "@/app/utils/workItemEstimate";
@@ -24,6 +25,7 @@ import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettin
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
+import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 
 function fmtYen(n: number): string {
   return "¥" + n.toLocaleString("ja-JP");
@@ -106,10 +108,14 @@ export default function ProjectInvoicePage() {
       invoiceDate: todaySlash(),
       dueDate: "",
       subtotal: totals.subtotal,
-      tax: totals.tax,
+      tax: totals.tax, // = taxBreakdown.taxTotal
       total: totals.total,
       status: "draft",
       memo: "",
+      // 請求書は保存時点の税情報・明細をスナップショットとして残す
+      // （後で WorkItem を変更しても保存済み請求書の税額は変わらない）
+      taxBreakdown: totals.breakdown,
+      lineSnapshots: workItemsToSnapshots(includedItems),
     };
     upsertInvoice(inv);
     setCurrentInvoiceId(id);
@@ -158,6 +164,7 @@ export default function ProjectInvoicePage() {
         subtotalSum: totals.subtotal,
         taxSum: totals.tax,
         totalWithTax: totals.total,
+        taxBreakdown: totals.breakdown,
         invoiceDate: todaySlash(),
         dueDate: "",
         bank: getBankSettings(),
@@ -254,10 +261,8 @@ export default function ProjectInvoicePage() {
               })}
             </div>
 
-            <div className="mt-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
-              <div className="flex justify-between text-sm"><span className="text-stone-500">売価小計</span><span className="font-bold text-stone-800">{fmtYen(totals.subtotal)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-stone-500">消費税（10%）</span><span className="font-bold text-stone-800">{fmtYen(totals.tax)}</span></div>
-              <div className="mt-1 flex justify-between border-t border-stone-100 pt-1 text-sm"><span className="font-bold text-[#8B4A3C]">ご請求金額（税込）</span><span className="text-base font-bold text-[#8B4A3C]">{fmtYen(totals.total)}</span></div>
+            <div className="mt-3">
+              <TaxTotalsBox breakdown={totals.breakdown} title="請求合計" totalLabel="ご請求金額（税込）" />
             </div>
 
             {msg && (

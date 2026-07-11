@@ -25,10 +25,19 @@ import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettin
 import { estimatePdfFileName, singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
+import {
+  calculateTaxBreakdown,
+  normalizeTaxType,
+  normalizeTaxRate,
+  TAX_TYPE_LABELS,
+  type TaxType,
+  type TaxRate,
+} from "@/app/utils/taxCalculation";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
+import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 import { fldInput, fldSelect, lbl } from "@/components/formStyles";
 
 // 既存見積画面と同じ選択肢
@@ -55,6 +64,8 @@ type EditableWorkItem = {
   unit: string;
   sellingUnitPrice: string;
   note: string;
+  taxType: TaxType;
+  taxRate: TaxRate;
   materialCost: string;
   laborCost: string;
   subcontractCost: string;
@@ -91,6 +102,8 @@ function toEditable(w: WorkItem): EditableWorkItem {
     unit: w.unit,
     sellingUnitPrice: String(w.sellingUnitPrice),
     note: w.note,
+    taxType: normalizeTaxType(w.taxType),
+    taxRate: normalizeTaxRate(w.taxRate),
     materialCost: String(w.materialCost),
     laborCost: String(w.laborCost),
     subcontractCost: String(w.subcontractCost),
@@ -125,6 +138,8 @@ function toWorkItem(row: EditableWorkItem, projectId: string, now: string): Work
     unit: row.unit,
     sellingUnitPrice,
     note: row.note,
+    taxType: row.taxType,
+    taxRate: row.taxType === "taxable" ? row.taxRate : 0,
     materialCost,
     laborCost,
     subcontractCost,
@@ -251,6 +266,8 @@ export default function WorkItemsPage() {
         unit: "式",
         sellingUnitPrice: "0",
         note: "",
+        taxType: "taxable",
+        taxRate: 10,
         materialCost: "0",
         laborCost: "0",
         subcontractCost: "0",
@@ -363,6 +380,8 @@ export default function WorkItemsPage() {
         sellingUnitPrice: toNum(row.sellingUnitPrice),
         sellingAmount: a.sellingAmount,
         note: row.note,
+        taxType: row.taxType,
+        taxRate: (row.taxType === "taxable" ? row.taxRate : 0) as TaxRate,
       };
     });
   }
@@ -405,6 +424,7 @@ export default function WorkItemsPage() {
         subtotalSum: totals.selling,
         taxSum: totals.tax,
         totalWithTax: totals.totalWithTax,
+        taxBreakdown: totals.breakdown,
       });
       await renderAndDownloadPdf(
         doc,
@@ -442,6 +462,7 @@ export default function WorkItemsPage() {
         subtotalSum: totals.selling,
         taxSum: totals.tax,
         totalWithTax: totals.totalWithTax,
+        taxBreakdown: totals.breakdown,
         invoiceDate: todaySlash(),
         dueDate: "",
         bank: getBankSettings(),
@@ -464,19 +485,31 @@ export default function WorkItemsPage() {
     }
   }
 
-  // ── 合計 ──────────────────────────────────────────────────
+  // ── 合計（税計算は共通の calculateTaxBreakdown に委譲） ─────
   const totals = useMemo(() => {
-    let selling = 0;
     let cost = 0;
-    for (const row of rows) {
+    const taxLines = rows.map((row) => {
       const a = rowAmounts(row);
-      selling += a.sellingAmount;
       cost += a.totalCost;
-    }
-    const tax = Math.floor(selling * 0.1);
+      return {
+        amount: a.sellingAmount,
+        taxType: row.taxType,
+        taxRate: (row.taxType === "taxable" ? row.taxRate : 0) as TaxRate,
+      };
+    });
+    const breakdown = calculateTaxBreakdown(taxLines);
+    const selling = breakdown.subtotal;
     const grossProfit = selling - cost;
     const grossProfitRate = selling > 0 ? (grossProfit / selling) * 100 : 0;
-    return { selling, tax, totalWithTax: selling + tax, cost, grossProfit, grossProfitRate };
+    return {
+      selling,
+      tax: breakdown.taxTotal,
+      totalWithTax: breakdown.total,
+      breakdown,
+      cost,
+      grossProfit,
+      grossProfitRate,
+    };
   }, [rows]);
 
   // ── 案件が見つからない場合 ────────────────────────────────
@@ -680,9 +713,46 @@ export default function WorkItemsPage() {
                         className={fldInput} />
                     </div>
                   </div>
+                  {/* 税区分・税率 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={lbl}>税区分</label>
+                      <select
+                        value={row.taxType}
+                        onChange={(e) => {
+                          const t = e.target.value as TaxType;
+                          // 非課税・不課税は税率0へ自動整合。課税へ戻す際は10%を既定にする
+                          updateRow(row.workItemId, {
+                            taxType: t,
+                            taxRate: t === "taxable" ? (row.taxRate === 0 ? 10 : row.taxRate) : 0,
+                          });
+                        }}
+                        className={fldSelect}
+                      >
+                        {(Object.keys(TAX_TYPE_LABELS) as TaxType[]).map((k) => (
+                          <option key={k} value={k}>{TAX_TYPE_LABELS[k]}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>税率</label>
+                      <select
+                        value={String(row.taxRate)}
+                        disabled={row.taxType !== "taxable"}
+                        onChange={(e) => updateRow(row.workItemId, { taxRate: Number(e.target.value) as TaxRate })}
+                        className={`${fldSelect} disabled:bg-stone-100 disabled:text-stone-400`}
+                      >
+                        <option value="10">10%</option>
+                        <option value="8">8%</option>
+                        <option value="0">0%</option>
+                      </select>
+                    </div>
+                  </div>
                   {/* 自動計算（読み取り専用・色分け） */}
                   <div className="flex items-center justify-between rounded-lg bg-stone-100 px-3 py-2.5">
-                    <span className="text-xs text-stone-500">売価金額（自動計算）</span>
+                    <span className="text-xs text-stone-500">
+                      売価金額（自動計算・{row.taxType === "taxable" ? `課税${row.taxRate}%` : TAX_TYPE_LABELS[row.taxType]}）
+                    </span>
                     <span className="text-sm font-bold text-stone-800">{fmtYen(a.sellingAmount)}</span>
                   </div>
                   <div>
@@ -804,23 +874,7 @@ export default function WorkItemsPage() {
         {/* ── 合計（提出用＝白 / 内部管理＝黄） ─────────────── */}
         {rows.length > 0 && (
           <div className="mt-3 space-y-2">
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
-              <h3 className="mb-2 text-xs font-bold text-stone-500">提出用合計</h3>
-              <div className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-stone-500">売価小計</span>
-                  <span className="font-bold text-stone-800">{fmtYen(totals.selling)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-stone-500">消費税（10%）</span>
-                  <span className="font-bold text-stone-800">{fmtYen(totals.tax)}</span>
-                </div>
-                <div className="flex justify-between border-t border-stone-100 pt-1 text-sm">
-                  <span className="font-bold text-[#8B4A3C]">税込合計</span>
-                  <span className="text-base font-bold text-[#8B4A3C]">{fmtYen(totals.totalWithTax)}</span>
-                </div>
-              </div>
-            </div>
+            <TaxTotalsBox breakdown={totals.breakdown} />
             <div className="rounded-2xl bg-amber-50 p-4 shadow-sm ring-1 ring-amber-200">
               <h3 className="mb-2 text-xs font-bold text-amber-800">🔒 内部管理合計（提出PDFに出ません）</h3>
               <div className="space-y-1">

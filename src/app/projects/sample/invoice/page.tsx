@@ -346,6 +346,8 @@ export default function InvoicePage() {
   // 集計（表示中かつチェック済み）
   const targets = filteredProjects.filter((p) => p.included);
   const subtotalSum = targets.reduce((acc, p) => acc + p.subtotal, 0);
+  // TODO(税区分): 一括請求は案件単位の集計（各案件 p.tax）で、明細単位の税区分は未対応。
+  //   案件単位の税区分対応（taxBreakdown 連携）は今後。個別請求は案件請求画面で税区分対応済み。
   const taxSum = targets.reduce((acc, p) => acc + p.tax, 0);
   const totalWithTax = targets.reduce((acc, p) => acc + p.total, 0);
 
