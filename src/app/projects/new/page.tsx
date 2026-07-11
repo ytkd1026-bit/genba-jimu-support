@@ -8,6 +8,12 @@ import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { getSavedProjects, upsertProject } from "@/app/utils/savedProjects";
+import {
+  projectsStore,
+  issueNewProjectId,
+  createEmptyProject,
+} from "@/app/utils/projects";
+import { recordMigration, migratedProjectIdOf } from "@/app/utils/projectMigration";
 
 // 2つのキーの役割：
 //   DRAFT_PROJECT_KEY       → 「下書き保存」ボタン押下時の手動保存先（旧来のキー。後方互換のため維持）
@@ -78,6 +84,7 @@ export default function NewProjectPage() {
 
   // ── 自動下書き保存関連 state ──────────────────────────────────
   const [currentProjectId,  setCurrentProjectId]  = useState<string | null>(null);
+  const [savedProjectId,    setSavedProjectId]    = useState<string | null>(null); // 発行された新 projectId（REV-...）
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
 
   // フォーム
@@ -219,8 +226,12 @@ export default function NewProjectPage() {
     }
   }
 
-  // ─── 案件として本保存（savedProjects） ─────────────────────────
-  // 既存IDがある場合は同じIDで上書き保存する（重複登録防止）
+  // ─── 案件として本保存 ───────────────────────────────────────────
+  // 保存責務（過渡期の二重管理を明確化）:
+  //   正本    = projectsStore（新 Project。一案件一元管理の中心）
+  //   互換維持 = savedProjects（旧「保存済み案件一覧 /projects/saved」を壊さないため継続保存）
+  // 旧 id → 新 projectId のマッピングを記録し、案件一覧の移行バナーが二重計上しないようにする。
+  // 既存IDがある場合は同じIDで上書き保存する（重複登録防止）。
   function handleSaveProject() {
     if (!form.projectName.trim()) {
       alert("案件名を入力してから保存してください。");
@@ -228,12 +239,14 @@ export default function NewProjectPage() {
     }
     try {
       const now = new Date().toLocaleString("ja-JP");
-      const id = currentProjectId ?? `proj-${Date.now()}`;
+      const legacyId = currentProjectId ?? `proj-${Date.now()}`;
       const existing = currentProjectId
         ? getSavedProjects().find((p) => p.id === currentProjectId)
         : null;
+
+      // 1) 互換維持: 旧 savedProjects へ保存（既存一覧画面の表示を壊さない）
       upsertProject({
-        id,
+        id: legacyId,
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         projectName:        form.projectName,
@@ -253,11 +266,32 @@ export default function NewProjectPage() {
         memo:               form.memo,
         selectedCustomerId,
       });
-      setCurrentProjectId(id);
+
+      // 2) 正本: 新 Project を作成/更新（同じ旧 id からは同じ projectId へ上書き）
+      const existingProjectId = migratedProjectIdOf(legacyId);
+      const projectId = existingProjectId ?? issueNewProjectId();
+      const base =
+        (existingProjectId ? projectsStore.getById(existingProjectId) : null) ??
+        createEmptyProject(projectId);
+      const ok = projectsStore.upsert({
+        ...base,
+        projectId,
+        projectName:  form.projectName,
+        siteAddress:  form.address,
+        customerName: form.contactName,
+        clientName:   form.clientName,
+        submitTo:     form.clientName,
+        updatedAt:    new Date().toISOString(),
+      });
+      if (!ok) throw new Error("projectsStore.upsert failed");
+      recordMigration(legacyId, projectId);
+
+      setCurrentProjectId(legacyId);
       clearDraft(); // 自動下書きを削除（本保存済みのため不要）
+      setSavedProjectId(projectId);
       setShowSavedLink(true);
-      setSavedMsg("案件として保存しました。");
-      setTimeout(() => setSavedMsg(""), 4000);
+      setSavedMsg("案件として保存しました。案件詳細で調査・写真・見積・請求まで管理できます。");
+      setTimeout(() => setSavedMsg(""), 6000);
     } catch {
       setShowSavedLink(false);
       setSavedMsg("保存に失敗しました。");
@@ -631,30 +665,32 @@ export default function NewProjectPage() {
             {savedMsg && (
               <div className="rounded-xl bg-green-50 px-4 py-3 ring-1 ring-green-200">
                 <p className="text-sm font-bold text-green-700">{savedMsg}</p>
+                {showSavedLink && savedProjectId && (
+                  <p className="mt-1 text-xs text-green-600">
+                    案件ID：<span className="font-mono font-bold">{savedProjectId}</span>
+                  </p>
+                )}
                 {showSavedLink && (
-                  <Link href="/projects/saved" className="mt-1 block text-xs text-green-600 underline underline-offset-2">
-                    保存済み案件一覧を見る →
+                  <Link href="/projects/list" className="mt-1 block text-xs text-green-600 underline underline-offset-2">
+                    案件一覧を見る →
                   </Link>
                 )}
               </div>
             )}
 
-            <Link
-              href="/projects/sample/estimate"
-              className="flex w-full items-center justify-center rounded-2xl border-2 border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
-            >
-              見積もり作成開始
-            </Link>
-
+            {/* 本保存後は案件詳細（新・一元管理）へ進む。未保存時は先に保存を促す */}
             <button
               type="button"
               onClick={() => {
-                alert("案件を仮登録しました。案件詳細画面へ進みます。");
-                router.push("/projects/sample");
+                if (savedProjectId) {
+                  router.push(`/projects/${encodeURIComponent(savedProjectId)}`);
+                } else {
+                  alert("先に「案件として保存」を押してください。案件IDを発行してから詳細画面へ進めます。");
+                }
               }}
-              className="w-full rounded-2xl border border-stone-300 bg-white py-4 text-base font-bold text-stone-600 shadow-sm active:opacity-80"
+              className="flex w-full items-center justify-center rounded-2xl border-2 border-[#8B4A3C] bg-white py-4 text-base font-bold text-[#8B4A3C] shadow-sm active:opacity-80"
             >
-              案件詳細へ進む
+              案件詳細へ進む（調査・写真・見積・請求）
             </button>
 
             <Link

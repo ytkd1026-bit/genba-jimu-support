@@ -15,19 +15,42 @@ import {
   PROJECT_TYPE_LABELS,
   type Project,
 } from "@/app/utils/projects";
+import {
+  getUnmigratedLegacyProjects,
+  migrateAllLegacyProjects,
+} from "@/app/utils/projectMigration";
 
 export default function ProjectListPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  const [legacyCount, setLegacyCount] = useState(0);
+  const [migrateMsg, setMigrateMsg] = useState("");
 
-  useEffect(() => {
+  function reload() {
     const list = projectsStore
       .getAll()
       .slice()
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     setProjects(list);
+    setLegacyCount(getUnmigratedLegacyProjects().length);
+  }
+
+  useEffect(() => {
+    reload();
   }, []);
+
+  // 旧形式の保存済み案件を新しい案件管理へ引き継ぐ（旧データは残す・重複移行しない）
+  function handleMigrate() {
+    const result = migrateAllLegacyProjects();
+    reload();
+    setMigrateMsg(
+      result.migratedCount > 0
+        ? `${result.migratedCount}件を新しい案件管理へ引き継ぎました。旧データはそのまま残しています。`
+        : "引き継ぐ旧案件はありませんでした。",
+    );
+    setTimeout(() => setMigrateMsg(""), 8000);
+  }
 
   // 新規案件を発行して案件詳細へ移動する
   function handleCreate() {
@@ -54,6 +77,30 @@ export default function ProjectListPage() {
             案件ごとに調査・写真・見積・請求・報告をまとめて管理します。
           </p>
         </header>
+
+        {/* 旧案件の移行案内（未移行の旧 savedProjects がある場合のみ） */}
+        {legacyCount > 0 && (
+          <div className="mb-3 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+            <p className="text-sm font-bold text-amber-800">
+              旧形式の保存済み案件が {legacyCount} 件あります。
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700">
+              新しい案件管理へ引き継げます。旧データはそのまま残ります。
+            </p>
+            <button
+              type="button"
+              onClick={handleMigrate}
+              className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-amber-600 px-3 py-2 text-sm font-bold text-white active:opacity-80"
+            >
+              既存案件を引き継ぐ（{legacyCount}件）
+            </button>
+          </div>
+        )}
+        {migrateMsg && (
+          <div className="mb-3 rounded-xl bg-green-50 px-3 py-2 text-xs font-bold text-green-700 ring-1 ring-green-200">
+            {migrateMsg}
+          </div>
+        )}
 
         <button
           type="button"
@@ -104,6 +151,10 @@ export default function ProjectListPage() {
                   <p className="text-xs text-stone-400">
                     {PROJECT_TYPE_LABELS[p.projectType]}
                     {p.clientName ? `・元請: ${p.clientName}` : ""}
+                    {p.customerName ? `・顧客: ${p.customerName}` : ""}
+                  </p>
+                  <p className="text-right text-[11px] text-stone-300">
+                    更新 {new Date(p.updatedAt).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}
                   </p>
                 </div>
               </Link>

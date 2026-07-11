@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { bulkInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
+import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
 
 // TODO: Supabase連携後は、新規案件登録時の元請情報を customers テーブルに保存し、
 //       projects.customer_id と紐づける。現在は仮データで動作確認中。
@@ -86,9 +87,6 @@ const CUSTOMERS: Customer[] = [
 // 事業者設定画面で保存した内容をlocalStorageから読み込んでPDFへ反映する
 // TODO: Supabase連携後は company_settings テーブルから取得する
 // TODO: 小窓付き封筒の規格に合わせた印刷位置テンプレを追加する
-
-// 設定ページと同じキーを参照する
-const SETTINGS_STORAGE_KEY = "genba_settings";
 
 type CompanyInfoState = {
   name: string;
@@ -295,36 +293,10 @@ export default function InvoicePage() {
     if (demo) setAllProjects(INITIAL_ALL_PROJECTS);
   }, []);
 
-  // localStorageから事業者設定を読み込んで自社情報・振込先を更新する
+  // 事業者設定を共通ユーティリティから読み込む（genba_settings を直接参照しない）
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      // representative は設定画面では生名前（例: "山田 太郎"）で保存されているため
-      // PDFで使う形式（"代表　山田 太郎"）へ変換する
-      const rep = saved.representative
-        ? `代表　${saved.representative}`
-        : DEFAULT_COMPANY_INFO.representative;
-      setCompanyInfo({
-        name:          saved.businessName   ?? DEFAULT_COMPANY_INFO.name,
-        postalCode:    saved.postalCode     ?? DEFAULT_COMPANY_INFO.postalCode,
-        address:       saved.address        ?? DEFAULT_COMPANY_INFO.address,
-        representative: rep,
-        tel:           saved.tel            ?? DEFAULT_COMPANY_INFO.tel,
-        email:         saved.email          ?? DEFAULT_COMPANY_INFO.email,
-        invoiceNumber: saved.invoiceNumber  ?? DEFAULT_COMPANY_INFO.invoiceNumber,
-      });
-      setBank((prev) => ({
-        bankName:      saved.bankName      ?? prev.bankName,
-        branchName:    saved.branchName    ?? prev.branchName,
-        accountType:   saved.accountType   ?? prev.accountType,
-        accountNumber: saved.accountNumber ?? prev.accountNumber,
-        accountHolder: saved.accountHolder ?? prev.accountHolder,
-      }));
-    } catch {
-      // 読み込み失敗時はデフォルト値のまま
-    }
+    setCompanyInfo(getCompanyInfoForPdf());
+    setBank(getBankSettings());
   }, []);
 
   // 備考（デモ初期値）
