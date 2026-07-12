@@ -49,6 +49,17 @@ export default function ProjectDetailPage() {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
 
+  // 案件登録直後（?saved=1）の歓迎メッセージ
+  const [showSavedWelcome, setShowSavedWelcome] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("saved") === "1") {
+      setShowSavedWelcome(true);
+      const t = setTimeout(() => setShowSavedWelcome(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   // ── 読み込み ──────────────────────────────────────────────
   useEffect(() => {
     const p = projectsStore.getById(projectId);
@@ -171,6 +182,16 @@ export default function ProjectDetailPage() {
 
         <ProjectHeader project={project} />
         <ProjectTabs projectId={projectId} active="detail" />
+
+        {/* 案件登録直後の歓迎メッセージ */}
+        {showSavedWelcome && (
+          <div className="mb-3 rounded-xl bg-green-50 p-3 ring-1 ring-green-200">
+            <p className="text-sm font-bold text-green-700">案件を保存しました。</p>
+            <p className="mt-0.5 text-xs text-green-600">
+              続けて現地調査・写真・工事項目を登録できます。
+            </p>
+          </div>
+        )}
 
         {/* 下書き復元バナー */}
         {showRestoreBanner && restoredDraft && (

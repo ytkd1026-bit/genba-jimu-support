@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
 import {
   workItemsStore,
   issueWorkItemId,
@@ -46,6 +46,23 @@ const LOCATION2_OPTIONS = ["", "天井", "壁", "床", "共通"];
 const CATEGORY_PRESETS = [
   "内装工事", "床工事", "天井工事", "壁工事", "建具工事", "塗装工事", "解体工事", "諸経費",
 ];
+
+// 税区分・税率の1択マッピング（通常選択肢は 課税10% / 課税8% / 非課税 / 不課税・対象外）
+const TAX_COMBO: Record<string, { taxType: TaxType; taxRate: TaxRate }> = {
+  taxable_10: { taxType: "taxable", taxRate: 10 },
+  taxable_8:  { taxType: "taxable", taxRate: 8 },
+  taxable_0:  { taxType: "taxable", taxRate: 0 }, // 詳細設定（課税0%）
+  non_taxable: { taxType: "non_taxable", taxRate: 0 },
+  tax_exempt:  { taxType: "tax_exempt", taxRate: 0 },
+};
+
+function taxComboValue(taxType: TaxType, taxRate: TaxRate): string {
+  if (taxType === "non_taxable") return "non_taxable";
+  if (taxType === "tax_exempt") return "tax_exempt";
+  if (taxRate === 8) return "taxable_8";
+  if (taxRate === 0) return "taxable_0";
+  return "taxable_10";
+}
 
 // 内部管理（黄系）スタイル
 const costInput =
@@ -351,6 +368,8 @@ export default function WorkItemsPage() {
       setDeletedIds([]);
       setRows(workItemsStore.getByProjectId(projectId).map(toEditable));
       clearDraft();
+      // 工事項目を登録したら「見積作成中」へ前進（後退はしない）
+      if (rows.length > 0) advanceProjectStatus(projectId, "estimating");
     }
     return allOk;
   }
@@ -487,17 +506,19 @@ export default function WorkItemsPage() {
 
   // ── 合計（税計算は共通の calculateTaxBreakdown に委譲） ─────
   const totals = useMemo(() => {
-    let cost = 0;
-    const taxLines = rows.map((row) => {
+    const rowsWithAmounts = rows.map((row) => {
       const a = rowAmounts(row);
-      cost += a.totalCost;
       return {
         amount: a.sellingAmount,
+        cost: a.totalCost,
         taxType: row.taxType,
         taxRate: (row.taxType === "taxable" ? row.taxRate : 0) as TaxRate,
       };
     });
-    const breakdown = calculateTaxBreakdown(taxLines);
+    const cost = rowsWithAmounts.reduce((s, r) => s + r.cost, 0);
+    const breakdown = calculateTaxBreakdown(
+      rowsWithAmounts.map((r) => ({ amount: r.amount, taxType: r.taxType, taxRate: r.taxRate })),
+    );
     const selling = breakdown.subtotal;
     const grossProfit = selling - cost;
     const grossProfitRate = selling > 0 ? (grossProfit / selling) * 100 : 0;
@@ -713,40 +734,26 @@ export default function WorkItemsPage() {
                         className={fldInput} />
                     </div>
                   </div>
-                  {/* 税区分・税率 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className={lbl}>税区分</label>
-                      <select
-                        value={row.taxType}
-                        onChange={(e) => {
-                          const t = e.target.value as TaxType;
-                          // 非課税・不課税は税率0へ自動整合。課税へ戻す際は10%を既定にする
-                          updateRow(row.workItemId, {
-                            taxType: t,
-                            taxRate: t === "taxable" ? (row.taxRate === 0 ? 10 : row.taxRate) : 0,
-                          });
-                        }}
-                        className={fldSelect}
-                      >
-                        {(Object.keys(TAX_TYPE_LABELS) as TaxType[]).map((k) => (
-                          <option key={k} value={k}>{TAX_TYPE_LABELS[k]}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={lbl}>税率</label>
-                      <select
-                        value={String(row.taxRate)}
-                        disabled={row.taxType !== "taxable"}
-                        onChange={(e) => updateRow(row.workItemId, { taxRate: Number(e.target.value) as TaxRate })}
-                        className={`${fldSelect} disabled:bg-stone-100 disabled:text-stone-400`}
-                      >
-                        <option value="10">10%</option>
-                        <option value="8">8%</option>
-                        <option value="0">0%</option>
-                      </select>
-                    </div>
+                  {/* 税区分・税率（1つの選択肢に集約。課税0%は詳細設定でのみ表示） */}
+                  <div>
+                    <label className={lbl}>税区分・税率</label>
+                    <select
+                      value={taxComboValue(row.taxType, row.taxRate)}
+                      onChange={(e) => {
+                        const { taxType, taxRate } = TAX_COMBO[e.target.value];
+                        updateRow(row.workItemId, { taxType, taxRate });
+                      }}
+                      className={fldSelect}
+                    >
+                      {/* 課税0%（詳細）は既にその値のときだけ選択肢に出す */}
+                      {row.taxType === "taxable" && row.taxRate === 0 && (
+                        <option value="taxable_0">課税0%（詳細）</option>
+                      )}
+                      <option value="taxable_10">課税10%</option>
+                      <option value="taxable_8">課税8%</option>
+                      <option value="non_taxable">非課税</option>
+                      <option value="tax_exempt">不課税・対象外</option>
+                    </select>
                   </div>
                   {/* 自動計算（読み取り専用・色分け） */}
                   <div className="flex items-center justify-between rounded-lg bg-stone-100 px-3 py-2.5">

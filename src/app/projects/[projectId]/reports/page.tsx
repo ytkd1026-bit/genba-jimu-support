@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
 import {
   workReportsStore,
   issueWorkReportId,
@@ -154,6 +154,8 @@ export default function WorkReportsPage() {
       setDeletedIds([]);
       setRecords(workReportsStore.getByProjectId(projectId));
       clearDraft();
+      // 作業報告を保存したら「施工中」へ前進（後退はしない）。完工/入金は手動更新
+      if (records.length > 0) advanceProjectStatus(projectId, "in_progress");
     }
     return allOk;
   }

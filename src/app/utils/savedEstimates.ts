@@ -45,12 +45,17 @@ export type SavedEstimate = {
   tax: number; // = taxBreakdown.taxTotal（互換維持）
   total: number;
   status: EstimateStatus;
-  version: number;
+  version: number; // 版番号（1始まり）
   memo: string;
   // ── 税区分対応（後方互換のため任意） ──────────────────────
   taxBreakdown?: TaxBreakdown;
   /** 保存時点の明細スナップショット（税情報を含む・後から WorkItem が変わっても不変） */
   lineSnapshots?: LineSnapshot[];
+  // ── 版管理（後方互換のため任意） ──────────────────────────
+  /** 前版の見積ID（新しい版として保存したときに設定） */
+  previousEstimateId?: string;
+  /** 修正理由（新しい版として保存したときに入力） */
+  revisionReason?: string;
 };
 
 export function getSavedEstimates(): SavedEstimate[] {

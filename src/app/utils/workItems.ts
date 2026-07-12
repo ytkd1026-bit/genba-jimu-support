@@ -7,7 +7,7 @@
 
 import { createListStore } from "./listStore";
 import { issueRecordId } from "./idGenerator";
-import { normalizeTaxType, normalizeTaxRate, type TaxType, type TaxRate } from "./taxCalculation";
+import type { TaxType, TaxRate } from "./taxCalculation";
 import type { SavedEstimate } from "./savedEstimates";
 
 export const WORK_ITEMS_KEY = "genba_work_items_v1";

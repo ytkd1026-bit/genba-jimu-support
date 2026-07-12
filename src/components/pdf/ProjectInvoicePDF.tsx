@@ -7,7 +7,6 @@ import {
   ACCENT,
   BORDER,
   GRAY,
-  fmtYen,
   pdfPageStyle,
   PdfDocumentHeader,
   PdfTaxBreakdownSummary,

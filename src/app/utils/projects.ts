@@ -78,6 +78,34 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   cancelled:   "中止",
 };
 
+// ─── ステータスの優先順位（前進のみ・後退させない） ──────────
+// 数値が大きいほど後の工程。自動更新はこの順位を後退させない。
+const STATUS_RANK: Record<ProjectStatus, number> = {
+  survey: 0,
+  estimating: 1,
+  submitted: 2,
+  approved: 3,
+  scheduled: 4,
+  in_progress: 5,
+  completed: 6,
+  invoiced: 7,
+  paid: 8,
+  cancelled: 9, // 終端。自動更新では設定も後退もしない
+};
+
+/**
+ * 案件ステータスを目標ステータスへ「前進のみ」で自動更新する。
+ * 既にユーザーが先の工程へ進めている場合は後退させない。
+ * cancelled の案件は自動更新しない。保存に失敗しても致命的ではないため戻り値は無視してよい。
+ */
+export function advanceProjectStatus(projectId: string, to: ProjectStatus): void {
+  const p = projectsStore.getById(projectId);
+  if (!p) return;
+  if (p.status === "cancelled") return; // 中止案件は自動更新しない
+  if (STATUS_RANK[to] <= STATUS_RANK[p.status]) return; // 後退・据え置きはしない
+  projectsStore.upsert({ ...p, status: to, updatedAt: new Date().toISOString() });
+}
+
 // ─── 保存ユーティリティ ───────────────────────────────────────
 export const projectsStore = createListStore<Project>(
   PROJECTS_KEY,

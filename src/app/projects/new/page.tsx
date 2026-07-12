@@ -289,9 +289,8 @@ export default function NewProjectPage() {
       setCurrentProjectId(legacyId);
       clearDraft(); // 自動下書きを削除（本保存済みのため不要）
       setSavedProjectId(projectId);
-      setShowSavedLink(true);
-      setSavedMsg("案件として保存しました。案件詳細で調査・写真・見積・請求まで管理できます。");
-      setTimeout(() => setSavedMsg(""), 6000);
+      // 保存後は案件詳細へ自動移動（saved=1 で歓迎メッセージを表示）
+      router.push(`/projects/${encodeURIComponent(projectId)}?saved=1`);
     } catch {
       setShowSavedLink(false);
       setSavedMsg("保存に失敗しました。");

@@ -53,6 +53,40 @@ export function workItemsToSnapshots(workItems: WorkItem[]): LineSnapshot[] {
   }));
 }
 
+/**
+ * 保存済みスナップショットを提出用明細（SellingLine）へ復元する。
+ * 保存済み見積・請求の再表示／再発行に使う（現在の WorkItem は読まない）。
+ * スナップショットに無い明細項目（分類・工事内容・施工箇所・備考）は空にする。
+ */
+export function snapshotsToSellingLines(snaps: LineSnapshot[]): SellingLine[] {
+  return snaps.map((s) => ({
+    workItemId: s.workItemId,
+    category: "",
+    workName: s.workName,
+    workDescription: "",
+    location1: "",
+    location2: "",
+    quantity: s.quantity,
+    unit: s.unit,
+    sellingUnitPrice: s.unitPrice,
+    sellingAmount: s.amount,
+    note: "",
+    taxType: normalizeTaxType(s.taxType),
+    taxRate: normalizeTaxRate(s.taxRate),
+  }));
+}
+
+/** スナップショットから税率別の内訳を計算する（保存時点の税額を再現） */
+export function taxBreakdownFromSnapshots(snaps: LineSnapshot[]): TaxBreakdown {
+  return calculateTaxBreakdown(
+    snaps.map((s) => ({
+      amount: s.amount,
+      taxType: normalizeTaxType(s.taxType),
+      taxRate: normalizeTaxRate(s.taxRate),
+    })),
+  );
+}
+
 /** 売価明細（税区分つき）から税率別の内訳を計算する（共通税計算関数を使用） */
 export function taxBreakdownOf(
   lines: Array<{ sellingAmount: number; taxType: TaxType; taxRate: TaxRate }>,
