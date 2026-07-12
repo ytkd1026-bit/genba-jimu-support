@@ -1,3 +1,5 @@
+import type { TaxType, TaxRate, TaxBreakdown } from "./taxCalculation";
+
 const SAVED_ESTIMATES_KEY = "genba_jimu_saved_estimates";
 const SELECTED_ESTIMATE_ID_KEY = "genba_jimu_selected_estimate_id";
 
@@ -16,6 +18,18 @@ export type EstimateItem = {
   note: string;
 };
 
+/** 見積・請求の保存時に残す明細スナップショット（保存時点の税情報を含む） */
+export type LineSnapshot = {
+  workItemId: string;
+  workName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  amount: number;
+  taxType: TaxType;
+  taxRate: TaxRate;
+};
+
 export type SavedEstimate = {
   id: string;
   createdAt: string;
@@ -28,11 +42,20 @@ export type SavedEstimate = {
   workDescription: string;
   estimateItems: EstimateItem[];
   subtotal: number;
-  tax: number;
+  tax: number; // = taxBreakdown.taxTotal（互換維持）
   total: number;
   status: EstimateStatus;
-  version: number;
+  version: number; // 版番号（1始まり）
   memo: string;
+  // ── 税区分対応（後方互換のため任意） ──────────────────────
+  taxBreakdown?: TaxBreakdown;
+  /** 保存時点の明細スナップショット（税情報を含む・後から WorkItem が変わっても不変） */
+  lineSnapshots?: LineSnapshot[];
+  // ── 版管理（後方互換のため任意） ──────────────────────────
+  /** 前版の見積ID（新しい版として保存したときに設定） */
+  previousEstimateId?: string;
+  /** 修正理由（新しい版として保存したときに入力） */
+  revisionReason?: string;
 };
 
 export function getSavedEstimates(): SavedEstimate[] {

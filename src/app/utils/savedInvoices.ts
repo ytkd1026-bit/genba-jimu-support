@@ -1,6 +1,9 @@
 // 単体請求書の本保存ユーティリティ
 // savedEstimates.ts と同じパターンで、将来 Supabase へ移行できる構造にしている
 
+import type { TaxBreakdown } from './taxCalculation';
+import type { LineSnapshot } from './savedEstimates';
+
 const SAVED_INVOICES_KEY = 'genba_jimu_saved_invoices';
 
 export type SavedInvoice = {
@@ -14,10 +17,16 @@ export type SavedInvoice = {
   invoiceDate: string;
   dueDate: string;
   subtotal: number;
-  tax: number;
+  tax: number; // = taxBreakdown.taxTotal（互換維持）
   total: number;
   status: 'draft' | 'issued';
   memo: string;
+  /** 振込手数料についての文言（既存データに無い場合は空文字で補完） */
+  bankFeeNote?: string;
+  // ── 税区分対応（後方互換のため任意） ──────────────────────
+  taxBreakdown?: TaxBreakdown;
+  /** 請求書保存時点の明細スナップショット（税情報を含む・WorkItem変更の影響を受けない） */
+  lineSnapshots?: LineSnapshot[];
 };
 
 export function getSavedInvoices(): SavedInvoice[] {

@@ -1,0 +1,32 @@
+統合修正 — 既存機能への影響
+============================
+
+■ 触っていない（無変更）既存機能
+- 自動下書き保存（useAutoDraft / draftStorage）… 変更なし
+- PDF発行前本保存の仕組み … 変更なし（新画面も同じ「保存→発行」順を踏襲）
+- 見積PDFのデザイン（EstimatePDF: 見積明細書 / 見積書兼注文書 / 保存用PDF）
+  … デザイン・出力とも無変更（前回フェーズ6で共通部品化済み、見た目同一）
+- 材料計算（sample/materials）、スキャン、月次収支、未請求一覧、得意先 … 無変更
+- /projects/saved（旧保存済み案件一覧）… 無変更（引き続き savedProjects を表示）
+- 会社設定画面（settings/company）… 保存ロジック無変更（読取のみ共通化の対象外）
+
+■ 変更したが後方互換を保った既存機能
+- /projects/new（案件登録）:
+  従来の savedProjects 保存はそのまま。加えて新 Project 作成＋案件詳細への導線を追加。
+  旧「見積もり作成開始→/projects/sample/estimate」「案件詳細へ進む→/projects/sample」の
+  固定リンクは、案件IDベースの「案件詳細へ進む（/projects/{projectId}）」へ置換。
+- sample/estimate・single-invoice・invoice:
+  会社設定の読み込みを companySettings.ts 経由へ変更（表示・PDF内容は同一）。
+  デモ／手入力の既存動作は維持。
+- ProjectTabs 05/06:
+  sample 固定リンク → 案件配下 /estimate・/invoice へ変更。08/09 は準備中ページで有効化。
+
+■ 影響確認（E2E）
+- 既存画面 /projects/new, /projects/saved, /projects/sample/{estimate,single-invoice,invoice},
+  /settings/company がすべて 200 で表示。
+- 既存PDF（見積明細書・見積書兼注文書・保存用）が従来どおり出力（phase6 E2E）。
+- 会社設定を変更すると案件見積PDF・既存PDF双方が同じ設定を参照（共通util化）。
+
+■ リスク/注意
+- react-hooks/set-state-in-effect の lint 指摘は既存ページと同一パターン（新規エラーではない）。
+  npm run build は成功。

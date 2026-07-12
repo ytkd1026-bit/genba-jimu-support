@@ -16,8 +16,7 @@ import { draftKey } from "@/app/utils/draftStorage";
 import { upsertInvoice, getSavedInvoices } from "@/app/utils/savedInvoices";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
-
-const SETTINGS_STORAGE_KEY = "genba_settings";
+import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type CompanyInfo = {
@@ -226,34 +225,16 @@ export default function SingleInvoicePage() {
     }
   }
 
-  // 事業者設定を localStorage から読み込む
+  // 事業者設定を共通ユーティリティから読み込む（genba_settings を直接参照しない）
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      const rep = saved.representative ? `代表　${saved.representative}` : DEFAULT_COMPANY.representative;
-      setCompanyInfo({
-        name:           saved.businessName   ?? DEFAULT_COMPANY.name,
-        postalCode:     saved.postalCode     ?? DEFAULT_COMPANY.postalCode,
-        address:        saved.address        ?? DEFAULT_COMPANY.address,
-        representative: rep,
-        tel:            saved.tel            ?? DEFAULT_COMPANY.tel,
-        email:          saved.email          ?? DEFAULT_COMPANY.email,
-        invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY.invoiceNumber,
-      });
-      setBank({
-        bankName:      saved.bankName      ?? DEFAULT_BANK.bankName,
-        branchName:    saved.branchName    ?? DEFAULT_BANK.branchName,
-        accountType:   saved.accountType   ?? DEFAULT_BANK.accountType,
-        accountNumber: saved.accountNumber ?? DEFAULT_BANK.accountNumber,
-        accountHolder: saved.accountHolder ?? DEFAULT_BANK.accountHolder,
-      });
-    } catch { /* デフォルト値のまま */ }
+    setCompanyInfo(getCompanyInfoForPdf());
+    setBank(getBankSettings());
   }, []);
 
   // 金額計算（固定明細）
   const subtotalSum  = INVOICE_LINES.reduce((s, l) => s + toNum(l.unitPrice) * toNum(l.qty), 0);
+  // TODO(税区分): この単体請求フローは INVOICE_LINES（税区分なし）を全額課税10%で計算する。
+  //   税区分・税率対応は案件請求 /projects/[projectId]/invoice（WorkItem＋共通税計算）に実装済み。
   const taxSum       = Math.floor(subtotalSum * 0.1);
   const totalWithTax = subtotalSum + taxSum;
 

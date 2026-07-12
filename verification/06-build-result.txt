@@ -1,0 +1,26 @@
+build 結果
+==========
+実行日時：2026-07-12 03:02:56
+実行コマンド：npm run build
+終了コード：0
+結果：成功
+
+エラー：なし（TypeScript / Next.js build / React PDF / import / 動的ルート / localStorage SSR いずれもエラーなし）
+警告：なし（build ログに warning 出力なし）
+
+TypeScript：npx tsc --noEmit → エラーなし（終了コード0）
+
+依存関係（npm install）:
+  node v22.22.2 / npm 10.9.7
+  npm install は "up to date"（新規インストールなし）。
+  ただし npm が package-lock.json の optional native 依存（@next/swc / esbuild 等）から
+  "libc": ["glibc"] / ["musl"] メタデータ（計38箇所）を除去する正規化差分を生成した。
+  依存バージョンの追加・変更・削除は一切なし。不要な依存更新を避けるため lockfile は
+  git checkout で元に戻し、コミットしていない。
+
+修正内容：なし（build は初回から成功）
+再実行結果：成功（複数回実行して同一・安定）
+
+生成ルート数：29ルート（静的21・動的8）すべて正常にコンパイル。
+
+判定：build 成功。

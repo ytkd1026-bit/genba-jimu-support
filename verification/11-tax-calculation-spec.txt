@@ -1,0 +1,71 @@
+税区分・税率 計算仕様
+======================
+
+■ 税区分（TaxType）
+- taxable      … 課税
+- non_taxable  … 非課税
+- tax_exempt   … 不課税・課税対象外
+画面ラベル: TAX_TYPE_LABELS = { taxable:"課税", non_taxable:"非課税", tax_exempt:"不課税・対象外" }
+
+■ 税率（TaxRate）
+- 10 / 8 / 0（数値）。表示は "10%" / "8%" / "0%"
+- 税率は「課税」のときのみ選択可能。
+  非課税・不課税を選ぶと税率は 0 に自動整合し、税率selectは無効化される。
+
+■ 端数処理
+- Math.floor（切り捨て）
+- 重要: 税率ごとに課税対象額を「合算してから」税額を計算し切り捨てる。
+  明細ごとに税額を出して各行切り捨て→合算する方式は禁止。
+  例: 11,111 が3行（10%）→ 合算 33,333 → floor(33,333×0.1)=3,333
+
+■ 集計単位（calculateTaxBreakdown の出力 TaxBreakdown）
+  taxable10Subtotal / taxable10Tax   … 10%課税対象額・税額
+  taxable8Subtotal  / taxable8Tax    … 8%課税対象額・税額
+  zeroRateSubtotal                   … 課税かつ税率0%の対象額
+  nonTaxableSubtotal                 … 非課税額
+  taxExemptSubtotal                  … 不課税額
+  subtotal                           … 税抜合計（全課税対象＋非課税＋不課税）
+  taxTotal = taxable10Tax + taxable8Tax
+  total    = subtotal + taxTotal
+
+  taxable10Tax = Math.floor(taxable10Subtotal × 0.1)
+  taxable8Tax  = Math.floor(taxable8Subtotal  × 0.08)
+
+■ 計算の一貫性（帳票ごとに実装しない）
+  WorkItem(taxType,taxRate)
+    → calculateTaxBreakdown（共通・唯一の計算関数）
+    → 工事項目・原価画面の合計 / 見積 / 請求 / 各PDF
+  すべて同一の TaxBreakdown を再利用する。
+
+■ 保存形式
+- WorkItem: taxType, taxRate を保持（genba_work_items_v1）。
+- SavedEstimate / SavedInvoice（後方互換のため任意項目）:
+    taxBreakdown?: TaxBreakdown
+    lineSnapshots?: LineSnapshot[]   // 保存時点の明細＋税情報
+    tax（既存）= taxBreakdown.taxTotal として保存（互換維持）
+    subtotal / total（既存）も維持
+- 明細スナップショット LineSnapshot:
+    { workItemId, workName, quantity, unit, unitPrice, amount, taxType, taxRate }
+  請求書は保存時の明細を履歴として残し、後から WorkItem を変更しても
+  保存済み請求書の税額は変わらない（スナップショット参照）。
+  請求から除外した項目はスナップショット・税集計の双方から除外する。
+
+■ 既存データ補完方法
+- taxType 欠落 → "taxable"（normalizeTaxType）
+- taxRate 欠落 → 10（normalizeRate）
+  → 税区分の無い既存 WorkItem・旧見積取り込みはすべて「課税10%」として読める。
+- calculateTaxBreakdown / normalize* は undefined を安全に扱うため、
+  既存データ読み込み時に画面が落ちない。
+
+■ PDF表示方法
+- 明細（WorkEstimatePDF / ProjectInvoicePDF 共通テーブル）:
+    消費税列は「その行の税率」で表示（非課税/不課税は0、8%は8%）。
+    合計計算には使わず表示専用。
+    備考欄に非既定の税区分マーク（課税8% / 非課税 / 不課税）を付す。
+    課税10%は既定のためマーク無し。
+- 合計欄（PdfTaxBreakdownSummary）:
+    税率が1種類のみ → 小計 / 消費税 / 合計
+    複数種類（10%と8%、または非課税/不課税混在）→
+      10%対象額・消費税10% / 8%対象額・消費税8% / 0%対象額 /
+      非課税額 / 不課税額 / 合計（0円の区分は非表示）
+- 既存の見積PDFデザイン（茶アクセント・列幅・行高・会社情報・インボイス番号）は不変。

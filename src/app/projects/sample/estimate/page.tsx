@@ -12,6 +12,7 @@ import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
@@ -23,7 +24,6 @@ const PDF_WORK_CONTENT  = "洋室クロス貼替・洗面所CF貼替";
 const PDF_ESTIMATE_DATE = "2026-05-30";
 
 // 事業者設定との共通キー（settings/company/page.tsx と同じ値を参照）
-const SETTINGS_STORAGE_KEY = "genba_settings";
 
 // ─── 案件検索用型定義・仮データ ──────────────────────────────
 type EstSearchProject = {
@@ -393,27 +393,9 @@ export default function EstimatePage() {
     });
   }, [estHasSearched, estSearchDate, estSearchProject, estSearchClient]);
 
-  // localStorageから事業者設定を読み込む（一括請求PDFと同じ共通キーを使用）
+  // 事業者設定を共通ユーティリティから読み込む（genba_settings を直接参照しない）
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      const rep = saved.representative
-        ? `代表　${saved.representative}`
-        : DEFAULT_COMPANY_INFO.representative;
-      setCompanyInfo({
-        name:           saved.businessName   ?? DEFAULT_COMPANY_INFO.name,
-        postalCode:     saved.postalCode     ?? DEFAULT_COMPANY_INFO.postalCode,
-        address:        saved.address        ?? DEFAULT_COMPANY_INFO.address,
-        representative: rep,
-        tel:            saved.tel            ?? DEFAULT_COMPANY_INFO.tel,
-        email:          saved.email          ?? DEFAULT_COMPANY_INFO.email,
-        invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY_INFO.invoiceNumber,
-      });
-    } catch {
-      // 読み込み失敗時はデフォルト値のまま
-    }
+    setCompanyInfo(getCompanyInfoForPdf());
   }, []);
 
   // demo モードだけサンプルデータをセット
@@ -502,6 +484,9 @@ export default function EstimatePage() {
   }
 
   const subtotalSum = lines.reduce((acc, l) => acc + toNum(l.qty) * toNum(l.unitPrice), 0);
+  // TODO(税区分): この画面は案件に紐づかない単体手入力フロー（LineItem に税区分なし）のため
+  //   全額を課税10%として計算する。税区分・税率対応は案件見積 /projects/[projectId]/estimate
+  //   （WorkItem＋共通 calculateTaxBreakdown）に実装済み。単体フローの税区分UIは今後対応。
   const taxSum = Math.floor(subtotalSum * 0.1);
   const totalWithTax = subtotalSum + taxSum;
   const costSum = costs.reduce((acc, c) => acc + toNum(c.qty) * toNum(c.costUnitPrice), 0);
