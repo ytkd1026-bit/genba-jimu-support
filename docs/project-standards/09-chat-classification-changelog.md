@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-07-12 — ChatGPTワーク実データの分類適用（Ver1.1運用反映）
+
+- ユーザー提供の ChatGPTプロジェクト6・通常チャット17・アーカイブ60（**計83件**）を、
+  規格Ver1.1（分類JIMU/REVO/AIT/KNOW・優先度S/A/B/C/X・状態7）で分類。
+- 成果物：
+  - `verification/project-standardization/07-chatgpt-work-inventory.csv`（全83件・列固定・分類理由全件記載）
+  - `docs/project-standards/13-naming-violation-and-fix.md`（命名違反抽出＋修正後名称提案）
+- 判定方針（推測禁止）：**分類・優先度は題名のキーワードのみを根拠**、
+  **状態は一覧区分**（プロジェクト=DOING／通常=TODO／アーカイブ=ARCHIVE）を根拠に付与。
+  題名で判別困難な7件は「※要確認」を明記。
+- 集計：分類 KNOW49/REVO22/AIT7/JIMU5、優先度 C32/X23/B19/A9、状態 ARCHIVE60/TODO17/DOING6。
+- 全83件が現行命名規則（`分類-YYYYMMDD-内容`）に違反（接頭辞なし・日付なし）。
+  修正後名称の日付は `YYYYMMDD` プレースホルダ（実作成日は不明のため推測せず要補完）。
+- コード・UI 変更なし。実際のリネーム/削除はユーザーが ChatGPT 側で実施。
+
+---
+
 ## 2026-07-12 — チャット規格Ver1.1 最終レビュー ＋ 案件/写真/DB規格 新規制定
 
 ### A. チャット分類規格 Ver1.1 最終レビュー結果（矛盾チェック）
