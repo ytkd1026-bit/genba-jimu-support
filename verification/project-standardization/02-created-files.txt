@@ -1,0 +1,31 @@
+作成ファイル一覧（開発運用標準化）
+====================================
+ブランチ：feature/jimu-project-standards（review/draft-save から作成）
+コミットメッセージ：docs: add AI TORYO project standards v1.0
+
+■ docs/project-standards/
+  README.md                          … 開発者向け運用ガイド（分類/命名/優先度/状態/ブランチ/コミット/リリースの総覧）
+  01-project-classification.md       … 分類コード（REVO / AIT / JIMU）
+  02-file-naming-rule.md             … ファイル命名規則（分類-YYYYMMDD-内容-v版数）
+  03-branch-rule.md                  … Git ブランチ・コミット規則
+  04-priority-rule.md                … 優先度（S/A/B/C/X）
+  05-status-rule.md                  … 状態（TODO/DOING/HOLD/DONE）＋DONE定義
+  06-release-rule.md                 … リリース・バージョン規則
+  07-ai-toryo-data-gap-analysis.md   … 共通DB/AI棟梁連携のデータ不足調査（実コード根拠）
+
+■ docs/roadmap/
+  JIMU-Roadmap-v1.0.md               … 事務サポ専用ロードマップ（Phase1〜6・公開判定）
+
+■ verification/project-standardization/
+  01-current-structure.txt           … 現在のリポジトリ構造
+  02-created-files.txt               … 本ファイル
+  03-roadmap.txt                     … ロードマップ要約（Phase条件）
+  04-data-gap-analysis.txt           … データ不足の要約
+  05-recommendations.txt             … 推奨追加項目・リスク・次アクション
+
+合計：ドキュメント9本 ＋ 検証5本 ＝ 14ファイル新規作成。
+※アプリのソースコード（src/）は一切変更していない（運用基盤の整備のみ）。
+
+■ 注意（AI棟梁）
+  データ設計（07）は先行整備だが、AI棟梁の機能・UI・メニュー・β表示は
+  一切追加していない。案件5000件・精度検証合格まで露出しない方針。

@@ -1,0 +1,36 @@
+データ ギャップ分析 要約
+========================
+詳細：docs/project-standards/07-ai-toryo-data-gap-analysis.md
+調査対象：src/app/utils/ の各データ型（実コードを精読）
+
+■ 横断ギャップ（最重要）
+  A-1 グローバル一意ID（UUID）          … 現状は端末ローカル採番（REV-…/W-… 連番）。idGeneratorにTODO明記。[S]
+  A-2 tenantId／事業者ID                … 所有者概念なし＝単一利用者前提。[S]
+  A-3 userId（作成者・更新者）          … 誰の入力か追えない（workerNameは自由文字列）。[A]
+  A-4 日時形式の不統一                  … 新型はISO、customers等はja-JPロケール文字列。[A]
+  A-5 論理削除・監査ログ                … 物理削除のみ・履歴なし。[B]
+  A-6 同期メタ（楽観ロック/syncStatus） … 複数端末で上書き事故リスク。[A]
+
+■ エンティティ別（抜粋）
+  Project        : customerId FK なし／工事種別・内容が新型に無い／緯度経度なし。[A]
+  Customer       : updatedAt なし／createdAtがロケール文字列／法人番号・支払条件なし。[A/B]
+  PhotoRecord    : 画像がbase64をlocalStorage保持＝クラウド保存キー無し（容量TODO）。[S]
+  WorkItem       : 単価マスタID（REVO単価表）なし／材料マスタ・歩掛なし。原価粗利は保持。[A/B]
+  SavedInvoice   : 入金実績（入金日/額/消込）なし。[A]
+  WorkReport     : 作業者ID なし（自由文字列）／工数・時間なし。[A/B]
+  InsuranceInfo  : createdAt/updatedAt なし／保険会社マスタID・査定内訳なし。[A/B]
+
+■ 最優先で埋めるべき（Phase2移行の前提）
+  1. UUID化（A-1）[S]
+  2. tenantId（A-2）[S]
+  3. 写真のクラウド保存キー（PhotoRecord）[S]
+  4. 日時ISO統一（A-4）[A]
+  5. 同期メタ・楽観ロック（A-6）[A]
+  6. customerId FK・工事種別構造化（Project）[A]
+  7. 単価マスタID（REVO単価表）[A]
+  8. 入金実績・作業者ID/工数[A]
+
+■ 位置づけ
+  これらは「AI棟梁公開のため」ではなく、共通DB移行とデータ品質確保のために先行して必要。
+  AI棟梁の機能・UIは案件5000件・精度検証合格まで露出しない。
+  ※今回コードは変更していない（設計指針の文書化のみ）。
