@@ -1,0 +1,38 @@
+残る問題・リスク・推奨フォロー
+==============================
+
+■ 実機未確認（本環境に実機がないため）
+- Mac 実機 Safari / iPhone 実機 Safari での目視確認は未実施。
+  Chromium エミュレーション＋LAN オリジン実証で代替済み（08/09）。
+  推奨：Mac で `npm run dev -- --hostname 0.0.0.0` 起動 →
+        Mac Safari で localhost:3000、iPhone Safari で <MacのLAN IP>:3000 を開いて
+        A(得意先)/B(案件下書き)/C(見積) を実機で最終確認。
+
+■ LAN IP のハードコード
+- allowedDevOrigins の既定に 192.168.3.2 を含めた（ユーザー環境の Mac IP）。
+  DHCP で Mac の IP が変わると再設定が必要。
+  その場合は next.config.ts を編集するか、環境変数で追加：
+    NEXT_DEV_ORIGINS="192.168.x.y" npm run dev -- --hostname 0.0.0.0
+  production には一切埋め込まれない（NODE_ENV で分岐）。
+
+■ Windows 開発者
+- clean/dev:clean は `rm -rf` を使用（Mac 前提）。
+  Windows では .next を手動削除、または PowerShell の
+  `Remove-Item -Recurse -Force .next`。
+  現状 Mac が主環境のため rimraf 依存は追加していない（README 記載）。
+
+■ 下書き保存の限界
+- localStorage 依存のため、プライベートブラウズや容量超過時は保存に失敗しうる
+  （saveDraft は例外を握って false を返し、他データを壊さない）。
+- flushNow は visibilitychange/pagehide/beforeunload で同期保存するが、
+  OS による強制終了（プロセスキル）では発火しない可能性がある。
+  通常の Safari バックグラウンド移行・再読込・タブ破棄はカバー。
+
+■ Turbopack について
+- 今回は dev のみ Webpack 化。build（本番）は既定のまま変更していない。
+- 将来 Turbopack のキャッシュ問題が解消したら dev を戻す判断も可能
+  （その際も allowedDevOrigins と下書きフラッシュはそのまま有効）。
+
+■ スコープ外（今回未対応・既知）
+- 案件ログ/学びの入力画面（準備中）、単体/一括請求の税区分、
+  IndexedDB 移行、Supabase 接続等はマージ元からの継続 TODO。

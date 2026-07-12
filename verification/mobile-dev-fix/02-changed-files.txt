@@ -1,0 +1,42 @@
+変更ファイル一覧（review/draft-save との差分）
+=================================================
+ README.md                 | +48   実機開発手順・キャッシュ復旧・下書き保護を追記
+ next.config.ts            | +26/-1 allowedDevOrigins（開発時のみ）
+ package.json              | +6/-2  dev を webpack 化・clean/dev:clean 追加
+ src/hooks/useAutoDraft.ts | +53    離脱タイミングの同期フラッシュ保存
+
+計 4 ファイル / +130 -3
+
+────────────────────────────────────────
+■ package.json
+  変更前: "dev": "next dev"
+  変更後: "dev": "next dev --webpack"          ← Turbopack を使わない
+  追加:   "clean": "rm -rf .next"
+          "dev:clean": "rm -rf .next && next dev --webpack"
+  ※ "build": "next build" は変更なし（build 設定は不変）。
+  ※ npm run dev -- --hostname 0.0.0.0 で追加引数を渡せることを確認済み
+     （起動ログ: "next dev --webpack --hostname 0.0.0.0"）。
+
+■ next.config.ts
+  process.env.NODE_ENV !== "production" のときだけ allowedDevOrigins を付与。
+  既定許可: localhost / 127.0.0.1 / 192.168.3.2
+  環境変数 NEXT_DEV_ORIGINS（カンマ区切り）で他の LAN IP を追加可能。
+  production ビルドには一切埋め込まれない（固定 IP を本番設定にしない）。
+  既存 nextConfig は空だったため他設定は破壊なし。
+
+■ src/hooks/useAutoDraft.ts
+  追加した仕組み（既存の debounce 保存は維持）:
+  - enabled/key/type/id を ref に同期（ハンドラ再登録なしで最新値参照）
+  - lastSavedStringRef で「未保存分があるか」を判定し二重書き込みを回避
+  - useEffect で visibilitychange(hidden) / pagehide / beforeunload を購読し、
+    flushNow() が ref から最新入力を読んで **同期的に** localStorage へ保存。
+    debounce 完了前でも確実に保存される（Safari バックグラウンド/クラッシュ対策）。
+  - flushNow は setState を呼ばない（React Compiler の set-state-in-effect を増やさない）。
+  影響範囲: useAutoDraft を使う全画面が自動的に恩恵を受ける
+    （projects/new, [projectId], survey, work-items, reports,
+     sample/estimate, sample/single-invoice, sample/materials）。
+
+■ 意図的に変更しなかったもの
+  - customers/page.tsx（ボタン実装は正しく、原因1の二次症状のため）
+  - build スクリプト・本番設定
+  - 既存の下書きキー・データ構造（後方互換維持）

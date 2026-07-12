@@ -1,0 +1,27 @@
+得意先管理テスト結果
+====================
+検証方法：Webpack dev サーバー（next dev --webpack --hostname 0.0.0.0）に対し
+          Playwright + Chromium（viewport 390px）で実操作。
+スクリプト：scratchpad/mobile-fix-e2e.mjs（セクション A）
+
+1. /customers を開く                         → 成功（200・500でない）
+2. 「＋得意先を追加」を押す                   → 成功（フォームが開く）
+3. 入力画面が開く（モーダル相当の登録フォーム）→ 成功（「得意先を新規登録」表示）
+4. 得意先名を入力（検証得意先マルサ工務店）   → 成功
+   担当者名（佐藤様）も入力                   → 成功
+5. 保存（「登録する」）                       → 成功（「得意先を登録しました。」表示）
+6. 一覧に表示                                 → 成功
+   localStorage(genba_jimu_customers) に保存  → 成功（件数>=1）
+7. 再読込後も残る                             → 成功（reload 後も一覧に表示）
+8. 案件登録画面(/projects/new)から選択できる  → 成功
+   （得意先を選択→#clientName が「検証得意先マルサ工務店」に反映）
+
+判定：合格（8項目すべて成功）
+
+補足：
+- 「＋得意先を追加」ボタンは type="button" + onClick={handleAddNew} で実装は元々正しい。
+  実機で「動かない」と報告されていたのは Turbopack 破損によるハイドレーション不成立が原因で、
+  Webpack 化により解消。コードの onClick/Link/router/button type/モーダル状態は
+  いずれも問題なしと確認。
+- ※実機 iPhone Safari / Mac Safari での目視は本環境（Linux コンテナ）に実機がないため未実施。
+  Chromium エミュレーション（390px）で代替確認。08/09 参照。

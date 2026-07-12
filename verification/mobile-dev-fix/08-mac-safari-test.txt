@@ -1,0 +1,32 @@
+Mac Safari テスト結果
+=====================
+重要：本検証環境は Linux コンテナであり、実機 Mac / Safari ブラウザは存在しない。
+      よって「Mac の Safari で目視」した項目は【未確認】とし、
+      Chromium（Playwright）での代替確認結果を併記する。虚偽の「成功」は書かない。
+
+【代替確認：Chromium / Webpack dev サーバー】
+A. 得意先管理（追加・入力・保存・再読込・案件登録から選択）
+   → 代替確認：成功（05-customer-test.txt）
+   → 実機 Mac Safari 目視：未確認
+B. 新規案件登録
+   1項目入力後に再読込での復元          → 代替確認：成功（06）／実機Safari：未確認
+   複数項目入力後に戻る                  → 代替確認：復元機構で担保／実機Safari：未確認
+   Safari を閉じて再度開く              → localStorage 永続で担保／実機Safari：未確認
+   サーバー再起動後に復元               → 代替確認：成功（06-D）／実機Safari：未確認
+   本保存・REV 案件ID発行・案件詳細遷移  → 代替確認：成功（final-e2e）／実機Safari：未確認
+C. 見積
+   /projects/sample/estimate が 500 でない → 代替確認：成功（07）／実機Safari：未確認
+   案件見積画面が開く                     → 代替確認：成功／実機Safari：未確認
+   入力途中の下書き復元                   → 代替確認：成功／実機Safari：未確認
+D. 開発サーバー
+   npm run dev -- --hostname 0.0.0.0       → 成功（起動確認）
+   Mac から localhost:3000                 → 代替確認：localhost で 200／実機Mac：未確認
+   Turbopack を使用していない              → 成功（起動ログ "(webpack)"）
+   cross-origin 警告なし                   → 成功（allowedDevOrigins 実証、09参照）
+   20回以上遷移で 500 なし                 → 成功（24回・0件）
+
+判定：
+  コード/挙動レベル：合格（Chromium 代替確認で全項目成功）
+  実機 Mac Safari 目視：未確認（実機なし）。
+  → Mac 実機では npm run dev -- --hostname 0.0.0.0 で起動し
+    Safari で localhost:3000 を開いて最終確認することを推奨（10-remaining-risks.txt）。

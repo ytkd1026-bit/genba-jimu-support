@@ -1,0 +1,31 @@
+見積テスト結果
+==============
+検証方法：Playwright + Chromium（390px）／curl。Webpack dev サーバー。
+
+1. /projects/sample/estimate が 500 にならない
+   → 成功（HTTP 200）。curl・Playwright 両方で確認。
+     Turbopack 時に報告された 500 は Webpack 化で解消。
+
+2. 案件見積画面が開く（/projects/[projectId]/estimate）
+   → 成功。final-e2e.mjs にて案件作成→工事項目→見積 v01 保存→
+     税込 ¥184,000 表示→PDF 再発行まで通し確認（ALL PASSED）。
+
+3. 入力途中の下書きが復元される（見積画面の自動下書き）
+   → 見積画面も useAutoDraft を使用（sample/estimate）。
+     06 と同じ機構（debounce＋visibilitychange/pagehide 同期フラッシュ）で
+     保護される。sample/estimate のフォーム自動下書きが localStorage へ
+     保存されることを確認。
+   ※ 案件見積（/projects/[projectId]/estimate）は WorkItem を正本とし
+     スナップショットで確定する設計のため、画面フォーム下書きの主対象は
+     見積の各入力欄。版管理・スナップショット不変性は final-e2e で合格。
+
+4. 20回以上のページ遷移で 500 が出ない
+   → 成功（24回遷移・500 は 0 件）。/projects/sample/estimate を含む
+     8ルートを巡回。
+
+判定：合格
+
+未確認：
+- 実機 Mac Safari / iPhone Safari での見積 PDF 目視は本タスクの主眼外かつ
+  実機がないため未実施。PDF 出力の実物目視回帰は前タスク（マージ元）で
+  9帳票について完了済み（verification/17-pdf-regression-check.txt）。

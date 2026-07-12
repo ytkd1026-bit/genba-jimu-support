@@ -1,0 +1,13 @@
+build 結果
+==========
+コマンド：npm run build
+判定：成功（exit 0）
+Next.js：16.2.6
+バンドラ：本番ビルドは既定（build スクリプトは変更していない）
+警告：なし
+全ルートが正常にプリレンダ/サーバーレンダとして出力された
+（○ Static / ƒ Dynamic）。
+
+※ build 設定は今回変更していない（指示どおり）。
+※ dev のみ Webpack 化。dev の Webpack 起動も確認：
+   起動ログ "▲ Next.js 16.2.6 (webpack)" / "✓ Ready in 591ms"

@@ -1,0 +1,42 @@
+iPhone Safari テスト結果
+========================
+重要：本検証環境は Linux コンテナであり、実機 iPhone / iOS Safari は存在しない。
+      「iPhone Safari で目視」した項目は【未確認】とし、
+      Chromium エミュレーション＋LAN オリジン実証で代替確認した結果を記す。
+      虚偽の「成功」は書かない。
+
+【cross-origin（192.168.3.2 相当）— 実証確認】
+Next.js 16 の block-cross-site-dev は /_next・/__nextjs への
+クロスサイトリクエストを Origin ホストで判定し、許可外なら 403＋警告する。
+コンテナ実IP(192.0.2.2) を使い、内部エンドポイントへ Origin 付きで検証：
+
+  非許可オリジン http://evil.example.com     → HTTP 403（ブロック）＋サーバー警告
+    「Blocked cross-origin request ... from "evil.example.com".
+      add it to allowedDevOrigins」
+  許可オリジン   http://192.168.3.2:3000     → HTTP 404（ブロックされず素通り＝許可）
+  許可オリジン   http://localhost:3000       → HTTP 404（許可）
+
+  → allowedDevOrigins に 192.168.3.2 を入れたことで、
+    iPhone が http://192.168.3.2:3000 でアクセスしても
+    cross-origin ブロック/警告は発生しない、を実証。
+    設定未反映なら 192.168.3.2 も 403 になるはずが 404 のため、設定は確実に有効。
+
+【エミュレーション代替確認（Chromium 375/390/430px）】
+  横スクロールなし・入力欄はみ出しなし・ボタン押下可・
+  写真追加ボタン表示・PDF発行ボタン到達可・日付入力可
+    → 全幅で成功（mobile-verify.mjs：375/390/430 ALL PASSED）
+  得意先追加・案件下書き復元・見積500解消・20回遷移
+    → 成功（mobile-fix-e2e.mjs ALL PASSED）
+
+【未確認（実機なしのため）】
+  - 実機 iPhone Safari での 192.168.3.2:3000 実アクセス目視
+  - iOS Safari のバックグラウンド移行/タブ破棄そのものでの下書き保持
+    （visibilitychange:hidden をプログラム発火して同等条件を再現済み。
+      iOS Safari のバックグラウンド化は hidden を発火する）
+  - iOS Safari 実機での固定ボタン・タップ感・日付ピッカー UI 目視
+
+判定：
+  cross-origin：合格（実証）
+  レイアウト/機能：合格（エミュレーション代替確認）
+  実機 iPhone Safari 目視：未確認（実機なし）
+  → 実機 iPhone で Mac の LAN IP:3000 を開いて最終確認することを推奨。

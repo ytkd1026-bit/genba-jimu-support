@@ -1,0 +1,53 @@
+実機開発の不安定化・入力消失 — 原因分析
+==========================================
+
+■ 症状（ユーザー実機報告）
+1. iPhone Safari で /projects/new が 500
+2. /projects/sample/estimate が 500
+3. 得意先管理の「＋得意先を追加」が正常動作しない
+4. 新規案件の入力中にサーバーがクラッシュ・再読込
+5. 入力途中のデータが復元されない
+6. iPhone から 192.168.3.2:3000 でアクセス時、Next.js dev リソースの cross-origin 警告
+
+■ 確認済みエラーキーワード
+TurbopackInternalError / ENOENT / .next/dev/cache/turbopack /
+app-paths-manifest.json / pages-manifest.json
+
+■ 根本原因
+
+【原因1】Turbopack のキャッシュ破損（症状1,2,4 の主因）
+  Next.js 16 では `next dev` の既定バンドラが Turbopack。
+  Turbopack は .next/dev/cache/turbopack にキャッシュを持つが、
+  実機開発中（頻繁なホットリロード・Mac スリープ・ファイル同期）で
+  キャッシュ/マニフェスト（app-paths-manifest.json / pages-manifest.json）が
+  破損すると ENOENT → TurbopackInternalError → ルート単位で 500 を返す。
+  一度破損すると特定ルート（/projects/new・/projects/sample/estimate 等）が
+  再現性をもって 500 になる。
+
+【原因2】症状3（得意先追加が動かない）は原因1の二次症状
+  /customers 自体や親レイアウトのチャンクが 500/破損状態だと、
+  クライアント JS のハイドレーションが完了せず onClick が発火しない
+  （＝ボタンが「反応しない」ように見える）。
+  customers/page.tsx のボタンは type="button" + onClick で実装自体は正しい
+  （コードバグではなく dev サーバー破損の巻き添え）。
+
+【原因3】症状6（cross-origin 警告）
+  Next.js 16 は dev 専用リソース（/_next, /__nextjs）への
+  クロスサイトリクエストを既定でブロック/警告する（block-cross-site-dev）。
+  Mac の dev サーバーへ iPhone が LAN IP 192.168.3.2 経由でアクセスすると、
+  許可オリジン（localhost 等）に該当せず警告が出る。
+  allowedDevOrigins 未設定が原因。
+
+【原因4】症状5（入力途中データが復元されない）
+  useAutoDraft は入力の 800ms 後（debounce）に localStorage へ保存する設計。
+  しかし debounce 待機中（0〜800ms）に
+  ・サーバー 500 でブラウザが再読込
+  ・Safari がバックグラウンド移行/タブ破棄
+  が起きると、保留中の保存が実行されず未保存入力が失われる。
+  visibilitychange / pagehide 等の離脱タイミングでの同期保存が無かった。
+
+■ 対応方針（詳細は 02-changed-files.txt）
+  原因1,2 → 開発サーバーを Webpack に切替（next dev --webpack）
+  原因3   → next.config.ts に allowedDevOrigins（開発時のみ）
+  原因4   → useAutoDraft に visibilitychange/pagehide/beforeunload 同期フラッシュ保存
+  復旧手段 → clean / dev:clean スクリプト＋README に復旧手順

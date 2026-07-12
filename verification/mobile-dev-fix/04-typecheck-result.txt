@@ -1,0 +1,7 @@
+型チェック結果
+==============
+コマンド：npx tsc --noEmit
+判定：成功（exit 0）
+エラー：0
+any による型逃げ：なし
+（next.config.ts は NextConfig 型、useAutoDraft は既存のジェネリクス T を維持）

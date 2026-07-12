@@ -1,0 +1,39 @@
+案件登録 下書き保護テスト結果
+==============================
+検証方法：Playwright + Chromium（390px）。スクリプト mobile-fix-e2e.mjs（B/C/D）。
+現在の debounce 時間：800ms（useAutoDraft の既定・projects/new は debounceMs:800 指定）。
+
+■ B. 通常 debounce 保存＋復元
+1. #projectName に「下書き検証マンションA」を1項目入力      → 入力
+2. debounce 待機（1100ms＞800ms）                           → 成功
+   localStorage キー genba-jimu-support:draft:project:new に保存 → 成功
+3. ページ再読込                                            → 成功
+4. 「前回入力途中の下書きがあります」バナー表示           → 成功
+   「下書きを復元する」で #projectName が復元              → 成功
+
+■ C. フラッシュ保存（debounce 完了前の離脱＝クラッシュ相当）
+1. 「フラッシュ検証マンションB」を入力                     → 入力
+2. debounce 未完了（120ms のみ待機、800ms 未満）で
+   visibilitychange(hidden) を発火（Safari バックグラウンド相当）
+3. その時点で localStorage に下書きが保存されている        → 成功
+   ＝ debounce を待たずに同期フラッシュ保存が機能
+
+■ D. サーバー障害後の復元（localStorage 永続性）
+1. about:blank を挟んで /projects/new に再遷移（サーバー再起動相当）
+2. 復元バナーから「フラッシュ検証マンションB」を復元       → 成功
+   ＝ サーバーが 500 でも、ブラウザ側 localStorage の下書きは残る設計
+
+■ 追加確認（コード）
+- projects/new は beforeunload で dirty 時に離脱警告（既存）を維持。
+- useAutoDraft が visibilitychange / pagehide / beforeunload の3系統を購読し、
+  いずれのタイミングでも同期保存。iOS Safari は visibilitychange(hidden) が
+  最も確実に発火するため主軸に採用。
+
+判定：合格
+  必須確認（1項目入力→debounce→再読込→復元→戻る→再度開く→復元）を満たし、
+  さらに debounce 完了前の離脱・サーバー障害でも下書きが残ることを確認。
+
+未確認：
+- 実機 iPhone Safari のバックグラウンド移行そのものは実機がないため未実施。
+  visibilitychange(hidden) をプログラム発火して同等条件を再現した
+  （iOS Safari のバックグラウンド移行は visibilitychange:hidden を発火する）。

@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "clean": "rm -rf .next",
+    "dev:clean": "rm -rf .next && next dev --webpack"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",
