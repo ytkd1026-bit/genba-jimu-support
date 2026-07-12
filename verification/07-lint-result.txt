@@ -1,0 +1,33 @@
+lint 結果
+=========
+実行日時：2026-07-12 03:03:16
+実行コマンド：npm run lint（= eslint）、npx tsc --noEmit
+終了コード：eslint=1 / tsc=0
+結果：TypeScript 成功（エラーなし）／ESLint はエラーあり（内訳は下記・すべて既存基準線）
+
+package.json の lint スクリプト："lint": "eslint"（定義あり）
+
+ESLint 内訳（計58件：エラー53・警告5）:
+  43  react-hooks/set-state-in-effect   … React Compiler ルール。データを useEffect で
+        読み込み setState する本アプリ共通パターン。sample/materials/photos/register 等
+        既存ページ全体で発火する基準線。build・tsc は成功。
+   6  react-hooks/purity                … sample の見積/請求/材料ページ（描画中の Date.now 等）。既存。
+   3  react-hooks/refs                  … photos:63 / materials:321。既存パターン。
+   1  react-hooks/preserve-manual-memoization … work-items:508（合計 useMemo）。既存スタイル。
+   1  react-hooks/exhaustive-deps       … register:115。既存。
+   4  @typescript-eslint/no-unused-vars … sample/estimate STATUS_LABELS / sample/invoice
+        ACCOUNT_TYPES・setInvoiceNote / scan defaultAiCandidates。いずれも本タスク以前から存在
+        （prior commit で確認済み）。
+
+既存警告：上記の react-hooks/* および未使用var 4件（本ブランチの既存基準線）。
+今回追加コードによる警告：なし。
+  本タスク（検証）ではコードを変更していない。直前タスクで追加した未使用import
+  （workItems の normalize系 / ProjectInvoicePDF の fmtYen）は当時除去済みで、
+  新規 ESLint エラーは導入していない。
+
+修正内容：なし（本タスクでのコード変更なし）。
+
+補足：これらの react-hooks/* は React Compiler の助言ルールであり、build（next build）と
+  型チェック（tsc）は成功している。実行時の不具合ではない。全43件の set-state-in-effect を
+  解消するには全画面のデータ読込パターンの大規模改修が必要で、検証タスクの範囲外
+  （「新機能を追加しない」「コード変更は不具合修正だけ」）のため実施しない。

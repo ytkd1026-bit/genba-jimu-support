@@ -1,0 +1,60 @@
+統合修正 — データ移行メモ
+==========================
+
+■ 全体方針
+新案件基盤（Project ほか）と既存の登録・見積・請求を projectId で接続した。
+既存の保存キー・データは削除せず、並走のまま接続する。
+
+■ 旧案件（savedProjects）→ 新 Project
+- 正本は projectsStore（genba_projects_v1）。旧 savedProjects は互換維持のため残す。
+- /projects/new の「案件として保存」:
+  1) 旧 savedProjects へ従来どおり保存（/projects/saved の表示を壊さない）
+  2) 新 Project を作成/更新（projectsStore）
+  3) 旧 id → 新 projectId のマッピングを genba_project_migration_map_v1 に記録
+  4) 「案件詳細へ進む」で /projects/{projectId} へ
+- /projects/list の移行バナー:
+  - 未移行の旧 savedProjects がある場合のみ表示（migrationマップに無いもの）
+  - 「既存案件を引き継ぐ」で一括移行（migrateAllLegacyProjects）
+  - 旧データは残す・移行済みは重複しない・不明項目は初期値
+  - migrateLegacySavedProject で address→siteAddress / contactName→customerName /
+    clientName→clientName・submitTo をマッピング。物件名・部屋番号・建物種別は
+    旧形式に無いため空/初期値（buildingType=other, projectType=normal, status=survey）
+
+■ 見積（SavedEstimate）
+- SavedEstimate.projectId は既存で必須。案件見積画面では実 projectId を格納。
+- WorkItem[] → estimateItems（文字列qty/unitPrice）へ変換して保存（既存の
+  保存済み見積一覧と互換）。既存の projectId="draft" 等の旧見積もそのまま表示可。
+- 書類番号は REV-YYYY-NNNN-EST-01 形式（案件IDに紐付け。同一案件は同版へ上書き）。
+
+■ 請求（SavedInvoice）
+- SavedInvoice.projectId は既存で任意。案件請求画面では実 projectId を格納。
+- 明細は WorkItem から生成し、請求時に項目を除外可能。書類番号は REV-...-INV-01。
+- 既存の projectId 無し請求データもそのまま表示・保存できる（後方互換）。
+
+■ 会社設定（genba_settings）
+- キー・構造（会社情報＋振込先のフラット結合）は不変。
+- 読み取りを companySettings.ts（getCompanyInfoForPdf / getBankSettings /
+  getCompanySettings）へ統一。sample の見積・単体請求・一括請求の3画面から
+  localStorage.getItem("genba_settings") の直接参照を除去。
+- 設定画面（settings/company）は genba_settings の「書き手（正本）」として
+  従来どおり自キーへ read/write（consumer 側の重複読取のみ排除した）。
+
+■ 新規保存キー（今回追加）
+- genba_project_migration_map_v1 … 旧 savedProject.id → 新 projectId のマッピング
+
+■ 既存キー（無変更）
+- genba_projects_v1 ほか _v1 系（前回改修分）、genba_jimu_saved_projects /
+  saved_estimates / saved_invoices / genba_settings など全て従来どおり。
+
+────────────────────────────────────────────
+【今回の検証(旧データ互換)結果 — final-e2e.mjs / integ-e2e.mjs】
+- 旧案件(genba_jimu_saved_projects)を投入した状態でも /projects/new, /projects/saved,
+  /projects/sample/estimate, /projects/sample/single-invoice, /projects/sample/invoice,
+  /settings/company, /projects/list がすべて 200 で表示（画面が落ちない）。
+- 旧案件を「既存案件を引き継ぐ」で新 Project へ移行：2件が新一覧へ表示・成功。
+  旧データ(savedProjects)は削除されず2件のまま残存を確認。
+- 再訪しても同じ旧案件を二重移行しない（移行済みマップ genba_project_migration_map_v1）。
+- 会社設定(genba_settings)は維持され、全PDFへ共通反映されることを目視確認。
+- 旧見積(genba_jimu_saved_estimates)は工事項目・原価画面の「保存済みの見積から取り込む」で
+  参照可能。取り込み時も旧データは無変更。
+判定：旧案件・旧見積・会社設定は消えず、画面も落ちない。二重移行なし。合格。
