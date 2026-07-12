@@ -18,8 +18,15 @@ REVO / AIT / JIMU 3事業の**開発・資料作成・不具合対応・事業�
 | 05 | [05-status-rule.md](./05-status-rule.md) | 状態（TODO/DOING/HOLD/DONE） |
 | 06 | [06-release-rule.md](./06-release-rule.md) | リリース・バージョン規則 |
 | 07 | [07-ai-toryo-data-gap-analysis.md](./07-ai-toryo-data-gap-analysis.md) | 共通DB / AI棟梁 連携のためのデータ不足調査 |
+| 08 | [08-chat-classification-rule.md](./08-chat-classification-rule.md) | チャット・情報分類規格（Ver1.1・JIMU/REVO/AIT/KNOW） |
+| 09 | [09-chat-classification-changelog.md](./09-chat-classification-changelog.md) | 情報管理標準 変更履歴 |
+| 10 | [10-project-classification-rule.md](./10-project-classification-rule.md) | 案件分類規格 Ver1.0（多軸・保険種別含む） |
+| 11 | [11-photo-classification-rule.md](./11-photo-classification-rule.md) | 写真分類規格 Ver1.0（9区分・安全含む） |
+| 12 | [12-ai-toryo-db-structure.md](./12-ai-toryo-db-structure.md) | AI棟梁DB 構造案 Ver1.0（横断検索） |
+| — | [OPERATING-RULES-1page.md](./OPERATING-RULES-1page.md) | 今後守る運用ルール（1ページ） |
 
-関連：[../roadmap/JIMU-Roadmap-v1.0.md](../roadmap/JIMU-Roadmap-v1.0.md)（事務サポ専用ロードマップ）
+関連：[../roadmap/JIMU-Roadmap-v1.0.md](../roadmap/JIMU-Roadmap-v1.0.md)（事務サポ専用ロードマップ） /
+[../../verification/project-standardization/06-chat-classification-example.csv](../../verification/project-standardization/06-chat-classification-example.csv)（分類CSVサンプル）
 
 ---
 
