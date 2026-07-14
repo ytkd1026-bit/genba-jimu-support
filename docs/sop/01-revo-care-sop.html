@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>REVO SOP Ver1.0 ①REVO CARE運営SOP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","Noto Sans JP",sans-serif;color:#1a1a1a;background:#9e9e9e;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:296mm;margin:10px auto;background:#fff;padding:10mm 12mm 16mm;position:relative;page-break-after:always;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;flex-direction:column}
+@media print{body{background:#fff}.page{margin:0;box-shadow:none;min-height:297mm}}
+/* ページ共通 */
+.phead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.2mm solid #c62828;padding-bottom:1.5mm;margin-bottom:4mm}
+.phead .doc{font-size:9pt;color:#777;font-weight:700}
+.phead .sec{font-size:15pt;font-weight:900;color:#c62828}
+.pfoot{position:absolute;bottom:6mm;left:12mm;right:12mm;display:flex;justify-content:space-between;font-size:8.5pt;color:#888;border-top:.4mm solid #ddd;padding-top:1.5mm}
+h2.big{font-size:14pt;font-weight:900;background:#263238;color:#fff;padding:1.5mm 4mm;border-radius:1.5mm;margin:3mm 0 2.5mm}
+h3.mid{font-size:12pt;font-weight:900;border-left:2.5mm solid #c62828;padding-left:3mm;margin:3mm 0 2mm}
+p.note{font-size:10pt;color:#444;margin-bottom:2mm}
+/* 基本情報表(各ページ必須8項目) */
+table.info{width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:4mm}
+table.info th{background:#263238;color:#fff;padding:1.6mm 2.5mm;border:.4mm solid #263238;width:24mm;text-align:left;font-size:9.5pt;white-space:nowrap}
+table.info td{padding:1.6mm 2.5mm;border:.4mm solid #90a4ae;background:#fff}
+/* 役割チップ */
+.chip{display:inline-block;font-size:8.5pt;font-weight:900;color:#fff;border-radius:5mm;padding:.4mm 2.6mm;margin:0 .6mm;vertical-align:middle;white-space:nowrap}
+.cB{background:#c62828}  /* 社長 */
+.cW{background:#ad1457}  /* 妻 */
+.cJ{background:#1565c0}  /* 事務員 */
+.cS{background:#2e7d32}  /* 事務サポ(アプリ) */
+.cA{background:#6a1b9a}  /* AI */
+.cG{background:#e65100}  /* 協力業者 */
+.cC{background:#00695c}  /* お客様 */
+/* フローチャート */
+.flow{display:flex;flex-direction:column;align-items:center;margin:2mm auto}
+.fb{border:.8mm solid #1565c0;border-radius:2.5mm;background:#e3f2fd;padding:2mm 6mm;font-weight:900;font-size:11.5pt;text-align:center;min-width:70mm;position:relative}
+.fb small{display:block;font-weight:500;font-size:8.5pt;color:#37474f}
+.fb.start{border-color:#00695c;background:#e0f2f1}
+.fb.ok{border-color:#c62828;background:#ffebee}
+.fb.end{border-color:#2e7d32;background:#e8f5e9;border-width:1.1mm}
+.fb.judge{border-color:#e65100;background:#fff3e0;border-style:dashed}
+.ar{font-size:13pt;color:#546e7a;font-weight:900;line-height:1;padding:1.2mm 0;text-align:center}
+.ar span{display:inline-block;font-size:8.5pt;background:#eceff1;border-radius:1mm;padding:.2mm 2mm;color:#37474f;font-weight:700;margin-left:2mm}
+.fbranch{display:flex;gap:6mm;justify-content:center;align-items:stretch}
+.fbranch>div{display:flex;flex-direction:column;align-items:center}
+.brlbl{font-size:9pt;font-weight:900;padding:.3mm 3mm;border-radius:4mm;margin:.8mm 0}
+.brY{background:#c8e6c9;color:#1b5e20}.brN{background:#ffcdd2;color:#b71c1c}
+/* チェックリスト */
+ul.ck{list-style:none;font-size:10.5pt;margin:1mm 0}
+ul.ck li{padding:1.4mm 0 1.4mm 8mm;border-bottom:.3mm dashed #b0bec5;position:relative}
+ul.ck li::before{content:"";position:absolute;left:0;top:2mm;width:4.2mm;height:4.2mm;border:.55mm solid #c62828;border-radius:.8mm;background:#fff}
+/* 注意ボックス */
+.miss{border:.7mm solid #e65100;background:#fff3e0;border-radius:2mm;padding:2mm 3mm;margin:2.5mm 0;font-size:10pt}
+.miss b.t{display:block;color:#e65100;font-size:10.5pt;margin-bottom:1mm}
+.stop{border:.7mm dashed #c62828;background:#ffebee;border-radius:2mm;padding:2mm 3mm;margin:2.5mm 0;font-size:10pt}
+.stop b.t{display:block;color:#c62828;font-size:10.5pt;margin-bottom:1mm}
+.goal{border:.7mm solid #2e7d32;background:#e8f5e9;border-radius:2mm;padding:2mm 3mm;margin:2.5mm 0;font-size:10pt}
+.goal b.t{display:block;color:#2e7d32;font-size:10.5pt;margin-bottom:1mm}
+.say{border:.5mm solid #90a4ae;background:#f5f7f8;border-radius:2mm;padding:2mm 3mm;margin:2mm 0;font-size:10pt}
+.say b.t{display:block;color:#37474f;font-size:9.5pt;margin-bottom:.8mm}
+/* 表紙 */
+.cover{justify-content:center;align-items:center;text-align:center}
+.cover .ver{font-size:14pt;font-weight:900;color:#c62828;letter-spacing:2mm}
+.cover h1{font-size:34pt;font-weight:900;margin:6mm 0 2mm}
+.cover .sub{font-size:15pt;font-weight:700;color:#37474f;margin-bottom:10mm}
+.stamp{display:flex;border:.5mm solid #333;margin-top:12mm}
+.stamp div{width:28mm;text-align:center}
+.stamp .t{background:#eceff1;border-bottom:.5mm solid #333;font-size:9.5pt;font-weight:700;padding:1mm}
+.stamp .s{height:20mm;border-left:.5mm solid #333}
+.stamp div:first-child .s{border-left:none}
+/* 2段組 */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+/* まとめ表 */
+table.list{width:100%;border-collapse:collapse;font-size:9.8pt;margin:2mm 0}
+table.list th{background:#455a64;color:#fff;padding:1.5mm 2mm;border:.4mm solid #455a64}
+table.list td{padding:1.5mm 2mm;border:.4mm solid #90a4ae;vertical-align:top}
+table.list tr:nth-child(even) td{background:#f5f7f8}
+.big-rule{border:1.2mm solid #c62828;background:#ffebee;border-radius:3mm;padding:4mm;text-align:center;font-size:14pt;font-weight:900;color:#b71c1c;margin:4mm 0}
+.photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin:2mm 0}
+.photo-cell{border:.6mm solid #546e7a;border-radius:2mm;padding:2mm;text-align:center;font-size:9.5pt;background:#eceff1}
+.photo-cell .ic{font-size:20pt;display:block}
+.photo-cell b{display:block;font-size:10pt}
+</style>
+</head>
+<body>
+
+<!-- ===== P1 表紙 ===== -->
+<div class="page cover">
+  <div class="ver">REVO SOP Ver1.0</div>
+  <h1>① REVO CARE<br>運営SOP</h1>
+  <div class="sub">問い合わせから施工完了まで<br>だれでも 同じ対応が できる手順書</div>
+  <div style="font-size:12pt;font-weight:700;background:#fff3e0;border:.7mm solid #e65100;border-radius:2mm;padding:3mm 8mm">
+    これは「読む資料」ではありません。<br>
+    <span style="color:#e65100;font-size:14pt">作業しながら使う資料</span> です。<br>
+    <span style="font-size:10.5pt">合格ライン：この資料を見た人が、だれにも質問しないで作業できること</span>
+  </div>
+  <div style="margin-top:8mm;font-size:11pt">
+    対象：<span class="chip cB">社長</span><span class="chip cW">妻</span><span class="chip cJ">事務員</span>
+  </div>
+  <div class="stamp">
+    <div><div class="t">作成日</div><div class="s" style="padding-top:7mm;font-size:10pt">2026年7月14日</div></div>
+    <div><div class="t">作成</div><div class="s" style="padding-top:7mm;font-size:10pt">Claude（開発者）</div></div>
+    <div><div class="t">最終承認 🟥社長</div><div class="s"></div></div>
+  </div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>1</span></div>
+</div>
+
+<!-- ===== P2 この資料の使い方 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">この資料の使い方</span><span class="doc">① REVO CARE運営SOP</span></div>
+
+  <h2 class="big">1. 使い方は3ステップ</h2>
+  <div class="flow">
+    <div class="fb start">やる作業のページを ひらく<small>もくじ（3ページ）から さがす</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">フローチャートの 上から順番に やる<small>とばさない・順番をかえない</small></div>
+    <div class="ar">▼</div>
+    <div class="fb end">チェックリストに ✔ を入れて おわり<small>ぜんぶ ✔ がついたら「完了」</small></div>
+  </div>
+
+  <h2 class="big">2. 色とマークの意味（この資料ぜんぶ共通）</h2>
+  <table class="list">
+    <tr><th style="width:38mm">マーク</th><th>意味</th></tr>
+    <tr><td><span class="chip cB">社長</span></td><td>最終決定する人。<b>「承認」はぜんぶ社長</b>がします。</td></tr>
+    <tr><td><span class="chip cW">妻</span> <span class="chip cJ">事務員</span></td><td>連絡・入力・記録をする人。この資料のメインの読者です。</td></tr>
+    <tr><td><span class="chip cS">事務サポ</span></td><td>記録係のアプリ。案件・見積・請求をここに入れます。</td></tr>
+    <tr><td><span class="chip cA">AI</span></td><td>文章の下書きを作る係（ChatGPTなど）。<b>提案するだけ</b>。決めません。</td></tr>
+    <tr><td><span class="chip cG">協力業者</span></td><td>いっしょに工事をしてくれる会社・職人さん。</td></tr>
+    <tr><td><span class="chip cC">お客様</span></td><td>問い合わせ・依頼をくれる人。</td></tr>
+    <tr><td><div class="stop" style="margin:0;padding:1mm 2mm;display:inline-block"><b style="color:#c62828">⛔ 停滞ポイント</b></div></td><td>ここで作業が止まりやすい、という警告。書いてある「抜け出し方」をやります。</td></tr>
+    <tr><td><div class="miss" style="margin:0;padding:1mm 2mm;display:inline-block"><b style="color:#e65100">⚠ よくあるミス</b></div></td><td>先にやりがちな失敗を書いてあります。やる前に読みます。</td></tr>
+    <tr><td><div class="goal" style="margin:0;padding:1mm 2mm;display:inline-block"><b style="color:#2e7d32">✅ 完了条件</b></div></td><td>これが全部そろったら、その作業は「終わり」と言ってよい、という印。</td></tr>
+  </table>
+
+  <h2 class="big">3. 絶対ルール（ぜんぶのページより強い）</h2>
+  <div class="big-rule">最終承認者は 🟥 社長。<br>だれも 勝手に 判断しない。</div>
+  <table class="list">
+    <tr><th style="width:34mm">役割</th><th>やること</th><th style="width:42mm">やらないこと</th></tr>
+    <tr><td><span class="chip cB">社長</span> 最終承認者</td><td>決める・承認する・責任を持つ</td><td>─</td></tr>
+    <tr><td><span class="chip cA">AI</span> 提案者</td><td>下書き・案を出す</td><td>送信・投稿・決定</td></tr>
+    <tr><td><span class="chip cA">Claude</span> 開発者</td><td>事務サポを作る・直す</td><td>運営の判断</td></tr>
+    <tr><td><span class="chip cS">事務サポ</span> 記録係</td><td>案件・見積・請求を記録する</td><td>金額や内容の決定</td></tr>
+    <tr><td><span class="chip cA">AI棟梁</span> 知識係</td><td>工事の知識・注意点を教える</td><td>現場の最終判断</td></tr>
+  </table>
+  <p class="note">まよったら → <b>手を止めて、社長に聞く。</b>それがこの会社の正解です。</p>
+
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>2</span></div>
+</div>
+
+<!-- ===== P3 もくじ ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">もくじ（やる作業から さがす）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="list" style="font-size:10.5pt">
+    <tr><th style="width:14mm">ページ</th><th>こんなとき</th><th>ひらく章</th></tr>
+    <tr><td style="text-align:center">4</td><td>仕事ぜんたいの流れを知りたい</td><td><b>第1章 全体フロー</b></td></tr>
+    <tr><td style="text-align:center">5</td><td>LINEに問い合わせが来た</td><td><b>第2章 問い合わせ対応（全体図）</b></td></tr>
+    <tr><td style="text-align:center">6</td><td>最初の返事を送りたい</td><td>2-1 LINE受信・最初の返信</td></tr>
+    <tr><td style="text-align:center">7</td><td>写真を確認したい／写真が足りない</td><td>2-2 写真確認・不足写真の依頼</td></tr>
+    <tr><td style="text-align:center">8</td><td>案件を登録したい</td><td>2-3 案件登録（事務サポ）</td></tr>
+    <tr><td style="text-align:center">9</td><td>見積を作りたい</td><td>2-4 見積作成（事務サポ）</td></tr>
+    <tr><td style="text-align:center">10</td><td>見積をお客様に送りたい</td><td>2-5 社長承認 → 見積送信</td></tr>
+    <tr><td style="text-align:center">11</td><td>あした施工がある</td><td>3-1 施工前日までの準備</td></tr>
+    <tr><td style="text-align:center">12</td><td>いま施工中</td><td>3-2 施工当日（施工中）</td></tr>
+    <tr><td style="text-align:center">13</td><td>施工がおわった</td><td>3-3 施工後（完了確認）</td></tr>
+    <tr><td style="text-align:center">14</td><td>写真のルールを知りたい</td><td>3-4 写真管理ルール</td></tr>
+    <tr><td style="text-align:center">15</td><td>請求したい・入金を確認したい</td><td><b>第4章 請求</b></td></tr>
+    <tr><td style="text-align:center">16</td><td>口コミをお願いしたい</td><td><b>第5章 口コミ依頼</b></td></tr>
+    <tr><td style="text-align:center">17</td><td>事故・クレーム・トラブルが起きた</td><td><b>第6章 緊急時対応</b></td></tr>
+    <tr><td style="text-align:center">18</td><td>ミスを防ぎたい・ミスした</td><td><b>第7章 よくあるミス全集</b></td></tr>
+  </table>
+
+  <h3 class="mid">各ページに必ず書いてあること（8点セット）</h3>
+  <div class="cols">
+    <ul class="ck">
+      <li>目的（なんのため）</li>
+      <li>担当者（だれがやる）</li>
+      <li>使用ツール（なにを使う）</li>
+      <li>開始条件（いつ始めてよい）</li>
+    </ul>
+    <ul class="ck">
+      <li>終了条件（いつ終わってよい）</li>
+      <li>チェックリスト（✔で確認）</li>
+      <li>よくあるミス（先に読む）</li>
+      <li>承認者（だれがOKを出す）</li>
+    </ul>
+  </div>
+  <div class="stop"><b class="t">⛔ この資料そのものの停滞ポイント</b>「どのページか分からない」で止まる → このもくじの<b>「こんなとき」</b>だけを上から見る。それでも分からなければ社長に「どのページですか」と聞く（聞くのは1回でOKになるはず）。</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>3</span></div>
+</div>
+
+<!-- ===== P4 第1章 全体フロー ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第1章 全体フロー</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">仕事のぜんたい像を1枚でわかるようにする。今どこの段階かを迷わない。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cB">社長</span><span class="chip cW">妻</span><span class="chip cJ">事務員</span> 全員</td><th>使用ツール</th><td>この紙だけ</td></tr>
+    <tr><th>開始条件</th><td>いつでも（迷ったら見る）</td><th>終了条件</th><td>自分の今の段階が言えること</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（各段階の進み方はこの後の章のとおり）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">① 集客<small>Instagram・ホームページ・口コミ → くわしくは「②REVO MEDIA運営SOP」</small></div>
+    <div class="ar">▼<span>お客様がLINEしてくる</span></div>
+    <div class="fb">② 相談（問い合わせ対応）<small>担当：<b>妻・事務員</b>／このSOP 第2章（5〜7ページ）</small></div>
+    <div class="ar">▼<span>写真がそろった</span></div>
+    <div class="fb">③ 見積<small>担当：<b>妻・事務員</b>が作成 → <b>社長</b>が承認／第2章（8〜10ページ）</small></div>
+    <div class="ar">▼<span>お客様が「お願いします」と言った</span></div>
+    <div class="fb">④ 施工<small>担当：<b>社長・協力業者</b>／記録：<b>妻・事務員</b>／第3章（11〜14ページ）</small></div>
+    <div class="ar">▼<span>施工完了・お客様確認OK</span></div>
+    <div class="fb">⑤ 請求<small>担当：<b>妻・事務員</b>が作成 → <b>社長</b>が承認／第4章（15ページ）</small></div>
+    <div class="ar">▼<span>入金を確認した</span></div>
+    <div class="fb end">⑥ 口コミ依頼<small>担当：<b>妻・事務員</b>／第5章（16ページ）→ 口コミが ①集客 に戻って次のお客様を呼ぶ</small></div>
+  </div>
+
+  <div class="goal"><b class="t">✅ この会社の勝ちパターン</b>⑥の口コミが ①の集客になって、ぐるぐる回ること。だから<b>「口コミ依頼までやって1件完了」</b>。請求で終わりにしない。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・段階をとばす（見積の承認前に送る／請求の前に口コミを頼む）<br>・「今どの段階か」を事務サポに記録しない → あとで全員が分からなくなる</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>4</span></div>
+</div>
+
+<!-- ===== P5 第2章 問い合わせ対応 全体図 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第2章 問い合わせ対応（全体図）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">LINEの問い合わせを、もれなく・早く・同じ品質で「見積送信」まで進める。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>LINE公式アカウント／<span class="chip cS">事務サポ</span></td></tr>
+    <tr><th>開始条件</th><td>LINEにメッセージが届いた</td><th>終了条件</th><td>見積をお客様に送信した</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（見積の金額と文面。承認前の送信は禁止）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">LINE受信<small>気づいたら<b>1時間以内</b>に最初の返事（→ 6ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">写真確認<small>4枚セットがそろっているか見る（→ 7ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb judge">写真は足りてる？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brN">たりない</span><div class="fb" style="min-width:56mm">不足写真を依頼<small>見本つきでお願い（→ 7ページ）</small></div><div class="ar">▼<span>届いたら上にもどる</span></div></div>
+      <div><span class="brlbl brY">そろった</span><div class="fb" style="min-width:56mm">案件登録<small><span class="chip cS">事務サポ</span>に入力（→ 8ページ）</small></div></div>
+    </div>
+    <div class="ar">▼</div>
+    <div class="fb">見積作成<small><span class="chip cS">事務サポ</span>で作る（→ 9ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb ok">🟥 社長承認<small>金額・内容・文面をチェック（→ 10ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb end">見積送信<small>LINEで送る → 3日返事がなければ追いかけLINE（→ 10ページ）</small></div>
+  </div>
+
+  <div class="stop"><b class="t">⛔ 停滞ポイント（この章で作業が止まる場所は3つ）</b>
+  ①お客様の写真待ち → <b>2日待って来なければ、もう一度お願いLINE</b>（7ページの文例）<br>
+  ②社長の承認待ち → <b>「承認待ちです」とLINEで社長に送ってよい</b>。夜まで返事がなければ電話OK<br>
+  ③見積送信後の返事待ち → <b>3日たったら追いかけLINE</b>（10ページの文例）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>5</span></div>
+</div>
+
+<!-- ===== P6 2-1 LINE受信 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">2-1 LINE受信・最初の返信</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">お客様を待たせない。「ちゃんと届いてますよ」を早く伝えて安心してもらう。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>（気づいた人）</td><th>使用ツール</th><td>LINE公式アカウント</td></tr>
+    <tr><th>開始条件</th><td>LINEにメッセージが届いた</td><th>終了条件</th><td>①最初の返事を送った ②写真4枚のお願いを送った</td></tr>
+    <tr><th>承認者</th><td colspan="3">この定型文はVer1.0として<span class="chip cB">社長</span>承認済み → <b>そのまま送るなら追加の承認いらない</b>。文を変えるときだけ社長承認。</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">LINEが届く</div>
+    <div class="ar">▼<span>目標：1時間以内／おそくても当日中</span></div>
+    <div class="fb">定型文①（あいさつ）を送る</div>
+    <div class="ar">▼<span>つづけてすぐ</span></div>
+    <div class="fb">定型文②（写真4枚のお願い）を送る</div>
+    <div class="ar">▼</div>
+    <div class="fb end">対応した日時をメモ<small>紙でもスマホでもOK。あとで<span class="chip cS">事務サポ</span>の案件登録に書き写す</small></div>
+  </div>
+
+  <div class="say"><b class="t">💬 定型文①（コピーして使う）</b>
+  お問い合わせありがとうございます、REVO CAREです😊<br>
+  担当より順番にご案内しますので、少しだけお待ちください。<br>
+  お急ぎの場合はその旨お知らせください。</div>
+
+  <div class="say"><b class="t">💬 定型文②（写真のお願い）</b>
+  お見積りのために、気になる場所のお写真を4枚お願いできますか？📷<br>
+  ①はなれて全体がわかる写真　②近くでアップの写真<br>
+  ③ななめ・横からの写真　④大きさがわかる写真（メジャーや手を当てて）<br>
+  むずかしければ撮れる分だけで大丈夫です！</div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>届いてから1時間以内（むりでも当日中）に返事した</li>
+    <li>定型文①と②を両方送った</li>
+    <li>「いつ・だれから・どんな内容か」をメモした</li>
+    <li>夜21時〜朝8時は送信をひかえた（朝いちで送る）</li>
+  </ul>
+
+  <div class="miss"><b class="t">⚠ よくあるミス</b>
+  ・既読だけつけて返事を忘れる → <b>既読にした人が返事まで責任を持つ</b><br>
+  ・自分の言葉で長文を書いてしまう → まず定型文。個別の質問への答えは社長に確認<br>
+  ・金額をこの時点で答えてしまう → <b>金額の話は見積承認後だけ</b>。「お写真を見てお見積りします」と返す</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>6</span></div>
+</div>
+
+<!-- ===== P7 2-2 写真確認 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">2-2 写真確認・不足写真の依頼</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">見積に必要な写真を全部そろえる。写真が足りないと見積がまちがう。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>LINE／スマホの写真フォルダ</td></tr>
+    <tr><th>開始条件</th><td>お客様から写真が届いた</td><th>終了条件</th><td>下の4枚セットが全部そろった</td></tr>
+    <tr><th>承認者</th><td colspan="3">「そろった」の判断に迷うときだけ<span class="chip cB">社長</span>に写真を転送して確認</td></tr>
+  </table>
+
+  <h3 class="mid">必要な写真は この4枚セット</h3>
+  <div class="photo-grid">
+    <div class="photo-cell"><span class="ic">🏠</span><b>① 全体</b>はなれて撮る。<br>場所ぜんぶが入る</div>
+    <div class="photo-cell"><span class="ic">🔍</span><b>② アップ</b>こわれている所に<br>近づいて撮る</div>
+    <div class="photo-cell"><span class="ic">↔️</span><b>③ 横・ななめ</b>ふくらみ・浮きが<br>わかる角度</div>
+    <div class="photo-cell"><span class="ic">📏</span><b>④ 大きさ</b>メジャーか手を<br>当てて撮る</div>
+  </div>
+
+  <div class="flow">
+    <div class="fb start">届いた写真を4枚セットとくらべる</div>
+    <div class="ar">▼</div>
+    <div class="fb judge">4種類 ぜんぶある？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">ある</span><div class="fb end" style="min-width:52mm">合格！<small>→ 8ページ「案件登録」へ進む</small></div></div>
+      <div><span class="brlbl brN">ない</span><div class="fb" style="min-width:52mm">足りない番号を伝えて再依頼<small>下の文例を使う</small></div><div class="ar">▼</div><div class="fb" style="min-width:52mm">2日待つ<small>来なければもう1回だけお願い</small></div></div>
+    </div>
+  </div>
+
+  <div class="say"><b class="t">💬 不足写真の依頼文（足りない番号だけ残して送る）</b>
+  お写真ありがとうございます😊 正確なお見積りのため、あと少しだけお願いします！<br>
+  ・はなれて全体がうつる写真<br>・大きさがわかる写真（メジャーや手を当てて）<br>
+  ※ 屋根の上など<b>あぶない場所はぜったいに登らないでください</b>。無理な分はこちらで現地確認します。</div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>4枚セット（全体・アップ・横・大きさ）を確認した</li>
+    <li>写真がボケていないか・暗すぎないか見た</li>
+    <li>足りない写真は番号を指定してお願いした</li>
+    <li>届いた写真をスマホの「お客様名」アルバムに保存した（→ 14ページのルール）</li>
+  </ul>
+  <div class="stop"><b class="t">⛔ 停滞ポイント：写真が来ない</b>2日待つ → もう1回お願い → さらに2日来ない → <b>社長に報告して「現地確認に行くか」を決めてもらう</b>。だまって案件を放置するのがいちばんダメ。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・アップの写真だけで見積を始める（大きさが分からず金額をまちがう）<br>・お客様に屋根へ登らせてしまう → <b>禁止。安全がいちばん</b></div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>7</span></div>
+</div>
+
+<!-- ===== P8 2-3 案件登録 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">2-3 案件登録（事務サポ）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">お客様の情報を<span class="chip cS">事務サポ</span>に記録して、だれでも続きの作業ができるようにする。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td><span class="chip cS">事務サポ</span>「案件登録」画面（/projects/new）</td></tr>
+    <tr><th>開始条件</th><td>写真4枚セットがそろった</td><th>終了条件</th><td>案件が保存され、一覧に表示された</td></tr>
+    <tr><th>承認者</th><td colspan="3">登録じたいは承認不要（記録だから）。内容に迷ったら<span class="chip cB">社長</span>に確認。</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">事務サポを開く<small>ブラウザで開いて「案件登録」画面へ</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">お客様情報を入力<small>名前（LINEの表示名も）／住所／連絡先</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">工事内容を入力<small>場所・症状・お客様の希望を「そのままの言葉」で</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">日付を入力<small>問い合わせ日・写真がそろった日</small></div>
+    <div class="ar">▼</div>
+    <div class="fb end">保存 → 一覧で確認<small>一覧に出ていたら登録完了</small></div>
+  </div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>お客様の名前を入れた（漢字が分からなければLINEの表示名でOK）</li>
+    <li>住所または地域を入れた（不明なら「未確認」と書く。空欄にしない）</li>
+    <li>症状・希望を お客様の言葉のまま 書いた（勝手に工事名に言いかえない）</li>
+    <li>問い合わせ日を入れた</li>
+    <li>保存ボタンを押して、一覧に表示されるのを見た</li>
+  </ul>
+
+  <div class="goal"><b class="t">✅ 完了条件</b>案件一覧にその案件が出ていて、<b>自分以外の人が見ても内容がわかる</b>こと。</div>
+  <div class="stop"><b class="t">⛔ 停滞ポイント：入力の途中で情報が足りない</b>分かる所まで入れて保存し、足りない項目は「未確認」と書く。<b>全部そろうまで登録しない、が一番ダメ</b>（案件が消える原因No.1）。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>
+  ・登録を後回しにして忘れる → <b>写真がそろったその場で登録</b><br>
+  ・同じお客様を2回登録する → 登録前に一覧を検索して確認<br>
+  ・保存ボタンを押さずに画面を閉じる → 最後に必ず一覧で確認</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>8</span></div>
+</div>
+
+<!-- ===== P9 2-4 見積作成 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">2-4 見積作成（事務サポ）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">社長が承認できる状態の見積書を作る。金額を決めるのは社長、形を作るのが担当者。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>（作成）／<span class="chip cB">社長</span>（単価・金額の指示）</td><th>使用ツール</th><td><span class="chip cS">事務サポ</span>「見積」画面（/estimates）</td></tr>
+    <tr><th>開始条件</th><td>案件登録がすんでいる</td><th>終了条件</th><td>見積PDFができて、社長に承認依頼を送った</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>。<b>承認前にお客様へ送るのは禁止。</b></td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">社長に工事内容と単価を確認<small>写真を見せて「何の工事で、いくらでいきますか」</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">事務サポの見積画面で入力<small>案件を選ぶ → 工事項目・数量・単価を入れる</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">税率・合計を確認<small>合計金額を声に出して読んでみる（ケタ確認）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">保存 → PDFを出す<small>PDFを自分で1回開いて見る</small></div>
+    <div class="ar">▼</div>
+    <div class="fb ok">🟥 社長にPDFを送って承認依頼<small>「◯◯様の見積、承認お願いします」とLINE</small></div>
+  </div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>お客様名・住所が案件登録と同じ（コピペで入れた）</li>
+    <li>工事項目に「どこの・何の工事か」が書いてある</li>
+    <li>数量と単位（㎡・m・式）が入っている</li>
+    <li>単価は社長に確認した数字（自分で決めていない）</li>
+    <li>合計金額のケタを声に出して確認した</li>
+    <li>保存してからPDFを出した</li>
+    <li>PDFを開いて文字化け・ズレがないか見た</li>
+  </ul>
+  <div class="stop"><b class="t">⛔ 停滞ポイント：単価がわからない</b>推測で入れない。社長に写真つきで質問 →返事待ちの間に、金額以外（お客様情報・項目名）を全部入れておく。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>
+  ・ケタまちがい（15,000円 と 150,000円）→ 声に出して読む<br>
+  ・保存せずにPDFだけ出す → <b>必ず保存 → PDF の順番</b><br>
+  ・古い見積を直さず新しい話を進める → 変更が出たら新しい版を作る（前の版も残す）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>9</span></div>
+</div>
+
+<!-- ===== P10 2-5 社長承認→送信 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">2-5 社長承認 → 見積送信</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">承認済みの見積だけをお客様に届ける。返事がない案件を放置しない。</td></tr>
+    <tr><th>担当者</th><td>承認：<span class="chip cB">社長</span>／送信：<span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>LINE／<span class="chip cS">事務サポ</span></td></tr>
+    <tr><th>開始条件</th><td>見積PDFを社長に送った</td><th>終了条件</th><td>お客様から「やる／やらない」の返事をもらった</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（「承認」の一言が来るまで送信ボタンは押さない）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb ok">🟥 社長がPDFを確認<small>金額・項目・お客様名を見る</small></div>
+    <div class="ar">▼</div>
+    <div class="fb judge">承認 or 直し？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brN">直し</span><div class="fb" style="min-width:52mm">直して再提出<small>→ 9ページに戻る</small></div></div>
+      <div><span class="brlbl brY">「承認」と返信</span><div class="fb" style="min-width:52mm">お客様にPDF＋定型文を送信</div></div>
+    </div>
+    <div class="ar">▼</div>
+    <div class="fb">3日待つ</div>
+    <div class="ar">▼</div>
+    <div class="fb judge">返事きた？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">やる！</span><div class="fb end" style="min-width:46mm">日程調整へ<small>→ 11ページ 施工前</small></div></div>
+      <div><span class="brlbl brN">まだ</span><div class="fb" style="min-width:46mm">追いかけLINE<small>1回だけ。下の文例</small></div></div>
+      <div><span class="brlbl brN">やらない</span><div class="fb" style="min-width:46mm">お礼を送って記録<small>事務サポにメモして終了</small></div></div>
+    </div>
+  </div>
+
+  <div class="say"><b class="t">💬 見積送信の定型文</b>お待たせしました、REVO CAREです😊 お見積りができましたのでお送りします。ご不明な点はなんでも聞いてください。日程のご希望もあわせてお知らせください。</div>
+  <div class="say"><b class="t">💬 追いかけLINE（3日後に1回だけ）</b>先日のお見積りはご覧いただけましたか？😊 ご質問やご予算のご相談もお気軽にどうぞ。ほかの箇所のご相談も大歓迎です。</div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>社長の「承認」の返事を見てから送った（口頭ならメモした）</li>
+    <li>PDFの宛名がそのお客様か最後にもう1回見た</li>
+    <li>送信した日をメモした（3日後の追いかけ用）</li>
+    <li>返事の結果（やる・やらない・保留）を事務サポにメモした</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・承認前に送信（絶対禁止）　・別のお客様のPDFを送る（宛名を必ず見る）　・追いかけLINEを何度も送る（<b>1回だけ</b>。しつこいと口コミが下がる）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>10</span></div>
+</div>
+
+<!-- ===== P11 3-1 施工前 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">3-1 施工前日までの準備</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">当日「ない・知らない・聞いてない」をゼロにする。</td></tr>
+    <tr><th>担当者</th><td>準備：<span class="chip cB">社長</span>／連絡・記録：<span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>LINE／<span class="chip cS">事務サポ</span>「材料・発注」画面</td></tr>
+    <tr><th>開始条件</th><td>お客様と施工日が決まった</td><th>終了条件</th><td>下のチェックが前日までに全部✔</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（材料の内容・協力業者の手配は社長が最終確認）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">施工日が決まる</div>
+    <div class="ar">▼<span>決まったその日に</span></div>
+    <div class="fb">お客様に確定連絡<small>日時・作業内容・車のとめ場所のお願い</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">材料の確認・発注<small><span class="chip cS">事務サポ</span>の材料画面に記録／発注は🟥社長確認</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">協力業者に連絡<small>日時・場所・作業内容・持ち物 <span class="chip cG">協力業者</span></small></div>
+    <div class="ar">▼<span>前日</span></div>
+    <div class="fb end">前日確認セット<small>天気／お客様へ「明日うかがいます」LINE／持ち物</small></div>
+  </div>
+
+  <h3 class="mid">前日チェックリスト</h3>
+  <div class="cols">
+    <ul class="ck">
+      <li>天気予報を見た（雨なら→17ページ 緊急時対応の「雨天延期」）</li>
+      <li>お客様に「明日うかがいます」LINEを送った</li>
+      <li>協力業者と時間・場所を最終確認した</li>
+      <li>材料が全部そろっている（現物を見た）</li>
+    </ul>
+    <ul class="ck">
+      <li>道具・脚立・ブルーシートを積んだ</li>
+      <li>「施工前」写真を撮る係を決めた</li>
+      <li>近隣あいさつが必要か社長に確認した</li>
+      <li>お客様の住所をナビに入れて確認した</li>
+    </ul>
+  </div>
+  <div class="stop"><b class="t">⛔ 停滞ポイント：材料が届かない</b>前日の昼までに届かなければ即、社長に報告 → 社長が「別ルートで買う／日程ずらす」を決める。<b>当日の朝に発覚が最悪</b>。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・前日連絡を忘れてお客様が不在　・協力業者に住所を送り忘れる　・「施工前写真」を撮り忘れて工事を始める（→ 14ページ）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>11</span></div>
+</div>
+
+<!-- ===== P12 3-2 施工中 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">3-2 施工当日（施工中）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">安全に工事する。あとで見積・請求・SNSに使える記録（写真）を残す。</td></tr>
+    <tr><th>担当者</th><td>施工：<span class="chip cB">社長</span><span class="chip cG">協力業者</span>／写真・記録：現場にいる人全員</td><th>使用ツール</th><td>スマホカメラ／LINE</td></tr>
+    <tr><th>開始条件</th><td>前日チェックが全部✔</td><th>終了条件</th><td>作業終了＋「施工中」写真が撮れている</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（追加工事・変更・中断はすべて社長の判断）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">現場到着 → お客様にあいさつ<small>「本日よろしくお願いします」＋今日の作業を一言説明</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">施工前の写真を撮る<small>工事する場所すべて。まだ何も触らない状態で（→ 14ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">養生（まわりを保護）→ 作業開始</div>
+    <div class="ar">▼<span>作業のとちゅう</span></div>
+    <div class="fb">施工中の写真を撮る<small>工程が変わるたび1枚。かくれる場所（下地など）は必ず</small></div>
+    <div class="ar">▼</div>
+    <div class="fb judge">予定とちがうことが出た？<small>（追加でこわれてた／材料が合わない／終わらない）</small></div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">出た</span><div class="fb ok" style="min-width:56mm">🟥 その場で社長に電話<small>写真を撮ってから。勝手に進めない・勝手にやめない</small></div></div>
+      <div><span class="brlbl brN">ない</span><div class="fb end" style="min-width:56mm">作業を最後まで → 3-3へ</div></div>
+    </div>
+  </div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>お客様にあいさつ・作業説明をした</li>
+    <li>施工前写真を撮ってから作業を始めた</li>
+    <li>かくれる場所（下地・防水など）の写真を撮った</li>
+    <li>予定とちがうことは全部、社長に電話してから動いた</li>
+    <li>休憩・トイレはお客様の家のものを勝手に使っていない</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>
+  ・「ついでにここも直しておいた」→ <b>禁止</b>。よかれと思っても追加作業は社長→お客様の承認が先<br>
+  ・下地の写真を撮り忘れる → ふさいだら二度と撮れない。<b>ふさぐ前に1枚</b><br>
+  ・大きい音が出る作業を朝早く始める → 近隣クレームのもと。開始は原則8時半以降</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>12</span></div>
+</div>
+
+<!-- ===== P13 3-3 施工後 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">3-3 施工後（完了確認）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">お客様に「きれいに終わった」と確認してもらってから現場を出る。請求と口コミの土台を作る。</td></tr>
+    <tr><th>担当者</th><td>現場：<span class="chip cB">社長</span>／記録：<span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>スマホカメラ／LINE／<span class="chip cS">事務サポ</span></td></tr>
+    <tr><th>開始条件</th><td>作業が終わった</td><th>終了条件</th><td>お客様確認OK＋写真保存＋事務サポに完了記録</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（完了と言ってよいかの最終判断）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">施工後の写真を撮る<small>施工前と同じ場所・同じ角度で（→ 14ページ）</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">片付け・そうじ<small>来たときよりきれいに。ゴミは全部持ち帰る</small></div>
+    <div class="ar">▼</div>
+    <div class="fb ok">お客様といっしょに仕上がり確認<small>🟥社長が説明。ビフォー写真を見せると喜ばれる</small></div>
+    <div class="ar">▼</div>
+    <div class="fb judge">お客様はOK？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">OK</span><div class="fb" style="min-width:52mm">お礼を言って現場を出る</div></div>
+      <div><span class="brlbl brN">気になる所あり</span><div class="fb" style="min-width:52mm">🟥 社長がその場で対応を決める<small>直せるなら直す／後日なら日程を約束</small></div></div>
+    </div>
+    <div class="ar">▼<span>その日のうちに</span></div>
+    <div class="fb end">記録して完了<small>写真をアルバム保存＋<span class="chip cS">事務サポ</span>に完了日を記録 → 15ページ 請求へ</small></div>
+  </div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>施工後写真を「施工前と同じ角度」で撮った</li>
+    <li>ゴミ・材料の残りを全部持ち帰った</li>
+    <li>お客様に仕上がりを見てもらい、OKをもらった</li>
+    <li>気になる点があれば、対応方法と日程を約束した（メモした）</li>
+    <li>事務サポに完了日を記録した</li>
+    <li>写真をお客様名のアルバムに保存した</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・お客様確認をせずに帰る（あとで「ここが…」となる原因No.1）　・完了記録を忘れて請求も口コミ依頼も忘れる → <b>完了記録がスタートの合図</b></div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>13</span></div>
+</div>
+
+<!-- ===== P14 3-4 写真管理 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">3-4 写真管理ルール</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">写真は「見積・請求の証拠」「Instagram・HPの材料」「トラブル時のお守り」。3つ全部に使えるように残す。</td></tr>
+    <tr><th>担当者</th><td>撮影：現場にいる人／整理：<span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><th>使用ツール</th><td>スマホカメラ／共有アルバム（Googleフォト等）</td></tr>
+    <tr><th>開始条件</th><td>案件が動き出したら常に</td><th>終了条件</th><td>3種類の写真がアルバムに入っている</td></tr>
+    <tr><th>承認者</th><td colspan="3">SNS・HPに使うときだけ<span class="chip cB">社長</span>承認（→ ②REVO MEDIA運営SOP）</td></tr>
+  </table>
+
+  <h3 class="mid">撮るのは この3種類</h3>
+  <div class="photo-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="photo-cell"><span class="ic">📷</span><b>施工前</b>作業する前。触る前に。<br>全体＋アップ</div>
+    <div class="photo-cell"><span class="ic">🔨</span><b>施工中</b>工程ごと。<br>かくれる場所は必ず</div>
+    <div class="photo-cell"><span class="ic">✨</span><b>施工後</b>施工前と<br>同じ場所・同じ角度</div>
+  </div>
+
+  <h3 class="mid">保存のルール（3つだけ）</h3>
+  <table class="list">
+    <tr><th style="width:30mm">ルール</th><th>やりかた</th></tr>
+    <tr><td><b>① 当日中に保存</b></td><td>その日の夜までに共有アルバムへ。スマホに入れっぱなし禁止（消える・探せない）。</td></tr>
+    <tr><td><b>② 案件ごとに1アルバム</b></td><td>アルバム名は「<b>日付＿お客様名＿工事内容</b>」（例：0714＿山田様＿屋根補修）。</td></tr>
+    <tr><td><b>③ 消さない</b></td><td>失敗写真・ボケ写真も消さなくてよい。<b>選ぶのはあと、消すのはナシ</b>。</td></tr>
+  </table>
+
+  <h3 class="mid">チェックリスト（案件が終わるたび）</h3>
+  <ul class="ck">
+    <li>施工前・施工中・施工後の3種類がアルバムにある</li>
+    <li>アルバム名が「日付＿お客様名＿工事内容」になっている</li>
+    <li>ビフォーとアフターが同じ角度のペアになっている</li>
+    <li>お客様の顔・車のナンバー・表札が写った写真に印をつけた（SNS使用禁止の印）</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>
+  ・アフターだけ撮ってビフォーがない → Instagramで一番使えない状態。<b>ビフォーが宝物</b><br>
+  ・個人情報（表札・顔）が写った写真をそのままSNSへ → 必ず印をつけて分ける<br>
+  ・LINEのトークに送っただけで保存した気になる → アルバムに入れて初めて保存</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>14</span></div>
+</div>
+
+<!-- ===== P15 第4章 請求 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第4章 請求</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">やった仕事のお金を、まちがいなく・早く いただく。</td></tr>
+    <tr><th>担当者</th><td>作成：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>／承認：<span class="chip cB">社長</span></td><th>使用ツール</th><td><span class="chip cS">事務サポ</span>「請求」画面（/invoices ほか）／銀行アプリ</td></tr>
+    <tr><th>開始条件</th><td>施工完了＋お客様確認OK（13ページ）</td><th>終了条件</th><td>入金を確認して事務サポに記録した</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（金額と送付前の最終確認）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">事務サポで請求書を作る<small>承認済みの見積から作る。追加工事があれば社長に金額確認</small></div>
+    <div class="ar">▼<span>完了から3日以内</span></div>
+    <div class="fb">請求日・支払期限・振込先を確認<small>期限はお客様と約束した日。決めてなければ「発行から2週間」</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">保存 → PDFを出す</div>
+    <div class="ar">▼</div>
+    <div class="fb ok">🟥 社長承認<small>金額・宛名・振込先を確認して「承認」</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">お客様に送信<small>LINEで送る（紙が必要なお客様には印刷して郵送・手渡し）</small></div>
+    <div class="ar">▼<span>支払期限の日</span></div>
+    <div class="fb judge">入金あった？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">あった</span><div class="fb end" style="min-width:52mm">事務サポに入金記録<small>→ 16ページ 口コミ依頼へ</small></div></div>
+      <div><span class="brlbl brN">まだ</span><div class="fb" style="min-width:52mm">🟥 社長に報告<small>お客様への確認連絡は社長が文面を決める</small></div></div>
+    </div>
+  </div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>金額は「承認された見積＋承認された追加」だけになっている</li>
+    <li>宛名・振込先・支払期限を確認した</li>
+    <li>社長の「承認」をもらってから送った</li>
+    <li>送った日をメモした</li>
+    <li>期限の日に入金を確認した（カレンダーに登録した）</li>
+    <li>入金を事務サポに記録した</li>
+  </ul>
+  <div class="stop"><b class="t">⛔ 停滞ポイント：入金がない</b>期限すぎ → 社長に報告（当日中）→ 社長の文面でやさしく確認連絡 → それでも1週間なければ社長が電話。<b>担当者が勝手に催促文を送らない</b>。</div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・請求を忘れる（完了記録→3日以内ルールで防ぐ）　・追加工事分の入れ忘れ　・振込先の書きまちがい（テンプレを使い、手打ちしない）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>15</span></div>
+</div>
+
+<!-- ===== P16 第5章 口コミ依頼 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第5章 口コミ依頼</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">Googleの口コミを増やして、次のお客様に選ばれる。口コミは無料の広告。</td></tr>
+    <tr><th>担当者</th><td>依頼：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>／返信文の承認：<span class="chip cB">社長</span></td><th>使用ツール</th><td>LINE／Googleビジネスプロフィール</td></tr>
+    <tr><th>開始条件</th><td>入金確認ずみ（15ページ）※もめている案件は依頼しない</td><th>終了条件</th><td>依頼を送った（書いてもらえたら返信まで）</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（返信文。依頼の定型文はVer1.0承認済み）</td></tr>
+  </table>
+
+  <div class="flow">
+    <div class="fb start">入金確認ができた案件をえらぶ</div>
+    <div class="ar">▼<span>入金確認の当日〜3日以内（早いほど書いてくれる）</span></div>
+    <div class="fb">お礼＋口コミ依頼LINEを送る<small>下の定型文＋口コミページのリンク</small></div>
+    <div class="ar">▼</div>
+    <div class="fb judge">口コミ 書いてくれた？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">書いてくれた</span><div class="fb" style="min-width:52mm">お礼の返信文を作る<small>AIに下書きさせてOK → 🟥社長承認 → 投稿</small></div><div class="ar">▼</div><div class="fb end" style="min-width:52mm">3日以内に返信ずみ<small>これで1案件 完全終了！🎉</small></div></div>
+      <div><span class="brlbl brN">1週間なし</span><div class="fb" style="min-width:52mm">追いかけない<small>依頼は1回だけ。案件はこれで終了にする</small></div></div>
+    </div>
+  </div>
+
+  <div class="say"><b class="t">💬 口コミ依頼の定型文</b>このたびはREVO CAREにご依頼いただき、ありがとうございました😊<br>もしよろしければ、今後のはげみになりますので、Googleの口コミでご感想をいただけるとうれしいです！<br>こちらから1分ほどで書けます → （口コミページのリンク）</div>
+
+  <h3 class="mid">チェックリスト</h3>
+  <ul class="ck">
+    <li>入金確認ずみの案件だけに送った</li>
+    <li>もめた・不満が出た案件には送っていない（社長に確認）</li>
+    <li>リンクが正しく開くか自分で1回タップした</li>
+    <li>口コミが来ていないか、週1回（毎週月曜）Googleを見た</li>
+    <li>来た口コミには3日以内に返信した（承認済みの文で）</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・依頼を忘れて1ヶ月後に送る（もう書いてくれない）　・悪い口コミに感情で即返信 → <b>悪い口コミは必ず社長判断</b>（→ ②MEDIA SOP）　・口コミのお礼に値引きを約束する（規約違反になる。禁止）</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>16</span></div>
+</div>
+
+<!-- ===== P17 第6章 緊急時対応 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第6章 緊急時対応</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">あわてず・かくさず・すぐ報告。緊急時ほど「勝手に判断しない」を守る。</td></tr>
+    <tr><th>担当者</th><td>気づいた人 全員</td><th>使用ツール</th><td>電話（緊急時はLINEではなく電話！）</td></tr>
+    <tr><th>開始条件</th><td>下の表のどれかが起きた</td><th>終了条件</th><td>社長の指示どおり動き、記録を残した</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（緊急時の判断は100％社長。例外なし）</td></tr>
+  </table>
+
+  <div class="big-rule" style="font-size:12.5pt">緊急時の合言葉：「とめる → 電話 → 写真 → 指示を待つ」</div>
+
+  <div class="flow">
+    <div class="fb start">なにかが起きた</div>
+    <div class="ar">▼</div>
+    <div class="fb judge">人がケガをした？</div>
+    <div class="fbranch">
+      <div><span class="brlbl brY">した</span><div class="fb" style="min-width:56mm;border-color:#c62828;background:#ffebee">🚑 119番がさき<small>命がさき。会社の心配はあと。そのあと社長に電話</small></div></div>
+      <div><span class="brlbl brN">してない</span><div class="fb ok" style="min-width:56mm">作業をとめて 🟥社長に電話<small>つながるまでかける。LINEで済ませない</small></div></div>
+    </div>
+    <div class="ar">▼</div>
+    <div class="fb">現場の写真を撮る<small>状況がわかるように何枚も</small></div>
+    <div class="ar">▼</div>
+    <div class="fb end">社長の指示どおりに動く → あとで記録<small>起きたこと・時刻・言われたことをメモして事務サポへ</small></div>
+  </div>
+
+  <h3 class="mid">ケース別 早見表</h3>
+  <table class="list">
+    <tr><th style="width:36mm">起きたこと</th><th>すぐやること</th><th style="width:40mm">やってはダメ</th></tr>
+    <tr><td>お客様の物をこわした</td><td>作業をとめる→写真→社長に電話。お客様には「確認して社長からご連絡します」</td><td>その場で弁償の約束</td></tr>
+    <tr><td>強いクレームが来た</td><td>言い分を最後まで聞いてメモ→「社長から折り返します」→社長に電話</td><td>言い返す・その場で謝罪額を言う</td></tr>
+    <tr><td>雨で施工できない</td><td>朝いちで社長に確認→社長の判断で延期→お客様と協力業者に連絡</td><td>勝手に決行／勝手に中止</td></tr>
+    <tr><td>協力業者が来ない</td><td>本人に電話→つながらなければ社長に電話</td><td>1人で作業を始める</td></tr>
+    <tr><td>お客様と連絡がつかない（当日）</td><td>電話2回＋LINE1通→現地でインターホン→だめなら社長に電話</td><td>勝手に敷地に入って作業</td></tr>
+  </table>
+
+  <h3 class="mid">チェックリスト（起きたあと）</h3>
+  <ul class="ck">
+    <li>社長に「電話」で伝えた（LINEだけにしていない）</li>
+    <li>写真を撮った</li>
+    <li>起きた時刻・内容・社長の指示をメモした</li>
+    <li>お客様への説明は社長の言葉どおりに伝えた</li>
+  </ul>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・「小さいことだから」と報告しない → 小さいうちに報告するほうが100倍かんたん　・その場で慰謝料・値引きを約束する → 禁止。約束できるのは社長だけ</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>17</span></div>
+</div>
+
+<!-- ===== P18 第7章 よくあるミス全集 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec">第7章 よくあるミス全集（先に読むページ）</span><span class="doc">① REVO CARE運営SOP</span></div>
+  <p class="note">ミスは「人がダメ」なのではなく「しくみで防ぐ」。起きたら責めずに、この表とSOPを直す。SOPの直しは<span class="chip cB">社長</span>承認でVer番号を上げる。</p>
+  <table class="list" style="font-size:9.5pt">
+    <tr><th style="width:10mm">場面</th><th style="width:52mm">ミス</th><th>防ぎかた</th><th style="width:16mm">ページ</th></tr>
+    <tr><td rowspan="3">問い合わせ</td><td>既読スルーで返信忘れ</td><td>既読にした人が返事まで責任を持つ。1時間ルール</td><td style="text-align:center">6</td></tr>
+    <tr><td>この時点で金額を答える</td><td>金額の話は見積承認後だけ</td><td style="text-align:center">6</td></tr>
+    <tr><td>アップ写真だけで見積開始</td><td>4枚セット（全体・アップ・横・大きさ）がそろうまで見積しない</td><td style="text-align:center">7</td></tr>
+    <tr><td rowspan="2">案件登録</td><td>登録の後回し→忘れる</td><td>写真がそろったその場で登録。不明項目は「未確認」で保存</td><td style="text-align:center">8</td></tr>
+    <tr><td>二重登録</td><td>登録前に一覧を検索</td><td style="text-align:center">8</td></tr>
+    <tr><td rowspan="3">見積</td><td>ケタまちがい</td><td>合計金額を声に出して読む</td><td style="text-align:center">9</td></tr>
+    <tr><td>承認前に送信</td><td>社長の「承認」の文字を見てから送る</td><td style="text-align:center">10</td></tr>
+    <tr><td>別のお客様のPDFを送る</td><td>送る直前に宛名をもう1回見る</td><td style="text-align:center">10</td></tr>
+    <tr><td rowspan="3">施工</td><td>施工前写真を撮り忘れ</td><td>「写真を撮ってから触る」を合言葉に。前日に係を決める</td><td style="text-align:center">11-12</td></tr>
+    <tr><td>勝手に追加作業</td><td>予定外は全部、社長に電話してから</td><td style="text-align:center">12</td></tr>
+    <tr><td>お客様確認せずに帰る</td><td>いっしょに見て「OK」をもらってから出る</td><td style="text-align:center">13</td></tr>
+    <tr><td rowspan="2">請求</td><td>請求忘れ・遅れ</td><td>完了記録から3日以内ルール。カレンダー登録</td><td style="text-align:center">15</td></tr>
+    <tr><td>勝手に催促文を送る</td><td>未入金の連絡は社長の文面で</td><td style="text-align:center">15</td></tr>
+    <tr><td rowspan="2">口コミ</td><td>依頼を忘れる・遅れる</td><td>入金確認から3日以内に送る</td><td style="text-align:center">16</td></tr>
+    <tr><td>悪い口コミに即返信</td><td>悪い口コミは必ず社長判断</td><td style="text-align:center">16</td></tr>
+    <tr><td>緊急時</td><td>報告せず自分で解決しようとする</td><td>「とめる→電話→写真→指示を待つ」</td><td style="text-align:center">17</td></tr>
+  </table>
+
+  <h3 class="mid">ミスが起きたときの3ステップ</h3>
+  <div class="flow">
+    <div class="fb start">① かくさず社長に報告<small>早いほどかんたんに直せる</small></div>
+    <div class="ar">▼</div>
+    <div class="fb">② お客様への対応は社長が決める</div>
+    <div class="ar">▼</div>
+    <div class="fb end">③ SOPのどこを直せば防げたか話す<small>直しは🟥社長承認 → Ver番号を上げる（例：Ver1.0 → Ver1.1）</small></div>
+  </div>
+  <div class="goal"><b class="t">✅ この資料のゴール（もう一度）</b>新しく入った人がこの資料だけで、問い合わせ→見積→施工→請求→口コミまで、<b>質問しないで</b>まわせること。できない所を見つけたら、それはあなたのせいではなく資料の直しどころ。社長に教えてください。</div>
+  <div class="pfoot"><span>REVO SOP Ver1.0 ── ① REVO CARE運営SOP</span><span>18</span></div>
+</div>
+
+</body>
+</html>
