@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>REVO SOP Ver1.1 第0巻 REVO運営ボード</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","Noto Sans JP",sans-serif;color:#1a1a1a;background:#9e9e9e;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:296mm;margin:10px auto;background:#fff;padding:10mm 12mm 16mm;position:relative;page-break-after:always;box-shadow:0 2px 10px rgba(0,0,0,.35);display:flex;flex-direction:column}
+@media print{body{background:#fff}.page{margin:0;box-shadow:none;min-height:297mm}}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.2mm solid #00695c;padding-bottom:1.5mm;margin-bottom:4mm}
+.phead .doc{font-size:9pt;color:#777;font-weight:700}
+.phead .sec{font-size:15pt;font-weight:900;color:#00695c}
+.lay{display:inline-block;font-size:8pt;font-weight:900;border-radius:1mm;padding:.4mm 2mm;margin-right:2.5mm;color:#fff;vertical-align:2px}
+.l1{background:#00695c}.l2{background:#1565c0}.l3{background:#6a1b9a}
+.pfoot{position:absolute;bottom:6mm;left:12mm;right:12mm;display:flex;justify-content:space-between;font-size:8.5pt;color:#888;border-top:.4mm solid #ddd;padding-top:1.5mm}
+h2.big{font-size:14pt;font-weight:900;background:#263238;color:#fff;padding:1.5mm 4mm;border-radius:1.5mm;margin:3mm 0 2.5mm}
+h3.mid{font-size:12pt;font-weight:900;border-left:2.5mm solid #00695c;padding-left:3mm;margin:3mm 0 2mm}
+p.note{font-size:10pt;color:#444;margin-bottom:2mm}
+.chip{display:inline-block;font-size:8.5pt;font-weight:900;color:#fff;border-radius:5mm;padding:.4mm 2.6mm;margin:0 .6mm;vertical-align:middle;white-space:nowrap}
+.cB{background:#c62828}.cW{background:#ad1457}.cJ{background:#1565c0}.cS{background:#2e7d32}.cA{background:#6a1b9a}.cG{background:#e65100}.cC{background:#00695c}
+ul.ck{list-style:none;font-size:10.5pt;margin:1mm 0}
+ul.ck li{padding:1.4mm 0 1.4mm 8mm;border-bottom:.3mm dashed #b0bec5;position:relative}
+ul.ck li::before{content:"";position:absolute;left:0;top:2mm;width:4.2mm;height:4.2mm;border:.55mm solid #c62828;border-radius:.8mm;background:#fff}
+.miss{border:.7mm solid #e65100;background:#fff3e0;border-radius:2mm;padding:2mm 3mm;margin:2.5mm 0;font-size:10pt}
+.miss b.t{display:block;color:#e65100;font-size:10.5pt;margin-bottom:1mm}
+.goal{border:.7mm solid #2e7d32;background:#e8f5e9;border-radius:2mm;padding:2mm 3mm;margin:2.5mm 0;font-size:10pt}
+.goal b.t{display:block;color:#2e7d32;font-size:10.5pt;margin-bottom:1mm}
+table.list{width:100%;border-collapse:collapse;font-size:9.8pt;margin:2mm 0}
+table.list th{background:#455a64;color:#fff;padding:1.5mm 2mm;border:.4mm solid #455a64}
+table.list td{padding:1.5mm 2mm;border:.4mm solid #90a4ae;vertical-align:top}
+table.list tr:nth-child(even) td{background:#f5f7f8}
+.big-rule{border:1.2mm solid #c62828;background:#ffebee;border-radius:3mm;padding:4mm;text-align:center;font-size:14pt;font-weight:900;color:#b71c1c;margin:4mm 0}
+.flow{display:flex;flex-direction:column;align-items:center;margin:2mm auto}
+.fb{border:.8mm solid #1565c0;border-radius:2.5mm;background:#e3f2fd;padding:2mm 6mm;font-weight:900;font-size:11.5pt;text-align:center;min-width:70mm}
+.fb small{display:block;font-weight:500;font-size:8.5pt;color:#37474f}
+.fb.start{border-color:#00695c;background:#e0f2f1}
+.fb.ok{border-color:#c62828;background:#ffebee}
+.fb.end{border-color:#2e7d32;background:#e8f5e9;border-width:1.1mm}
+.fb.judge{border-color:#e65100;background:#fff3e0;border-style:dashed}
+.ar{font-size:13pt;color:#546e7a;font-weight:900;line-height:1;padding:1.2mm 0;text-align:center}
+.fbranch{display:flex;gap:6mm;justify-content:center;align-items:stretch}
+.fbranch>div{display:flex;flex-direction:column;align-items:center}
+.brlbl{font-size:9pt;font-weight:900;padding:.3mm 3mm;border-radius:4mm;margin:.8mm 0}
+.brY{background:#c8e6c9;color:#1b5e20}.brN{background:#ffcdd2;color:#b71c1c}
+/* 循環図 */
+.cycmap{display:grid;grid-template-columns:56mm 1fr 56mm;grid-auto-rows:auto;gap:1.5mm 3mm;margin:2mm 0}
+.cn{border:.9mm solid #1565c0;border-radius:2.5mm;background:#e3f2fd;padding:2mm 2.5mm;text-align:center}
+.cn .ic{font-size:15pt;display:block;line-height:1.15}
+.cn b{display:block;font-size:12.5pt}
+.cn small{display:block;font-size:8pt;color:#37474f;line-height:1.35}
+.cn .ref{display:inline-block;font-size:7.5pt;font-weight:900;background:#263238;color:#fff;border-radius:1mm;padding:.2mm 1.8mm;margin-top:.8mm}
+.cdn,.cup{text-align:center;font-size:15pt;font-weight:900;color:#546e7a;line-height:1}
+.center-lbl{grid-row:3/8;grid-column:2;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.harr{display:flex;align-items:center;justify-content:center;font-weight:900;color:#546e7a;font-size:10pt;gap:2mm}
+/* 教育チェック */
+.edu{border:.7mm solid #6a1b9a;background:#f3e5f5;border-radius:2mm;padding:1.8mm 3mm;margin-top:2.5mm;font-size:9pt}
+.edu b{color:#6a1b9a;margin-right:2mm}
+.edu span{display:inline-block;margin-right:4mm;white-space:nowrap}
+.edu span::before{content:"";display:inline-block;width:3.4mm;height:3.4mm;border:.5mm solid #6a1b9a;border-radius:.7mm;background:#fff;margin-right:1.5mm;vertical-align:-.4mm}
+/* KPI表 */
+table.kpi{width:100%;border-collapse:collapse;font-size:9.5pt}
+table.kpi th{background:#00695c;color:#fff;padding:1.5mm 2mm;border:.4mm solid #00695c}
+table.kpi td{padding:1.8mm 2mm;border:.4mm solid #90a4ae;vertical-align:middle}
+table.kpi td.blank{background:#fff;min-width:16mm}
+table.kpi tr.calc td{background:#e0f2f1}
+/* カレンダー */
+.calblock{border:.8mm solid #00695c;border-radius:2.5mm;overflow:hidden;margin-bottom:3mm}
+.calblock .h{background:#00695c;color:#fff;font-size:12pt;font-weight:900;padding:1.5mm 3mm}
+.calblock .b{padding:2mm 3mm}
+/* --- 密度調整：1ページ=A4・1枚を守るための上書き --- */
+body{line-height:1.32}
+.page{padding:7mm 10mm 12mm}
+h2.big{font-size:12pt;margin:2mm 0 1.5mm;padding:1.1mm 3mm}
+h3.mid{font-size:10.5pt;margin:1.8mm 0 1.2mm}
+p.note{font-size:9pt;margin-bottom:1.4mm}
+table.list{font-size:8.8pt;margin:1.5mm 0}
+table.list th{padding:1mm 1.8mm}
+table.list td{padding:1mm 1.8mm}
+.fb{padding:1.4mm 4.5mm;font-size:10pt;min-width:64mm}
+.fb small{font-size:7.8pt}
+.ar{font-size:10.5pt;padding:.7mm 0}
+ul.ck{font-size:9.3pt}
+ul.ck li{padding:.9mm 0 .9mm 7mm}
+ul.ck li::before{width:3.6mm;height:3.6mm;top:1.4mm}
+.miss,.goal{padding:1.3mm 2.5mm;margin:1.5mm 0;font-size:9pt}
+.miss b.t,.goal b.t{font-size:9.3pt;margin-bottom:.5mm}
+.big-rule{padding:2.2mm;font-size:11.5pt;margin:2mm 0}
+.edu{padding:1.2mm 2.5mm;margin-top:1.5mm;font-size:8.3pt}
+.chip{font-size:8pt}
+.pfoot{bottom:4.5mm}
+.phead{margin-bottom:3mm}
+.phead .sec{font-size:13.5pt}
+table.kpi{font-size:8.8pt}
+table.kpi th{padding:1.1mm 1.8mm}
+table.kpi td{padding:1.4mm 1.8mm}
+.calblock{margin-bottom:2mm}
+.calblock .h{font-size:10.5pt;padding:1.1mm 2.5mm}
+.calblock .b{padding:1.4mm 2.2mm}
+.cn{padding:1.4mm 2mm}
+.cn b{font-size:11pt}
+.cn .ic{font-size:12.5pt}
+.cn small{font-size:7.6pt}
+.cn .ref{font-size:7pt}
+.harr{font-size:9pt}
+.cycmap{gap:1.2mm 2.5mm}
+</style>
+</head>
+<body>
+
+<!-- ===== P1 REVOシステム全体図（A3対応・最初のページ） ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>REVOシステム全体図（この1枚がすべての地図）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note" style="text-align:center"><b>🖨 この1枚はA3カラーで拡大印刷して壁に貼る</b>（A4のままでもOK）。全員が毎日見る図です。</p>
+
+  <div class="cycmap">
+    <!-- 上段：戻り矢印 -->
+    <div class="cn" style="grid-column:1;border-color:#e4405f;background:#fce4ec"><span class="ic">📸</span><b>Instagram</b><small>ビフォーアフターで<br>見つけてもらう</small><span class="ref">②SOP 4〜5ページ</span></div>
+    <div class="harr" style="grid-column:2">◀◀◀ 口コミと投稿が 新しいお客様を呼ぶ ◀◀◀</div>
+    <div class="cn" style="grid-column:3;border-color:#f9a825;background:#fff8e1"><span class="ic">⭐</span><b>口コミ</b><small>信じてもらう<br>いちばん強い広告</small><span class="ref">①SOP 16ページ／②SOP 7ページ</span></div>
+
+    <div class="cdn" style="grid-column:1">▼</div>
+    <div class="cup" style="grid-column:3">▲</div>
+
+    <div class="cn" style="grid-column:1;border-color:#00695c;background:#e0f2f1"><span class="ic">💬</span><b>LINE</b><small>ただ1つの受付窓口<br>相談はぜんぶここに集まる</small><span class="ref">①SOP 第2章／②SOP 6ページ</span></div>
+    <div class="center-lbl">
+      <div style="font-size:16pt;font-weight:900;color:#263238">REVOの循環</div>
+      <div style="font-size:9.5pt;color:#546e7a;margin:1mm 0 2mm">ぐるぐる回るほど<br>集客が自動で強くなる</div>
+      <div style="font-size:8.5pt;line-height:1.9;text-align:left">
+        <span class="chip cB">社長</span>決める・承認する<br>
+        <span class="chip cW">妻</span><span class="chip cJ">事務員</span>連絡・入力・記録<br>
+        <span class="chip cS">事務サポ</span>記録係のアプリ<br>
+        <span class="chip cA">AI</span>下書きを作る係<br>
+        <span class="chip cG">協力業者</span>いっしょに施工
+      </div>
+    </div>
+    <div class="cn" style="grid-column:3;border-color:#6a1b9a;background:#f3e5f5"><span class="ic">🧠</span><b>AI棟梁</b><small>知識係。工事の知識と<br>投稿の結果をためる場所</small><span class="ref">③ロードマップ 6ページ</span></div>
+
+    <div class="cdn" style="grid-column:1">▼</div>
+    <div class="cup" style="grid-column:3">▲</div>
+
+    <div class="cn" style="grid-column:1"><span class="ic">📋</span><b>案件</b><small>相談を「仕事のたまご」<br>として登録する</small><span class="ref">①SOP 8ページ</span></div>
+    <div class="cn" style="grid-column:3;border-color:#e65100;background:#fff3e0"><span class="ic">🔨</span><b>施工</b><small>ここだけは人間の仕事<br>写真＝宝物をとる</small><span class="ref">①SOP 第3章</span></div>
+
+    <div class="cdn" style="grid-column:1">▼</div>
+    <div class="cup" style="grid-column:3">▲</div>
+
+    <div class="cn" style="grid-column:1;border-color:#2e7d32;background:#e8f5e9"><span class="ic">🗂</span><b>事務サポ</b><small>記録係のアプリ<br>すべての記録が集まる</small><span class="ref">①SOP 8・9・15ページ</span></div>
+    <div class="harr" style="grid-column:2">▶▶▶　<span class="cn" style="display:inline-block;padding:1mm 3mm;margin:0 1mm"><b style="font-size:10.5pt">📄 見積</b><small style="font-size:7.5pt">🟥社長承認→送信</small></span>　▶▶▶</div>
+    <div class="cn" style="grid-column:3;visibility:hidden"></div>
+  </div>
+
+  <div class="big-rule" style="margin:2.5mm 0;font-size:12pt">外に出るもの（見積・投稿・返信）は ぜんぶ 🟥社長の承認あり。<br>AIは下書きだけ。だれも勝手に判断しない。</div>
+  <table class="list" style="font-size:9pt">
+    <tr><th style="width:34mm">この図の歩き方</th><th>やること</th></tr>
+    <tr><td>① 自分の今の仕事をさがす</td><td>上の図で、いま自分がどの箱にいるかを指でさす</td></tr>
+    <tr><td>② 黒いラベルのページを開く</td><td>箱の下の「①SOP◯ページ」がくわしい手順書</td></tr>
+    <tr><td>③ 困ったら</td><td>このボードの4ページ「困ったときの相談先」を見る</td></tr>
+  </table>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>1</span></div>
+</div>
+
+<!-- ===== P2 レイヤー構造（資料の歩き方） ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>資料の歩き方（迷子防止マップ）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note">REVO SOPはぜんぶで4冊。どのページにも左上に「レイヤー」の色ラベルがついています。<b>上の階から下の階へ降りる</b>だけで、迷子になりません。</p>
+
+  <div class="flow">
+    <div class="fb start" style="min-width:150mm;border-color:#00695c"><span class="lay l1" style="vertical-align:1px">レイヤー1 全体像</span> 会社ぜんたいが どう回っているか<small>【この第0巻ボード】全体図・相談先・ツール・カレンダー・KPI ＋ 各SOPの表紙・もくじ・全体フロー</small></div>
+    <div class="ar">▼<span style="display:inline-block;font-size:8.5pt;background:#eceff1;border-radius:1mm;padding:.2mm 2mm;font-weight:700;margin-left:2mm">自分の仕事がどの工程か分かったら</span></div>
+    <div class="fb" style="min-width:150mm"><span class="lay l2" style="vertical-align:1px">レイヤー2 工程</span> その仕事の 流れ（章の全体図）<small>①SOP 5ページ「問い合わせ対応の全体図」など。どの順番で何をするかが分かる</small></div>
+    <div class="ar">▼<span style="display:inline-block;font-size:8.5pt;background:#eceff1;border-radius:1mm;padding:.2mm 2mm;font-weight:700;margin-left:2mm">今日やる作業が決まったら</span></div>
+    <div class="fb" style="min-width:150mm;border-color:#6a1b9a;background:#f3e5f5"><span class="lay l3" style="vertical-align:1px">レイヤー3 実作業</span> 手を動かすページ（1作業=1ページ）<small>フローチャートの上から順にやって、チェックリストに✔を入れたら完了</small></div>
+  </div>
+
+  <h3 class="mid">4冊の地図</h3>
+  <table class="list">
+    <tr><th style="width:44mm">資料</th><th>中身</th><th style="width:38mm">いつ使う</th></tr>
+    <tr><td><b>第0巻 REVO運営ボード</b>（この資料）</td><td>全体図・迷ったら・相談先・ツール・カレンダー・KPI</td><td>壁に貼って毎日見る</td></tr>
+    <tr><td><b>① REVO CARE運営SOP</b></td><td>問い合わせ→見積→施工→請求→口コミの実作業</td><td>お客様対応のとき</td></tr>
+    <tr><td><b>② REVO MEDIA運営SOP</b></td><td>Instagram・LINE・Google・HP・SEOの実作業</td><td>集客作業のとき</td></tr>
+    <tr><td><b>③ AI自動化ロードマップ</b></td><td>Phase1〜4の将来計画</td><td>社長とClaudeの計画会議</td></tr>
+  </table>
+
+  <h3 class="mid">新人さんの最初の1週間（この順で読む）</h3>
+  <ul class="ck">
+    <li>1日目：このボード全7ページを読む（30分）＋ 全体図の前で先輩と答え合わせ</li>
+    <li>2日目：①SOPのレイヤー1・2（1〜5ページ）を読む</li>
+    <li>3日目：①SOPのレイヤー3を、先輩がやるのを横で見ながら読む</li>
+    <li>4〜5日目：①SOP 6〜8ページ（LINE返信・写真確認・案件登録）を自分でやってみる（先輩が横で見る）</li>
+    <li>6〜7日目：②SOPを読んで、Instagram投稿の下書きを1回やってみる</li>
+    <li>各章の最後の「理解度チェック」に全部✔がついたら独り立ち</li>
+  </ul>
+  <div class="edu"><b>理解度チェック</b><span>レイヤー1・2・3のちがいを説明できる</span><span>4冊の役割が言える</span><span>困ったとき見るページが言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>2</span></div>
+</div>
+
+<!-- ===== P3 迷ったらここを見る ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>【迷ったらここを見る】</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note">「何からやればいいか分からない」「これに時間をかけていいのかな」と思ったら、この1枚。判断はこの質問ひとつだけです。</p>
+
+  <div class="flow">
+    <div class="fb judge" style="min-width:120mm;font-size:14pt">その作業は 売上（お客様）に つながるか？</div>
+    <div class="fbranch" style="margin-top:2mm">
+      <div><span class="brlbl brY">YES</span><div class="fb end" style="min-width:60mm;font-size:13pt">いま やる</div></div>
+      <div><span class="brlbl brN">NO</span><div class="fb" style="min-width:60mm;font-size:13pt;border-color:#546e7a;background:#eceff1">後回し<small>「後回しメモ」に書いて忘れる</small></div></div>
+    </div>
+  </div>
+
+  <h3 class="mid">○×早見表</h3>
+  <table class="list" style="font-size:10.5pt">
+    <tr><th style="width:14mm">判定</th><th>作業</th><th>理由</th></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#2e7d32"><b>○</b></td><td><b>LINEの返信</b></td><td>お客様を待たせない＝売上に直結。ぜんぶに優先</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#2e7d32"><b>○</b></td><td><b>見積の提出</b></td><td>見積が出ないと受注がない</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#2e7d32"><b>○</b></td><td><b>写真撮影・アルバム保存</b></td><td>写真は見積・請求・集客ぜんぶの材料</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#2e7d32"><b>○</b></td><td><b>請求書・入金確認</b></td><td>売上そのもの</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#2e7d32"><b>○</b></td><td><b>口コミ依頼・口コミ返信</b></td><td>次のお客様を呼ぶ</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#b71c1c"><b>×</b></td><td>ロゴのデザインを悩む</td><td>お客様はロゴで頼まない。後回し</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#b71c1c"><b>×</b></td><td>SNSのデザインを何時間も悩む</td><td>承認された3案から選ぶだけでよい。10分まで</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#b71c1c"><b>×</b></td><td>投稿文を完ぺきにしようと1時間ねばる</td><td>AIの下書き＋社長承認で十分</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#b71c1c"><b>×</b></td><td>新しい便利ツールをさがす</td><td>ツールを増やすのは社長とClaudeの仕事</td></tr>
+    <tr><td style="text-align:center;font-size:14pt;color:#b71c1c"><b>×</b></td><td>書類のフォルダ整理に半日かける</td><td>ルールどおり保存できていればOK</td></tr>
+  </table>
+
+  <h3 class="mid">迷ったときの優先順位（上からやる）</h3>
+  <table class="list">
+    <tr><th style="width:14mm">順位</th><th>作業</th></tr>
+    <tr><td style="text-align:center"><b>1</b></td><td>お客様への返事（LINE・電話の折り返し）</td></tr>
+    <tr><td style="text-align:center"><b>2</b></td><td>今日・明日の施工の準備と連絡</td></tr>
+    <tr><td style="text-align:center"><b>3</b></td><td>見積・請求（お金が動くもの）</td></tr>
+    <tr><td style="text-align:center"><b>4</b></td><td>口コミ依頼・返信</td></tr>
+    <tr><td style="text-align:center"><b>5</b></td><td>Instagram・Googleなどの投稿</td></tr>
+  </table>
+  <div class="miss"><b class="t">⚠ 後回しメモのルール</b>×と判定したものは、紙かスマホの「後回しメモ」に書いてすぐ忘れる。<b>毎週金曜の夕方</b>にメモを見返して、必要なものだけ社長に相談。ほとんどは「やらなくてよかったもの」です。</div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>3</span></div>
+</div>
+
+<!-- ===== P4 困ったときの相談先 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>困ったときの相談先（だれに聞く？）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note">聞くのは恥ずかしくない。<b>聞かずに勝手に判断するのが唯一の失格</b>。この表で相談先を引いて、そのまま聞いてください。</p>
+
+  <table class="list" style="font-size:10pt">
+    <tr><th style="width:46mm">困ったこと</th><th style="width:28mm">相談先</th><th>聞き方・そのあと</th></tr>
+    <tr><td><b>見積金額・単価</b>が分からない</td><td><span class="chip cB">社長</span></td><td>写真を添えてLINE「◯◯様の件、単価いくらでいきますか」。返事が来るまで金額欄は空けておく</td></tr>
+    <tr><td><b>施工方法・材料・工事の知識</b>が分からない</td><td><span class="chip cA">AI棟梁</span></td><td>AI棟梁に質問（Phase1のあいだはChatGPTに聞く→答えを社長に確認）。現場の最終判断は社長</td></tr>
+    <tr><td><b>Instagram投稿の文</b>が作れない</td><td><span class="chip cA">ChatGPT</span></td><td>②SOP 5ページのプロンプトをコピペ。できた3案は🟥社長承認へ</td></tr>
+    <tr><td><b>事務サポの不具合</b>（画面が変・保存できない）</td><td><span class="chip cA">Claude</span></td><td>画面のスクショを撮る→社長に報告→社長からClaude（開発者）へ依頼。自分で直そうとしない</td></tr>
+    <tr><td><b>LINEの返信のしかた</b>が分からない</td><td>①運営SOP</td><td>①SOP 第2章（6ページ）の定型文をそのまま使う。定型文にない質問は社長へ転送</td></tr>
+    <tr><td><b>クレーム・お客様が怒っている</b></td><td><span class="chip cB">社長</span></td><td>言い分を聞いてメモ→「社長から折り返します」→すぐ社長に<b>電話</b>（①SOP 17ページ）</td></tr>
+    <tr><td><b>お金のこと全部</b>（値引き・支払い・未入金）</td><td><span class="chip cB">社長</span></td><td>その場で約束しない。「確認してご連絡します」→社長へ</td></tr>
+    <tr><td><b>協力業者とのやりとり</b>で困った</td><td><span class="chip cB">社長</span></td><td>日程・お金・作業内容のもめごとは全部社長。事務連絡（時間・場所）は担当者でOK</td></tr>
+    <tr><td><b>ツールにログインできない</b></td><td><span class="chip cB">社長</span></td><td>パスワードは社長が管理。勝手に再発行しない（5ページ ツール一覧）</td></tr>
+    <tr><td><b>SOPに書いてないことが起きた</b></td><td><span class="chip cB">社長</span></td><td>手を止めて聞く→解決したら「SOPのどこに足すか」も社長と決める（Ver更新）</td></tr>
+    <tr><td><b>つまり…判断が必要なこと全部</b></td><td><span class="chip cB">社長</span></td><td><b>迷ったら社長。これがREVOの正解</b></td></tr>
+  </table>
+
+  <h3 class="mid">聞き方のコツ（3点セットで聞くと1回で終わる）</h3>
+  <div class="flow">
+    <div class="fb start" style="min-width:130mm">① 何の件か「◯◯様の見積の件です」</div>
+    <div class="ar">▼</div>
+    <div class="fb" style="min-width:130mm">② 今どうなってるか「写真4枚そろって、単価だけ未定です」＋写真・スクショ添付</div>
+    <div class="ar">▼</div>
+    <div class="fb end" style="min-width:130mm">③ 何を決めてほしいか「単価を教えてください」</div>
+  </div>
+  <div class="edu"><b>理解度チェック</b><span>見積金額はだれに聞くか言える</span><span>施工の知識はだれに聞くか言える</span><span>不具合のときの手順が言える</span><span>迷ったら誰か言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>4</span></div>
+</div>
+
+<!-- ===== P5 使用ツール一覧 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>使用ツール一覧（新人さん最初に見る）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note">REVOで使う道具はこれだけ。<b>ここにないツールは勝手に増やさない</b>（増やすのは社長承認）。パスワードは全部、社長管理のパスワード帳にあります。この紙には書きません。</p>
+
+  <table class="list" style="font-size:9pt">
+    <tr><th style="width:26mm">ツール名</th><th>用途（なんのため）</th><th style="width:24mm">担当者</th><th style="width:30mm">ログイン場所</th><th style="width:38mm">備考</th></tr>
+    <tr><td><b>LINE公式アカウント</b></td><td>お客様の相談受付・見積/請求の送信（ただ1つの窓口）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>スマホ:LINE公式アプリ<br>PC:管理画面</td><td>返信1時間以内が目標。夜21時〜朝8時は送らない</td></tr>
+    <tr><td><b>事務サポ</b></td><td>案件・見積・請求・材料の記録（記録係アプリ）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>PCのブラウザ（お気に入り登録済み）</td><td>不具合はスクショ→社長→Claudeへ。自分で直さない</td></tr>
+    <tr><td><b>Instagram</b></td><td>ビフォーアフター投稿で見つけてもらう</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>スマホ:Instagramアプリ</td><td>投稿は火・金の週2回。承認前の投稿は禁止</td></tr>
+    <tr><td><b>Googleビジネスプロフィール</b></td><td>「地域名＋工事名」検索に出る・口コミ管理</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>スマホ/PC:Googleにログイン→ビジネスプロフィール</td><td>口コミ確認は毎週月曜。悪い口コミは返信せず社長へ</td></tr>
+    <tr><td><b>ChatGPT</b></td><td>投稿文・記事・返信文の下書き係（提案者）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>PC/スマホ:chatgpt.com</td><td>下書きだけ。お客様情報（本名・住所）は入力しない</td></tr>
+    <tr><td><b>Claude</b></td><td>事務サポの開発・修正（開発者）</td><td><span class="chip cB">社長</span>経由</td><td>社長のPC</td><td>依頼は社長から。運営の判断はしない</td></tr>
+    <tr><td><b>AI棟梁</b></td><td>工事の知識・投稿結果をためる知識係</td><td>全員が質問できる</td><td>Phase1のあいだは「投稿結果ノート」＋ChatGPT</td><td>Phase4で本格稼働（③ロードマップ）。答えの最終確認は社長</td></tr>
+    <tr><td><b>Googleカレンダー</b></td><td>施工日・支払期限・月次会議の予定管理</td><td>全員</td><td>スマホ/PC:Googleカレンダー</td><td>施工日と支払期限は決まった瞬間に入れる</td></tr>
+    <tr><td><b>共有アルバム（Googleフォト）</b></td><td>施工写真の保存（前・中・後）</td><td>撮影:全員<br>整理:<span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td>スマホ:Googleフォト</td><td>当日中に保存。アルバム名「日付＿お客様名＿工事内容」</td></tr>
+    <tr><td><b>銀行アプリ</b></td><td>入金確認</td><td><span class="chip cB">社長</span>＋<span class="chip cW">妻</span></td><td>社長・妻のスマホ</td><td>支払期限の日に確認→事務サポに記録</td></tr>
+  </table>
+
+  <h3 class="mid">ツールのお約束</h3>
+  <ul class="ck">
+    <li>パスワードをメモ用紙・この資料・LINEに書かない（社長のパスワード帳だけ）</li>
+    <li>ログインできないときは社長へ（勝手に再発行・再設定しない）</li>
+    <li>お客様の本名・住所・電話番号をChatGPTに入力しない（「◯◯様」でぼかす）</li>
+    <li>新しいツールを入れたいときは、金曜の後回しメモ→社長に相談</li>
+  </ul>
+  <div class="edu"><b>理解度チェック</b><span>10個のツールの用途が言える</span><span>パスワードのありかが言える</span><span>不具合・ログイン不可のとき誰に言うか言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>5</span></div>
+</div>
+
+<!-- ===== P6 運営カレンダー ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>運営カレンダー（壁に貼る）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+
+  <div class="calblock">
+    <div class="h">🌞 毎日（朝9時と夕方17時の2回だけ）</div>
+    <div class="b">
+      <table class="list" style="margin:0">
+        <tr><th style="width:22mm">いつ</th><th>やること</th><th style="width:26mm">担当</th></tr>
+        <tr><td rowspan="3"><b>朝 9:00</b></td><td>LINEの未読をゼロにする（返事は定型文でOK）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td>今日の施工・予定をカレンダーで確認</td><td>全員</td></tr>
+        <tr><td>今日が支払期限の請求がないか確認</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td rowspan="3"><b>夕方 17:00</b></td><td>今日来たLINEに全部返事したか確認</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td>今日の相談を事務サポに案件登録したか確認</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td>今日の施工写真をアルバムに保存したか確認</td><td>撮った人</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="calblock">
+    <div class="h">📅 毎週（曜日で覚える）</div>
+    <div class="b">
+      <table class="list" style="margin:0">
+        <tr><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土日</th></tr>
+        <tr>
+          <td><b>口コミ確認</b><br>来てたら返信準備<br>（悪い口コミは社長へ）</td>
+          <td><b>Instagram投稿①</b><br>承認済みの案を投稿</td>
+          <td><b>来週のネタ選び</b><br>写真ペアを1組えらぶ<br>→ChatGPTで3案作る</td>
+          <td><b>Google投稿</b><br>ビジネスプロフィールに写真1枚</td>
+          <td><b>Instagram投稿②</b><br>＋後回しメモを見返して社長に相談</td>
+          <td>お休み<br>（予約投稿はOK）</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="calblock">
+    <div class="h">🗓 毎月（最初の月曜＝運営会議の日）</div>
+    <div class="b">
+      <table class="list" style="margin:0">
+        <tr><th style="width:40mm">やること</th><th>内容</th><th style="width:26mm">担当</th></tr>
+        <tr><td><b>運営会議（15分）</b></td><td>KPI表（7ページ）に先月の数字を記入して社長に報告</td><td>全員＋<span class="chip cB">社長</span></td></tr>
+        <tr><td><b>SEO記事 1本</b></td><td>先月の案件から1件、AIに下書き→社長承認→公開（②SOP 9ページ）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td><b>HP実績 1件追加</b></td><td>写真がきれいな案件をえらぶ（②SOP 8ページ）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td><b>Google情報の確認</b></td><td>営業時間・電話番号が今も正しいか見る</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td><b>未入金の確認</b></td><td>期限すぎの請求がないか→あれば社長へ</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td></tr>
+        <tr><td><b>SOPの直しどころ相談</b></td><td>「ここ分かりにくい」を出し合う→社長承認でVer更新</td><td>全員＋<span class="chip cB">社長</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="goal"><b class="t">✅ このカレンダーの合格ライン</b>「今日なにやるんだっけ？」と聞く人がゼロになること。迷ったら壁のこの紙→それでも迷ったら3ページ【迷ったらここを見る】。</div>
+  <div class="edu"><b>理解度チェック</b><span>毎日2回の確認時刻が言える</span><span>火・金になにをするか言える</span><span>月イチ会議の日と内容が言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>6</span></div>
+</div>
+
+<!-- ===== P7 KPI管理表 ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>KPI月次管理表（毎月1枚印刷して記入）</span><span class="doc">第0巻 REVO運営ボード</span></div>
+  <p class="note"><b>記入するのは月イチ・運営会議のとき（15分）</b>。数字は会社の健康診断。よい/わるいを責めるためではなく、<b>どこを直すか決めるため</b>に見ます。　記入月：＿＿＿＿年＿＿＿＿月</p>
+
+  <table class="kpi">
+    <tr><th style="width:34mm">項目</th><th>数え方</th><th style="width:16mm">目標</th><th style="width:16mm">実績</th><th style="width:16mm">先月</th><th style="width:30mm">メモ</th></tr>
+    <tr><td><b>問い合わせ件数</b></td><td>LINEに来た新しい相談の数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>見積件数</b></td><td>社長承認→送信した見積の数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>受注件数</b></td><td>「お願いします」をもらった数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>施工件数</b></td><td>施工完了（お客様確認OK）の数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>口コミ件数</b></td><td>今月あたらしく増えた口コミの数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>Instagram投稿数</b></td><td>今月の投稿数（目標は8＝週2×4）</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>Google投稿数</b></td><td>ビジネスプロフィールに足した写真の数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>LINE友だち数</b></td><td>月末時点の友だち合計（管理画面で見る）</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr><td><b>紹介件数</b></td><td>「◯◯さんの紹介で」と来た相談の数</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr class="calc"><td><b>見積率</b></td><td>見積件数 ÷ 問い合わせ件数 × 100（%）</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+    <tr class="calc"><td><b>受注率</b></td><td>受注件数 ÷ 見積件数 × 100（%）</td><td class="blank"></td><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+  </table>
+
+  <h3 class="mid">数字の読み方（どこを直す？）</h3>
+  <table class="list" style="font-size:9.5pt">
+    <tr><th style="width:52mm">こうなっていたら</th><th>直すところ</th></tr>
+    <tr><td>問い合わせが少ない</td><td>集客の入口が弱い → ②SOP（投稿週2できてる？口コミ増えてる？）</td></tr>
+    <tr><td>見積率が低い（問い合わせは来るのに見積まで行かない）</td><td>写真待ちで止まっている → ①SOP 7ページの停滞ポイントを徹底</td></tr>
+    <tr><td>受注率が低い（見積は出すのに決まらない）</td><td>金額・見積の見せ方 → 社長と相談（追いかけLINEはできてる？）</td></tr>
+    <tr><td>口コミが増えない</td><td>依頼を忘れている → ①SOP 16ページ「入金確認から3日以内」</td></tr>
+  </table>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>・数字を覚えでなんとなく書く → 事務サポの案件一覧とLINE管理画面を見ながら数える<br>・わるい数字をかくす → 数字はだれのせいでもなく「直す場所を教えてくれる矢印」。そのまま書く</div>
+  <div class="edu"><b>理解度チェック</b><span>受注率の計算式が言える</span><span>記入はいつやるか言える</span><span>数字がわるい時どのSOPを見るか言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── 第0巻 REVO運営ボード</span><span>7</span></div>
+</div>
+
+</body>
+</html>

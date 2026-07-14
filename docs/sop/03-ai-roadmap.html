@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>REVO SOP Ver1.0 ③AI自動化ロードマップ</title>
+<title>REVO SOP Ver1.1 ③AI自動化ロードマップ</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","Noto Sans JP",sans-serif;color:#1a1a1a;background:#9e9e9e;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5}
@@ -61,13 +61,52 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 .ph small{display:block;font-size:8.5pt;opacity:.95}
 .p1{background:#546e7a}.p2{background:#1565c0}.p3{background:#6a1b9a}.p4{background:#2e7d32}
 .cyc{border:.8mm solid #2e7d32;border-radius:3mm;background:#f1f8e9;padding:3mm;margin:2mm 0}
+.lay{display:inline-block;font-size:8pt;font-weight:900;border-radius:1mm;padding:.4mm 2mm;margin-right:2.5mm;color:#fff;vertical-align:2px}
+.l1{background:#00695c}.l2{background:#1565c0}.l3{background:#6a1b9a}
+.edu{border:.7mm solid #6a1b9a;background:#f3e5f5;border-radius:2mm;padding:1.8mm 3mm;margin-top:2.5mm;font-size:9pt}
+.edu b{color:#6a1b9a;margin-right:2mm}
+.edu span{display:inline-block;margin-right:4mm;white-space:nowrap}
+.edu span::before{content:"";display:inline-block;width:3.4mm;height:3.4mm;border:.5mm solid #6a1b9a;border-radius:.7mm;background:#fff;margin-right:1.5mm;vertical-align:-.4mm}
+/* --- 密度調整：1ページ=A4・1枚を守るための上書き --- */
+body{line-height:1.32}
+.page{padding:7mm 10mm 12mm}
+h2.big{font-size:12pt;margin:2mm 0 1.5mm;padding:1.1mm 3mm}
+h3.mid{font-size:10.5pt;margin:1.8mm 0 1.2mm}
+p.note{font-size:9pt;margin-bottom:1.4mm}
+table.info{font-size:8.8pt;margin-bottom:2.5mm}
+table.info th{padding:1mm 2mm;font-size:8.6pt}
+table.info td{padding:1mm 2mm}
+table.list{font-size:8.8pt;margin:1.5mm 0}
+table.list th{padding:1mm 1.8mm}
+table.list td{padding:1mm 1.8mm}
+.fb{padding:1.4mm 4.5mm;font-size:10pt;min-width:64mm}
+.fb small{font-size:7.8pt}
+.ar{font-size:10.5pt;padding:.7mm 0}
+.ar span{font-size:7.8pt}
+ul.ck{font-size:9.3pt}
+ul.ck li{padding:.9mm 0 .9mm 7mm}
+ul.ck li::before{width:3.6mm;height:3.6mm;top:1.4mm}
+.miss,.stop,.goal,.say{padding:1.3mm 2.5mm;margin:1.5mm 0;font-size:9pt}
+.miss b.t,.stop b.t,.goal b.t{font-size:9.3pt;margin-bottom:.5mm}
+.big-rule{padding:2.2mm;font-size:11.5pt;margin:2mm 0}
+.edu{padding:1.2mm 2.5mm;margin-top:1.5mm;font-size:8.3pt}
+.chip{font-size:8pt}
+.pfoot{bottom:4.5mm}
+.phead{margin-bottom:3mm}
+.phead .sec{font-size:13.5pt}
+.stamp .s{height:16mm}
+.phases{gap:2mm;margin:2mm 0}
+.ph{padding:1.8mm}
+.cyc{padding:2mm;margin:1.5mm 0}
+.cyc .ar{padding:.3mm 0;font-size:9.5pt}
+.cyc .fb{padding:1mm 4mm;font-size:9.5pt}
 </style>
 </head>
 <body>
 
 <!-- ===== P1 表紙 ===== -->
 <div class="page cover">
-  <div class="ver">REVO SOP Ver1.0</div>
+  <div class="ver">REVO SOP Ver1.1</div>
   <h1>③ AI自動化<br>ロードマップ</h1>
   <div class="sub">手作業の会社から、<br><span style="color:#6a1b9a">AIがまわす会社</span>への4段階の地図</div>
   <div style="font-size:12pt;font-weight:700;background:#fff3e0;border:.7mm solid #e65100;border-radius:2mm;padding:3mm 8mm">
@@ -85,12 +124,12 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <div><div class="t">作成</div><div class="s" style="padding-top:7mm;font-size:10pt">Claude（開発者）</div></div>
     <div><div class="t">最終承認 🟥社長</div><div class="s"></div></div>
   </div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>1</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>1</span></div>
 </div>
 
 <!-- ===== P2 全体像 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">全体像（4つのPhaseの地図）</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>全体像（4つのPhaseの地図）</span><span class="doc">③ AI自動化ロードマップ</span></div>
 
   <h2 class="big">進め方のルール</h2>
   <table class="list">
@@ -113,19 +152,20 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 
   <div class="big-rule">AIは提案者。Claudeは開発者。事務サポは記録係。<br>AI棟梁は知識係。決めるのは 🟥社長 だけ。</div>
   <div class="stop"><b class="t">⛔ ロードマップ全体の停滞ポイント</b>「便利そうだから」でPhaseを先取りしたくなる → <b>今のPhaseの完成条件チェックリスト（各ページ下）が全部✔か</b>を先に見る。✔が足りないまま進むと、結局手動に戻ってお金だけかかる。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>2</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>2</span></div>
 </div>
 
 <!-- ===== P3 Phase1 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Phase 1：手動運用【今ここ】</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>Phase 1：手動運用【今ここ】</span><span class="doc">③ AI自動化ロードマップ</span></div>
   <table class="info">
     <tr><th>目的</th><td colspan="3">SOP①②を人の手で確実に回す。ここで作られる記録が、あとの全Phaseの土台（えさ）になる。</td></tr>
     <tr><th>必要なもの</th><td colspan="3">SOP①②（承認済み・印刷して手元に）／スマホ／パソコン</td></tr>
     <tr><th>必要ツール</th><td>LINE公式アカウント／<span class="chip cS">事務サポ</span>／Googleビジネス／Instagram／共有アルバム</td><th>必要AI</th><td>ChatGPT（下書き係として）</td></tr>
     <tr><th>必要データ</th><td colspan="3">なし（これから貯める側）。貯めるのは：案件記録・見積/請求・写真3種・投稿文と結果・口コミ</td></tr>
-    <tr><th>費用</th><td>ほぼ0円〜月3,000円（ChatGPT有料版を使う場合）</td><th>工数</th><td>SOP読み合わせ会 半日×1回＋日々の運用</td></tr>
+    <tr><th>必要費用</th><td>ほぼ0円〜月3,000円（ChatGPT有料版を使う場合）</td><th>想定工数</th><td>SOP読み合わせ会 半日×1回＋日々の運用</td></tr>
     <tr><th>開始条件</th><td>SOP①②を<span class="chip cB">社長</span>が承認した</td><th>終了条件</th><td>下の完成条件が3ヶ月連続で✔</td></tr>
+    <tr><th>担当者</th><td>運用：全員／記録：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>／承認：<span class="chip cB">社長</span></td><th>完成条件</th><td>下のチェックリスト6項目が全部✔（3ヶ月連続）</td></tr>
   </table>
 
   <div class="flow">
@@ -133,7 +173,7 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <div class="ar">▼</div>
     <div class="fb">SOPどおりに毎日回す<small>問い合わせ→見積→施工→請求→口コミ／投稿は週2</small></div>
     <div class="ar">▼<span>毎月はじめ</span></div>
-    <div class="fb">月1ふりかえり（②SOP 9ページ）<small>問い合わせ件数・投稿数・口コミ数を数えて社長に報告</small></div>
+    <div class="fb">月1ふりかえり（第0巻 7ページのKPI表に記入）<small>問い合わせ件数・投稿数・口コミ数を数えて社長に報告</small></div>
     <div class="ar">▼<span>3ヶ月つづいたら</span></div>
     <div class="fb ok">🟥 社長がPhase2へのGOを判断</div>
   </div>
@@ -145,22 +185,24 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <li>写真3種（前・中・後）のアルバムが直近の全案件でそろっている</li>
     <li>Instagram週2投稿が3ヶ月続いた</li>
     <li>口コミ依頼が入金確認後3日以内に送れている</li>
-    <li>月1ふりかえりの数字が3ヶ月分そろっている</li>
+    <li>月1ふりかえりの数字（第0巻 KPI表）が3ヶ月分そろっている</li>
   </ul>
+  <div class="edu"><b>理解度チェック（Phase1）</b><span>Phase1の目的（材料集め）が言える</span><span>卒業条件がいくつあるか言える</span><span>次へのGOはだれが出すか言える</span></div>
   <div class="miss"><b class="t">⚠ よくあるミス</b>「Phase1はただの手作業」と思って記録をサボる → Phase2以降でAIに教えるお手本が無くなり、自動化そのものができなくなる。<b>Phase1は自動化の準備運動ではなく、材料集め</b>。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>3</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>3</span></div>
 </div>
 
 <!-- ===== P4 Phase2 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Phase 2：LINE → 案件化の半自動化</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>Phase 2：LINE → 案件化の半自動化</span><span class="doc">③ AI自動化ロードマップ</span></div>
   <table class="info">
     <tr><th>目的</th><td colspan="3">LINE対応の「最初の返事」「写真のお願い」「案件登録の下書き」を自動にして、人は確認だけにする。返信もれゼロへ。</td></tr>
     <tr><th>必要なもの</th><td colspan="3">Phase1で3ヶ月分たまった「LINEでのやりとりの実例」（どんな質問が来て、どう返したか）</td></tr>
     <tr><th>必要ツール</th><td>LINE公式アカウント有料プラン／<span class="chip cS">事務サポ</span>とLINEをつなぐ仕組み（<span class="chip cA">Claude</span>が開発）</td><th>必要AI</th><td>文章AI（Claude API等）：お客様の文から工事内容を読み取る係</td></tr>
     <tr><th>必要データ</th><td colspan="3">過去の問い合わせ〜案件登録の実例 30件以上／承認済み定型文集</td></tr>
-    <tr><th>費用</th><td>月5,000〜15,000円＋開発費（着手前にClaudeが見積→社長承認）</td><th>工数</th><td>開発1〜2ヶ月／担当者のテスト協力 週1時間</td></tr>
+    <tr><th>必要費用</th><td>月5,000〜15,000円＋開発費（着手前にClaudeが見積→社長承認）</td><th>想定工数</th><td>開発1〜2ヶ月／担当者のテスト協力 週1時間</td></tr>
     <tr><th>開始条件</th><td>Phase1完成条件が全部✔＋<span class="chip cB">社長</span>のGO</td><th>終了条件</th><td>下の完成条件が2ヶ月連続で✔</td></tr>
+    <tr><th>担当者</th><td>開発：<span class="chip cA">Claude</span>／テスト・確認：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>／GO判断・承認：<span class="chip cB">社長</span></td><th>完成条件</th><td>下のチェックリスト5項目が全部✔（2ヶ月連続）</td></tr>
   </table>
 
   <div class="flow">
@@ -184,20 +226,22 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <li>返信もれ・登録もれが2ヶ月連続ゼロ</li>
   </ul>
   <div class="stop"><b class="t">⛔ 停滞ポイント：AIの返事がへん・下書きがまちがう</b>止めるのはいつでもOK（手動に戻せる作りにする）。まちがい例をメモしてClaudeに渡す→直す→再開。<b>「まちがい例のメモ」が一番の直し薬</b>。</div>
-  <div class="miss"><b class="t">⚠ よくあるミス</b>自動返信にまかせて人間が見なくなる → 自動なのは「入口」だけ。毎日夕方のLINEチェック（②SOP 5ページ）はPhase2でも続ける。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>4</span></div>
+  <div class="miss"><b class="t">⚠ よくあるミス</b>自動返信にまかせて人間が見なくなる → 自動なのは「入口」だけ。毎日夕方のLINEチェック（②SOP 6ページ）はPhase2でも続ける。</div>
+  <div class="edu"><b>理解度チェック（Phase2）</b><span>自動になる範囲（入口だけ）が言える</span><span>AIが迷ったらどうなるか言える</span><span>手動に戻せることを説明できる</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>4</span></div>
 </div>
 
 <!-- ===== P5 Phase3 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Phase 3：施工写真 → AI整理 → 投稿生成</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>Phase 3：施工写真 → AI整理 → 投稿生成</span><span class="doc">③ AI自動化ロードマップ</span></div>
   <table class="info">
     <tr><th>目的</th><td colspan="3">写真をアップするだけで、AIが「ビフォーアフターのペア分け」と「投稿案3案」まで作る。人は選んで、社長は承認するだけ。</td></tr>
     <tr><th>必要なもの</th><td colspan="3">Phase1〜2でたまった「写真3種セット」50案件分以上＋過去の投稿文と反応の記録</td></tr>
     <tr><th>必要ツール</th><td>共有アルバム（クラウド）／<span class="chip cS">事務サポ</span>の写真管理画面（<span class="chip cA">Claude</span>が開発）</td><th>必要AI</th><td>画像がわかるAI（写真の中身・前後ペアを判定）＋文章AI（投稿3案）</td></tr>
     <tr><th>必要データ</th><td colspan="3">写真50案件分／承認された投稿文の実例30本以上（＝AIのお手本）／個人情報写真の判定ルール</td></tr>
-    <tr><th>費用</th><td>月10,000〜30,000円＋開発費（Claudeが見積→社長承認）</td><th>工数</th><td>開発2〜3ヶ月／担当者のテスト協力 週1時間</td></tr>
+    <tr><th>必要費用</th><td>月10,000〜30,000円＋開発費（Claudeが見積→社長承認）</td><th>想定工数</th><td>開発2〜3ヶ月／担当者のテスト協力 週1時間</td></tr>
     <tr><th>開始条件</th><td>Phase2完成＋写真ルール（①SOP 3-4）が全案件で守れている＋<span class="chip cB">社長</span>のGO</td><th>終了条件</th><td>下の完成条件が2ヶ月連続で✔</td></tr>
+    <tr><th>担当者</th><td>開発：<span class="chip cA">Claude</span>／写真・確認：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>／承認：<span class="chip cB">社長</span></td><th>完成条件</th><td>下のチェックリスト5項目が全部✔（2ヶ月連続）</td></tr>
   </table>
 
   <div class="flow">
@@ -209,7 +253,7 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <div class="ar">▼<span>ここから人間</span></div>
     <div class="fb">👤 担当者が写真ペアと3案を確認<small>変な写真・変な文がないか見る（1件5分）</small></div>
     <div class="ar">▼</div>
-    <div class="fb ok">🟥 社長承認 → 投稿<small>承認のやり方は今までどおり（②SOP 4ページ）。変わらない！</small></div>
+    <div class="fb ok">🟥 社長承認 → 投稿<small>承認のやり方は今までどおり（②SOP 4〜5ページ）。変わらない！</small></div>
   </div>
 
   <h3 class="mid">完成条件チェックリスト</h3>
@@ -221,19 +265,21 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <li>承認なしで投稿された件数が0件（システム上、承認なしでは投稿できない作り）</li>
   </ul>
   <div class="miss"><b class="t">⚠ よくあるミス</b>AIの文をそのまま信じる → AIは現場を見ていない。<b>工事内容がウソになっていないかは職人の目（社長承認）でしか防げない</b>。だから承認は残す。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>5</span></div>
+  <div class="edu"><b>理解度チェック（Phase3）</b><span>AIが自動でやる3つ（整理・印・3案）が言える</span><span>なぜ承認を残すか説明できる</span><span>必要な写真データの量が言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>5</span></div>
 </div>
 
 <!-- ===== P6 Phase4 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Phase 4：会社ぜんたいが循環する</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>Phase 4：会社ぜんたいが循環する</span><span class="doc">③ AI自動化ロードマップ</span></div>
   <table class="info">
     <tr><th>目的</th><td colspan="3">相談から新規問い合わせまでが1本の自動の流れでつながり、人は「現場仕事」と「承認」に集中できる会社になる。</td></tr>
     <tr><th>必要なもの</th><td colspan="3">Phase2・3が安定運用されていること／1年分の案件・写真・投稿・口コミデータ</td></tr>
     <tr><th>必要ツール</th><td><span class="chip cS">事務サポ</span>を中心に全ツールを接続（<span class="chip cA">Claude</span>が開発）</td><th>必要AI</th><td>文章AI＋画像AI＋<b>AI棟梁</b>（工事知識で見積の下書きや施工の注意点を出す知識係）</td></tr>
     <tr><th>必要データ</th><td colspan="3">過去の見積と実際の工事結果のセット（AI棟梁のお手本）／口コミと返信の実例／1年分の月次数字</td></tr>
-    <tr><th>費用</th><td>月30,000〜50,000円＋開発費（Claudeが見積→社長承認）</td><th>工数</th><td>開発3〜6ヶ月（段階リリース）</td></tr>
+    <tr><th>必要費用</th><td>月30,000〜50,000円＋開発費（Claudeが見積→社長承認）</td><th>想定工数</th><td>開発3〜6ヶ月（段階リリース）</td></tr>
     <tr><th>開始条件</th><td>Phase3完成＋件数が人手の限界に近い＋<span class="chip cB">社長</span>のGO</td><th>終了条件</th><td>下の完成条件✔で「完成」。以後は改善をVer管理</td></tr>
+    <tr><th>担当者</th><td>開発：<span class="chip cA">Claude</span>／運用：全員／承認・経営判断：<span class="chip cB">社長</span></td><th>完成条件</th><td>下のチェックリスト5項目が全部✔</td></tr>
   </table>
 
   <div class="cyc">
@@ -264,12 +310,13 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <li>承認なしで外に出るものが仕組み上ゼロ</li>
     <li>新しい人が入っても、SOPとこの仕組みで1週間で戦力になる</li>
   </ul>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>6</span></div>
+  <div class="edu"><b>理解度チェック（Phase4）</b><span>循環の順番（相談→…→新規）が言える</span><span>人間に残る3つの仕事が言える</span><span>AI棟梁の役割が言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>6</span></div>
 </div>
 
 <!-- ===== P7 運用ルール ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">自動化しても変わらないルール</span><span class="doc">③ AI自動化ロードマップ</span></div>
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>自動化しても変わらないルール</span><span class="doc">③ AI自動化ロードマップ</span></div>
 
   <div class="big-rule">どのPhaseでも：<br>AIが作る → 人が確認する → 🟥社長が承認する</div>
 
@@ -298,14 +345,15 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 
   <h3 class="mid">いますぐやること（Phase1の始め方）</h3>
   <ul class="ck">
-    <li>🟥社長がSOP①②③を読んで承認する（表紙にサイン）</li>
-    <li>SOP①②を人数分カラー印刷して配る</li>
+    <li>🟥社長が第0巻・①②③を読んで承認する（表紙にサイン）</li>
+    <li>第0巻・①②を人数分カラー印刷して配る（第0巻は壁にも貼る。全体図はA3で）</li>
     <li>読み合わせ会の日を決める（半日）</li>
-    <li>週間スケジュール（②SOP 3ページ）を壁に貼る</li>
-    <li>月1ふりかえりの日をカレンダーに入れる（毎月最初の月曜）</li>
+    <li>運営カレンダー（第0巻 6ページ）とKPI表（第0巻 7ページ）を壁に貼る</li>
+    <li>月1運営会議の日をカレンダーに入れる（毎月最初の月曜）</li>
   </ul>
-  <div class="goal"><b class="t">✅ このロードマップのゴール</b>社長が現場と経営に集中し、事務と集客は「AIが下書き・人が確認・社長が承認」で回る。そして<b>新しい人が入ってもSOPだけで1週間で動ける</b>。それがREVO SOP Ver1.0の完成形。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ③ AI自動化ロードマップ</span><span>7</span></div>
+  <div class="goal"><b class="t">✅ このロードマップのゴール</b>社長が現場と経営に集中し、事務と集客は「AIが下書き・人が確認・社長が承認」で回る。そして<b>新しい人が入ってもSOPだけで1週間で動ける</b>。それがREVO SOPの完成形。</div>
+  <div class="edu"><b>理解度チェック（③卒業テスト）</b><span>4つのPhaseの順番と中身が言える</span><span>Phaseを進める5手順が言える</span><span>自動化しても変わらないルールが言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ③ AI自動化ロードマップ</span><span>7</span></div>
 </div>
 
 </body>

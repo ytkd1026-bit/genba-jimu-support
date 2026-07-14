@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>REVO SOP Ver1.0 ②REVO MEDIA運営SOP</title>
+<title>REVO SOP Ver1.1 ②REVO MEDIA運営SOP</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Yu Gothic","Noto Sans JP",sans-serif;color:#1a1a1a;background:#9e9e9e;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.5}
@@ -68,13 +68,48 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 .mcell{border:.7mm solid #1565c0;border-radius:2.5mm;background:#e3f2fd;padding:2mm;text-align:center;font-size:10pt}
 .mcell b{display:block;font-size:11.5pt}
 .mcell .ic{font-size:16pt;display:block}
+.lay{display:inline-block;font-size:8pt;font-weight:900;border-radius:1mm;padding:.4mm 2mm;margin-right:2.5mm;color:#fff;vertical-align:2px}
+.l1{background:#00695c}.l2{background:#1565c0}.l3{background:#6a1b9a}
+.edu{border:.7mm solid #6a1b9a;background:#f3e5f5;border-radius:2mm;padding:1.8mm 3mm;margin-top:2.5mm;font-size:9pt}
+.edu b{color:#6a1b9a;margin-right:2mm}
+.edu span{display:inline-block;margin-right:4mm;white-space:nowrap}
+.edu span::before{content:"";display:inline-block;width:3.4mm;height:3.4mm;border:.5mm solid #6a1b9a;border-radius:.7mm;background:#fff;margin-right:1.5mm;vertical-align:-.4mm}
+/* --- 密度調整：1ページ=A4・1枚を守るための上書き --- */
+body{line-height:1.32}
+.page{padding:7mm 10mm 12mm}
+h2.big{font-size:12pt;margin:2mm 0 1.5mm;padding:1.1mm 3mm}
+h3.mid{font-size:10.5pt;margin:1.8mm 0 1.2mm}
+p.note{font-size:9pt;margin-bottom:1.4mm}
+table.info{font-size:9pt;margin-bottom:2.5mm}
+table.info th{padding:1.1mm 2mm;font-size:8.8pt}
+table.info td{padding:1.1mm 2mm}
+table.list{font-size:8.8pt;margin:1.5mm 0}
+table.list th{padding:1mm 1.8mm}
+table.list td{padding:1mm 1.8mm}
+.fb{padding:1.4mm 4.5mm;font-size:10pt;min-width:64mm}
+.fb small{font-size:7.8pt}
+.ar{font-size:10.5pt;padding:.7mm 0}
+.ar span{font-size:7.8pt}
+ul.ck{font-size:9.3pt}
+ul.ck li{padding:.9mm 0 .9mm 7mm}
+ul.ck li::before{width:3.6mm;height:3.6mm;top:1.4mm}
+.miss,.stop,.goal,.say,.ng{padding:1.3mm 2.5mm;margin:1.5mm 0;font-size:9pt}
+.miss b.t,.stop b.t,.goal b.t,.ng b.t{font-size:9.3pt;margin-bottom:.5mm}
+.say b.t{font-size:8.8pt}
+.big-rule{padding:2.2mm;font-size:11.5pt;margin:2mm 0}
+.edu{padding:1.2mm 2.5mm;margin-top:1.5mm;font-size:8.3pt}
+.chip{font-size:8pt}
+.pfoot{bottom:4.5mm}
+.phead{margin-bottom:3mm}
+.phead .sec{font-size:13.5pt}
+.stamp .s{height:16mm}
 </style>
 </head>
 <body>
 
 <!-- ===== P1 表紙 ===== -->
 <div class="page cover">
-  <div class="ver">REVO SOP Ver1.0</div>
+  <div class="ver">REVO SOP Ver1.1</div>
   <h1>② REVO MEDIA<br>運営SOP</h1>
   <div class="sub">これは「SNS運用」ではありません。<br><span style="color:#1565c0">お客様が来る道（集客導線）の運用</span> です。</div>
   <div style="font-size:12pt;font-weight:700;background:#fff3e0;border:.7mm solid #e65100;border-radius:2mm;padding:3mm 8mm">
@@ -89,12 +124,12 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <div><div class="t">作成</div><div class="s" style="padding-top:7mm;font-size:10pt">Claude（開発者）</div></div>
     <div><div class="t">最終承認 🟥社長</div><div class="s"></div></div>
   </div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>1</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>1</span></div>
 </div>
 
 <!-- ===== P2 集客導線 全体図 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">集客導線 全体図（この1枚がすべて）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l1">レイヤー1 全体像</span>集客導線 全体図（この1枚がすべて）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>目的</th><td colspan="3">お客様がREVO CAREを見つけて、LINEしてくるまでの「道」を切らさない。</td></tr>
     <tr><th>担当者</th><td>素材集め：全員／作成：<span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><th>承認者</th><td><span class="chip cB">社長</span>（外に出るものは全部）</td></tr>
@@ -102,12 +137,12 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 
   <div class="flow">
     <div style="display:flex;gap:4mm">
-      <div class="fb" style="min-width:50mm">📸 Instagram<small>「見つけてもらう」入口<br>→ 4ページ</small></div>
-      <div class="fb" style="min-width:50mm">🌐 ホームページ＋SEO<small>「調べて安心してもらう」入口<br>→ 7・8ページ</small></div>
-      <div class="fb" style="min-width:50mm">⭐ Google口コミ<small>「信じてもらう」入口<br>→ 6ページ</small></div>
+      <div class="fb" style="min-width:50mm">📸 Instagram<small>「見つけてもらう」入口<br>→ 4・5ページ</small></div>
+      <div class="fb" style="min-width:50mm">🌐 ホームページ＋SEO<small>「調べて安心してもらう」入口<br>→ 8・9ページ</small></div>
+      <div class="fb" style="min-width:50mm">⭐ Google口コミ<small>「信じてもらう」入口<br>→ 7ページ</small></div>
     </div>
     <div class="ar">▼　　　　　　▼　　　　　　▼<span>ぜんぶの道がここに集まる</span></div>
-    <div class="fb ok" style="border-color:#00695c;background:#e0f2f1">💬 LINE（相談の入口・ただ1つの受付窓口）<small>→ 5ページ／対応のやり方は「①REVO CARE運営SOP 第2章」</small></div>
+    <div class="fb ok" style="border-color:#00695c;background:#e0f2f1">💬 LINE（相談の入口・ただ1つの受付窓口）<small>→ 6ページ／対応のやり方は「①REVO CARE運営SOP 第2章」</small></div>
     <div class="ar">▼</div>
     <div class="fb">🔨 施工<small>ここで「写真」という宝物がとれる（①SOP 3-4）</small></div>
     <div class="ar">▼</div>
@@ -118,20 +153,20 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
 
   <div class="goal"><b class="t">✅ 覚えることは1つだけ</b>すべての媒体のゴールは <b>「LINEに来てもらうこと」</b>。だからどの投稿・どのページにも「LINEで無料相談 →」の案内を必ず入れる。</div>
   <div class="big-rule" style="font-size:12.5pt">外に出るもの（投稿・返信・記事）は<br>ぜんぶ 🟥社長の承認あり。AIは下書きだけ。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>2</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>2</span></div>
 </div>
 
 <!-- ===== P3 媒体一覧 ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">媒体一覧（役割・担当・頻度の早見表）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>媒体一覧（役割・担当・頻度の早見表）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="list" style="font-size:9pt">
     <tr><th style="width:22mm">媒体</th><th>役割（なんのため）</th><th style="width:24mm">作成担当</th><th style="width:16mm">承認者</th><th style="width:24mm">頻度</th><th style="width:16mm">ページ</th></tr>
-    <tr><td><b>Instagram</b></td><td>ビフォーアフターで「見つけてもらう」</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>週2回（火・金）</td><td style="text-align:center">4</td></tr>
-    <tr><td><b>LINE</b></td><td>相談の受付窓口（すべての道のゴール）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td><span class="chip cB">社長</span>※定型文は承認済み</td><td>受信のつど</td><td style="text-align:center">5</td></tr>
-    <tr><td><b>Googleビジネス</b></td><td>「近くの業者」検索に出る・営業情報を正しく</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td><span class="chip cB">社長</span></td><td>写真:週1／情報:変わったら即</td><td style="text-align:center">6</td></tr>
-    <tr><td><b>口コミ</b></td><td>「信じてもらう」いちばん強い広告</td><td>依頼:<span class="chip cW">妻</span><span class="chip cJ">事務員</span> 返信下書き:<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>依頼:入金後3日以内／返信:3日以内</td><td style="text-align:center">6</td></tr>
-    <tr><td><b>ホームページ</b></td><td>会社の「顔」。安心材料と施工実績を見せる</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span>（修正はClaude）</td><td><span class="chip cB">社長</span></td><td>実績:月1追加</td><td style="text-align:center">7</td></tr>
-    <tr><td><b>SEO</b></td><td>「地域名＋工事名」で検索に出る</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>記事:月1本</td><td style="text-align:center">8</td></tr>
+    <tr><td><b>Instagram</b></td><td>ビフォーアフターで「見つけてもらう」</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>週2回（火・金）</td><td style="text-align:center">4・5</td></tr>
+    <tr><td><b>LINE</b></td><td>相談の受付窓口（すべての道のゴール）</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td><span class="chip cB">社長</span>※定型文は承認済み</td><td>受信のつど</td><td style="text-align:center">6</td></tr>
+    <tr><td><b>Googleビジネス</b></td><td>「近くの業者」検索に出る・営業情報を正しく</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span></td><td><span class="chip cB">社長</span></td><td>写真:週1／情報:変わったら即</td><td style="text-align:center">7</td></tr>
+    <tr><td><b>口コミ</b></td><td>「信じてもらう」いちばん強い広告</td><td>依頼:<span class="chip cW">妻</span><span class="chip cJ">事務員</span> 返信下書き:<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>依頼:入金後3日以内／返信:3日以内</td><td style="text-align:center">7</td></tr>
+    <tr><td><b>ホームページ</b></td><td>会社の「顔」。安心材料と施工実績を見せる</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span>（修正はClaude）</td><td><span class="chip cB">社長</span></td><td>実績:月1追加</td><td style="text-align:center">8</td></tr>
+    <tr><td><b>SEO</b></td><td>「地域名＋工事名」で検索に出る</td><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><td><span class="chip cB">社長</span></td><td>記事:月1本</td><td style="text-align:center">9</td></tr>
   </table>
 
   <h3 class="mid">ぜんぶの媒体に共通のルール</h3>
@@ -157,12 +192,12 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     </tr>
   </table>
   <p class="note">※月1回・月はじめの月曜に追加：ホームページに先月の実績を1件追加＋SEO記事1本の下書きをAIに出させる。</p>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>3</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>3</span></div>
 </div>
 
 <!-- ===== P4 Instagram ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Instagram 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>Instagram 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>役割</th><td colspan="3">ビフォーアフター写真で「こんなに変わるんだ！」を見せて、LINEに来てもらう。</td></tr>
     <tr><th>必要な素材</th><td colspan="3">施工前・施工後の写真ペア（同じ角度のもの）＝ ①SOP 3-4で撮ったもの</td></tr>
@@ -188,6 +223,7 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   ・工事内容：◯◯（例：屋根の板金補修）　・地域：◯◯市<br>
   ・お客様の困りごと：◯◯（例：雨のたびに天井にシミ）<br>
   ・条件：金額は書かない／絵文字少なめ／最後は「LINEで無料相談できます」でしめる／ハッシュタグは「地域名＋工事名」で10個</div>
+  <p class="note" style="background:#e3f2fd;border-radius:2mm;padding:1.5mm 3mm"><b>▶ 撮影から結果確認・AI棟梁への反映までの全手順は、次の5ページ「Instagram詳細フロー」へ。</b></p>
 
   <h3 class="mid">チェックリスト（投稿ボタンを押す前）</h3>
   <ul class="ck">
@@ -200,12 +236,69 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   </ul>
   <div class="ng"><b class="t">🚫 禁止事項</b>承認前の投稿／金額の記載／他社の悪口／お客様が特定できる情報（家の全景＋地名の組み合わせに注意）／DMでの値段交渉（→「LINEでご相談ください」に誘導）</div>
   <div class="stop"><b class="t">⛔ 停滞ポイント：投稿ネタがない</b>ネタがない＝写真がない、ということ。①SOP 3-4の写真ルールが守られているか確認。過去のアルバムから未投稿の案件を探す。それでもなければ「工事の豆知識」投稿をAIに3案出させて社長承認。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>4</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>4</span></div>
 </div>
 
-<!-- ===== P5 LINE ===== -->
+<!-- ===== P5 Instagram詳細フロー ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">LINE 運用（相談 → 案件化）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>Instagram 詳細フロー（撮影→投稿→結果→AI棟梁）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <table class="info">
+    <tr><th>目的</th><td colspan="3">1件の施工を「投稿→結果確認→次に活かす」まで使い切る。ここまでやって投稿1件が完了。</td></tr>
+    <tr><th>担当者</th><td><span class="chip cW">妻</span><span class="chip cJ">事務員</span>＋<span class="chip cA">AI</span></td><th>使用ツール</th><td>Instagram／ChatGPT／共有アルバム／投稿結果ノート</td></tr>
+    <tr><th>開始条件</th><td>施工が完了して写真がアルバムにある</td><th>終了条件</th><td>結果を記録してAI棟梁（投稿結果ノート）に反映した</td></tr>
+    <tr><th>承認者</th><td colspan="3"><span class="chip cB">社長</span>（⑤の承認なしに⑥へ進めない）</td></tr>
+  </table>
+
+  <div class="cols">
+    <div>
+      <div class="flow" style="margin:0">
+        <div class="fb start" style="min-width:76mm">① 施工写真 撮影<small>①SOP 3-4：前・中・後を同じ角度で</small></div>
+        <div class="ar">▼</div>
+        <div class="fb" style="min-width:76mm">② 写真整理<small>ビフォーアフター同角度ペアを1組えらぶ／顔・表札・ナンバーなしを確認</small></div>
+        <div class="ar">▼</div>
+        <div class="fb ai" style="min-width:76mm">③ ChatGPTへ投入<small>右のプロンプトをコピペ＋必要な入力5つを書きかえ</small></div>
+        <div class="ar">▼</div>
+        <div class="fb ai" style="min-width:76mm">④ 投稿案 3案生成<small>3案そろわなければ「あと◯案ください」</small></div>
+        <div class="ar">▼</div>
+        <div class="fb ok" style="min-width:76mm">⑤ 🟥 社長承認<small>写真＋3案をLINEで送る→「◯案でOK」をもらう</small></div>
+        <div class="ar">▼</div>
+        <div class="fb" style="min-width:76mm">⑥ 投稿<small>火・金。承認案を一字一句そのまま</small></div>
+        <div class="ar">▼<span>1週間後</span></div>
+        <div class="fb" style="min-width:76mm">⑦ 結果確認<small>下の記入欄に数字を書く</small></div>
+        <div class="ar">▼</div>
+        <div class="fb end" style="min-width:76mm">⑧ AI棟梁へ反映<small>伸びた投稿の「型」を投稿結果ノートに記録。Phase3でAIのお手本になる（③ロードマップ）</small></div>
+      </div>
+    </div>
+    <div>
+      <div class="say" style="margin-top:0"><b class="t">📷 必要な写真（②で用意）</b>
+      ・ビフォー1枚＋アフター1枚（同じ角度）<br>・あれば施工中1枚<br>・顔・表札・車ナンバーが写っていないもの</div>
+      <div class="say"><b class="t">⌨ 必要な入力（③で書きかえる5つ）</b>
+      1. 工事内容（例：屋根の板金補修）<br>2. 地域（例：◯◯市）<br>3. お客様の困りごと（例：雨のたび天井にシミ）<br>4. 工事のこだわり（例：下地から直した）<br>5. かかった日数（例：1日）</div>
+      <div class="say"><b class="t">💬 使用プロンプト（そのままコピペ）</b>
+      あなたはリフォーム会社のInstagram担当です。次の工事の投稿文を3案ください。<br>
+      ・工事内容：＿＿＿　・地域：＿＿＿<br>
+      ・お客様の困りごと：＿＿＿<br>
+      ・工事のこだわり：＿＿＿　・日数：＿＿＿<br>
+      条件：金額は書かない／絵文字少なめ／お客様の困りごとから書き始める／最後は「LINEで無料相談できます」でしめる／ハッシュタグは「地域名＋工事名」で10個</div>
+      <table class="list" style="font-size:9pt">
+        <tr><th colspan="2">⑦ 結果確認の記入欄（投稿から1週間後）</th></tr>
+        <tr><td style="width:34mm">投稿日</td><td></td></tr>
+        <tr><td>いいね数</td><td></td></tr>
+        <tr><td>保存数</td><td></td></tr>
+        <tr><td>プロフィールへのアクセス</td><td></td></tr>
+        <tr><td>LINE問い合わせにつながった？</td><td></td></tr>
+        <tr><td>気づき（伸びた/伸びない理由）</td><td></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="miss" style="margin-top:2mm"><b class="t">⚠ よくあるミス</b>⑦⑧をやらない（投稿しっぱなし）→ 何が効くか永遠に分からず、Phase3のAI学習材料もたまらない。<b>数字を書くまでが投稿</b>。</div>
+  <div class="edu"><b>理解度チェック（Instagram章おわり）</b><span>8ステップを順に言える</span><span>承認者がだれか言える</span><span>結果確認で見る数字が言える</span><span>AI棟梁へ何を残すか言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>5</span></div>
+</div>
+
+<!-- ===== P6 LINE ===== -->
+<div class="page">
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>LINE 運用（相談 → 案件化）</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>役割</th><td colspan="3">すべての集客の受け皿。ここに来た相談を、もらさず「案件」に変える。</td></tr>
     <tr><th>必要な素材</th><td colspan="3">あいさつ定型文・写真依頼定型文（①SOP 6ページ）／リッチメニュー（メニューボタン）の画像</td></tr>
@@ -237,12 +330,13 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   </ul>
   <div class="ng"><b class="t">🚫 禁止事項</b>金額の即答／夜21時〜朝8時の送信／一斉配信のやりすぎ（月1回まで。ブロックされる）／お客様とのやりとりのスクショを許可なくSNSに載せる</div>
   <div class="stop"><b class="t">⛔ 停滞ポイント：LINEの中で案件がまいごになる</b>「あとで登録しよう」が原因。<b>写真がそろったその場で登録</b>。毎日夕方のチェックリストで網にかける。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>5</span></div>
+  <div class="edu"><b>理解度チェック（LINE章おわり）</b><span>LINEの役割（ただ1つの窓口）が言える</span><span>案件化の完了条件が言える</span><span>禁止事項を2つ言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>6</span></div>
 </div>
 
 <!-- ===== P6 Google口コミ ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">Googleビジネス・口コミ 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>Googleビジネス・口コミ 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>役割</th><td colspan="3">「地域名＋屋根修理」で検索した人に見つけてもらい、口コミで信じてもらう。</td></tr>
     <tr><th>必要な素材</th><td colspan="3">会社情報（住所・電話・営業時間）／施工写真／口コミ依頼リンク</td></tr>
@@ -273,12 +367,13 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   </ul>
   <div class="ng"><b class="t">🚫 禁止事項</b>口コミのお礼に値引きや商品を約束する（Googleの規約違反）／自作自演の口コミ／わるい口コミへの言い返し／お客様の実名を返信に書く</div>
   <div class="miss"><b class="t">⚠ よくあるミス</b>・返信が1ヶ月放置（見た人は「返事しない会社」と思う）→ 月曜チェックで防ぐ<br>・営業時間が古いまま（休みの日に電話が来てクレームに）→ 月1確認</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>6</span></div>
+  <div class="edu"><b>理解度チェック（Google章おわり）</b><span>口コミ確認の曜日が言える</span><span>わるい口コミの扱いが言える</span><span>写真追加の頻度が言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>7</span></div>
 </div>
 
 <!-- ===== P7 ホームページ ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">ホームページ 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>ホームページ 運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>役割</th><td colspan="3">InstagramやGoogleで見つけた人が「ちゃんとした会社か」確かめに来る場所。安心してもらってLINEへ送る。</td></tr>
     <tr><th>必要な素材</th><td colspan="3">会社概要／施工実績（写真＋説明）／お客様の声（口コミの転載は本人の許可をもらう）／LINEへのボタン</td></tr>
@@ -307,12 +402,13 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   </ul>
   <div class="ng"><b class="t">🚫 禁止事項</b>許可のない口コミ・写真の転載／金額表の掲載（「見積無料」はOK）／大げさな表現（「絶対直る」「地域No.1」など根拠のない言葉）</div>
   <div class="stop"><b class="t">⛔ 停滞ポイント：直したいけど編集がわからない</b>文字と写真の差しかえ以上のこと（デザイン変更・新ページ）は自分で触らない → <span class="chip cA">Claude</span>（開発者）への依頼として社長に相談。こわすほうが高くつく。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>7</span></div>
+  <div class="edu"><b>理解度チェック（HP章おわり）</b><span>HPの役割が言える</span><span>月1でやることが言える</span><span>大きな修正はだれに頼むか言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>8</span></div>
 </div>
 
 <!-- ===== P8 SEO ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">SEO（検索で見つけてもらう）運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l3">レイヤー3 実作業</span>SEO（検索で見つけてもらう）運用</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="info">
     <tr><th>役割</th><td colspan="3">「◯◯市 屋根修理」のような検索で、REVO CAREのページが出てくるようにする。むずかしい技は使わない。<b>実績記事をコツコツ増やすだけ</b>。</td></tr>
     <tr><th>必要な素材</th><td colspan="3">施工実績（写真・地域名・工事名・困りごと）＝ ふだんの仕事がそのまま材料</td></tr>
@@ -349,12 +445,13 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
     <li>金額・「絶対」「No.1」などの言葉がない</li>
   </ul>
   <div class="miss"><b class="t">⚠ よくあるミス</b>・むずかしい専門用語だらけの記事（お客様の言葉で書く）　・1ヶ月で効果がないとやめる（<b>半年続けてから判断</b>。やめた時点で筋トレはゼロに戻る）</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>8</span></div>
+  <div class="edu"><b>理解度チェック（SEO章おわり）</b><span>題名に入れる2つの言葉が言える</span><span>記事の頻度が言える</span><span>効果を判断する期間が言える</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>9</span></div>
 </div>
 
 <!-- ===== P9 よくあるミス ===== -->
 <div class="page">
-  <div class="phead"><span class="sec">MEDIA運用 よくあるミス全集</span><span class="doc">② REVO MEDIA運営SOP</span></div>
+  <div class="phead"><span class="sec"><span class="lay l2">レイヤー2 工程</span>MEDIA運用 よくあるミス全集</span><span class="doc">② REVO MEDIA運営SOP</span></div>
   <table class="list" style="font-size:9.5pt">
     <tr><th style="width:22mm">媒体</th><th style="width:56mm">ミス</th><th>防ぎかた</th></tr>
     <tr><td rowspan="3">Instagram</td><td>承認前に投稿してしまう</td><td>「投稿ボタンは承認の返事を見てから」を合言葉に</td></tr>
@@ -379,7 +476,8 @@ table.list tr:nth-child(even) td{background:#f5f7f8}
   </ul>
   <div class="goal"><b class="t">✅ MEDIA運用の成功のものさし</b>フォロワー数ではなく、<b>「LINEの問い合わせ件数」がふえているか</b>だけを見る。ふえていれば正解。ふえていなければ、社長とやり方を相談（勝手に路線変更しない）。</div>
   <div class="big-rule" style="font-size:12pt">迷ったら：投稿しない・返信しない・社長に聞く。<br>外に出たものは消せない。</div>
-  <div class="pfoot"><span>REVO SOP Ver1.0 ── ② REVO MEDIA運営SOP</span><span>9</span></div>
+  <div class="edu"><b>理解度チェック（②SOP卒業テスト）</b><span>成功のものさし（見る数字）が言える</span><span>迷ったときの合言葉が言える</span><span>全部✔なら②SOP卒業！</span></div>
+  <div class="pfoot"><span>REVO SOP Ver1.1 ── ② REVO MEDIA運営SOP</span><span>10</span></div>
 </div>
 
 </body>
