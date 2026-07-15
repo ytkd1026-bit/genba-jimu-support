@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## REVO OS ドキュメント
+
+過去ワーク・資料・SOP・設計書は [docs/revo-os/00-master-index.md](./docs/revo-os/00-master-index.md)（REVO OS マスターインデックス）から参照する。
+
 ## Getting Started
 
 First, run the development server:
