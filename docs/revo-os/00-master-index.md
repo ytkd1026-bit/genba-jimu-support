@@ -3,7 +3,7 @@
 REVO の業務・開発ナレッジ（過去ワーク・資料・SOP・設計書）を一元管理するインデックス。
 新しいドキュメントを追加したら、必ずこのインデックスに登録する。
 
-最終更新: 2026-07-15（REVO OS 統合作業・初版）
+最終更新: 2026-07-15（事業計画書を追加）
 
 ## フォルダ構成
 
@@ -18,11 +18,14 @@ docs/revo-os/
 │   └── pdf-samples/               （PDF目視確認の証拠画像 01〜09）
 ├── 03-sop/                     ← SOP（標準作業手順）
 │   └── command-cheatsheet.md
-└── 04-design/                  ← 設計書（仕様・設計判断・依存関係）
-    ├── 08-migration-notes.txt
-    ├── 09-existing-feature-impact.txt
-    ├── 11-tax-calculation-spec.txt
-    └── dependency-map.md
+├── 04-design/                  ← 設計書（仕様・設計判断・依存関係）
+│   ├── 08-migration-notes.txt
+│   ├── 09-existing-feature-impact.txt
+│   ├── 11-tax-calculation-spec.txt
+│   └── dependency-map.md
+└── 05-business-plan/           ← 事業計画（対外説明・経営方針）
+    ├── business-plan.md
+    └── revo-os-structure.md
 ```
 
 ## 01 過去ワーク
@@ -65,6 +68,13 @@ verification-2026-07-12 の内訳:
 | [11-tax-calculation-spec.txt](./04-design/11-tax-calculation-spec.txt) | 税区分・税率の計算仕様（合算後切り捨て・TaxBreakdown・スナップショット） | [12-tax-test-result.txt](./01-past-work/verification-2026-07-12/12-tax-test-result.txt) |
 | [dependency-map.md](./04-design/dependency-map.md) | コード・データ・ドキュメントの依存関係マップ | — |
 
+## 05 事業計画
+
+| ドキュメント | 内容 | 用途 |
+|---|---|---|
+| [business-plan.md](./05-business-plan/business-plan.md) | REVO OS 事業計画書（全12章＋根拠資料一覧）。数字は仮の例（★印）で、提出前に実数へ差し替える | 銀行融資・補助金申請・協力業者説明・採用・投資家説明・自社経営方針の共有 |
+| [revo-os-structure.md](./05-business-plan/revo-os-structure.md) | REVO OS 全体構造図（1ページ版・印刷用） | 説明の冒頭1枚 |
+
 ## 参照関係マップ（ドキュメント間リンク）
 
 ```text
@@ -78,13 +88,16 @@ verification-2026-07-12 の内訳:
  │    └→ 04-design/11-tax-calculation-spec.txt（税計算の前提）
  ├→ 04-design/11-tax-calculation-spec.txt
  │    └→ 検証: verification-2026-07-12/12-tax-test-result.txt
- └→ verification-2026-07-12/17-pdf-regression-check.txt
-      └→ 証拠: 02-materials/pdf-samples/01〜09
+ ├→ verification-2026-07-12/17-pdf-regression-check.txt
+ │    └→ 証拠: 02-materials/pdf-samples/01〜09
+ └→ 05-business-plan/business-plan.md
+      ├→ 巻末①で 01〜04 の各資料を「章ごとの根拠資料」として参照
+      └→ 05-business-plan/revo-os-structure.md（全体構造図・1ページ版）
 ```
 
 ## 運用ルール
 
-1. **分類先の判断**: 完了した作業の記録＝01、画像・サンプル等の素材＝02、繰り返す手順＝03、仕様・設計判断＝04。
+1. **分類先の判断**: 完了した作業の記録＝01、画像・サンプル等の素材＝02、繰り返す手順＝03、仕様・設計判断＝04、対外説明・経営方針＝05。
 2. **重複禁止**: 同じ内容を複数フォルダに置かない。片方を正本とし、他方からはリンクで参照する。
 3. **参照の明記**: 設計書には対応する検証記録を、検証記録には証拠資料を必ずリンクする。
 4. **インデックス更新**: ドキュメントの追加・移動・削除時は本ファイルの表と参照関係マップを更新する。
@@ -96,3 +109,6 @@ verification-2026-07-12 の内訳:
   - 旧 `verification/`・`docs/command-cheatsheet.md` を上記4分類へ再分類
   - 重複削除: `src/app/projects/sample/invoice/page 2.tsx`（現行 page.tsx より古い作業コピー）を削除
   - 参照関係・依存関係を作成（本ファイル＋ dependency-map.md）
+- 2026-07-15: 事業計画書を追加
+  - `05-business-plan/` を新設し、REVO OS 事業計画書（12章）と全体構造図（1ページ版）を作成
+  - 計画書の巻末①に「章 × リポジトリ内根拠資料」の対応表を掲載
