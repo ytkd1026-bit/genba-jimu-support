@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
+import { BillingAlertCards } from "@/components/BillingAlertCards";
 
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
@@ -165,6 +166,9 @@ export default function Home() {
 
         {/* 情報カード一覧 */}
         <section className="space-y-2.5">
+
+          {/* 請求漏れ防止の警告カード（S-7: 未請求・未入金・期限超過・原価未入力・会社設定） */}
+          <BillingAlertCards />
 
           {/* 未請求一覧へのショートカット */}
           <Link
