@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
 import { useState, useMemo, useEffect } from "react";
 import { bulkInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
@@ -422,6 +423,8 @@ export default function InvoicePage() {
             元請けごとに複数案件をまとめて、一括請求書を作成します。
           </p>
         </header>
+
+        <SampleDeprecationBanner note="一括請求は今後「案件管理」へ統合予定です。案件単位の請求書は、案件を開いて 06 請求書 から作成できます。" />
 
         {/* 請求情報カード */}
         <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">

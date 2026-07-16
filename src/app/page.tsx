@@ -13,9 +13,10 @@ import { BillingAlertCards } from "@/components/BillingAlertCards";
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
   { title: "新しい案件を登録する", desc: "現場名・元請・住所を登録します。",       icon: "📝", href: "/projects/new" },
-  { title: "見積を作る",           desc: "工事内容を入力してPDFを作ります。",     icon: "📋", href: "/projects/sample/estimate" },
-  { title: "請求書を作る",         desc: "完了した案件の請求書を作ります。",       icon: "📄", href: "/projects/sample/single-invoice" },
+  { title: "案件を開く（見積・請求へ）", desc: "案件ごとに調査・見積・請求をまとめて管理します。", icon: "📂", href: "/projects/list" },
   { title: "未請求を確認する",     desc: "請求漏れがないか確認します。",           icon: "⚠️", href: "/invoices/unbilled" },
+  { title: "見積を作る（旧画面）", desc: "廃止予定の旧フローです。今後は案件から作成します。", icon: "📋", href: "/projects/sample/estimate" },
+  { title: "請求書を作る（旧画面）", desc: "廃止予定の旧フローです。今後は案件から作成します。", icon: "📄", href: "/projects/sample/single-invoice" },
   { title: "材料を計算する",       desc: "クロス・CF・FTなどの材料を拾います。",   icon: "📐", href: "/projects/sample/materials" },
 ];
 

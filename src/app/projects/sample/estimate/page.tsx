@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
 import { useState, useEffect, useMemo } from "react";
 import {
   estimatePdfFileName,
@@ -704,6 +705,8 @@ export default function EstimatePage() {
             白い部分は提出用、黄色い部分は保存用の内部管理です。
           </p>
         </header>
+
+        <SampleDeprecationBanner note="新しい「案件管理」では、案件を開いて 04 工事項目・原価 → 05 見積書 の順で同じ見積PDFを作成できます。保存済みの見積はそのまま残ります。" />
 
         {/* ── この画面でできること ── */}
         <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">

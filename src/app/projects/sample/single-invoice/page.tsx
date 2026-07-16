@@ -8,6 +8,7 @@
 // TODO: 将来的に /invoices/single を作り、単体請求書一覧専用ページにする。
 
 import Link from "next/link";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
 import { useState, useEffect, useMemo } from "react";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
@@ -328,6 +329,8 @@ export default function SingleInvoicePage() {
           <h1 className="text-xl font-bold text-stone-800">単体請求書作成</h1>
           <p className="mt-1 text-sm text-stone-500">この案件だけの請求書を作成します。</p>
         </header>
+
+        <SampleDeprecationBanner note="新しい「案件管理」では、案件を開いて 06 請求書 から税区分対応の請求書PDFを作成できます。保存済みの請求書はそのまま残ります。" />
 
         {/* ── この画面でできること ── */}
         <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">
