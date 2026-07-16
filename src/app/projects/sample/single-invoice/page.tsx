@@ -17,6 +17,7 @@ import { upsertInvoice, getSavedInvoices } from "@/app/utils/savedInvoices";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
+import { simpleTaxAmount } from "@/app/utils/taxCalculation";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type CompanyInfo = {
@@ -235,7 +236,7 @@ export default function SingleInvoicePage() {
   const subtotalSum  = INVOICE_LINES.reduce((s, l) => s + toNum(l.unitPrice) * toNum(l.qty), 0);
   // TODO(税区分): この単体請求フローは INVOICE_LINES（税区分なし）を全額課税10%で計算する。
   //   税区分・税率対応は案件請求 /projects/[projectId]/invoice（WorkItem＋共通税計算）に実装済み。
-  const taxSum       = Math.floor(subtotalSum * 0.1);
+  const taxSum       = simpleTaxAmount(subtotalSum);
   const totalWithTax = subtotalSum + taxSum;
 
   // 検索結果（ボタン押下後のみ表示）

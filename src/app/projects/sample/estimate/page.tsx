@@ -13,6 +13,7 @@ import { matchesKeyword } from "@/app/utils/search";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
+import { simpleTaxAmount } from "@/app/utils/taxCalculation";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
@@ -201,7 +202,7 @@ function LineCard({ line, index, canDelete, onUpdate, onDelete, onDuplicate }: {
   onDelete: () => void; onDuplicate: () => void;
 }) {
   const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-  const lineTax = Math.floor(subtotal * 0.1);
+  const lineTax = simpleTaxAmount(subtotal);
   const taxIncluded = subtotal + lineTax;
   const pdfLocation = line.location1 && line.location2
     ? `${line.location1} / ${line.location2}`
@@ -487,7 +488,7 @@ export default function EstimatePage() {
   // TODO(税区分): この画面は案件に紐づかない単体手入力フロー（LineItem に税区分なし）のため
   //   全額を課税10%として計算する。税区分・税率対応は案件見積 /projects/[projectId]/estimate
   //   （WorkItem＋共通 calculateTaxBreakdown）に実装済み。単体フローの税区分UIは今後対応。
-  const taxSum = Math.floor(subtotalSum * 0.1);
+  const taxSum = simpleTaxAmount(subtotalSum);
   const totalWithTax = subtotalSum + taxSum;
   const costSum = costs.reduce((acc, c) => acc + toNum(c.qty) * toNum(c.costUnitPrice), 0);
   const grossProfit = subtotalSum - costSum;

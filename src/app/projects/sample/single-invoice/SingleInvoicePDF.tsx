@@ -11,6 +11,7 @@ import {
   toNum,
   type CompanyInfoForPDF,
 } from '@/components/pdf/PdfCommon';
+import { simpleTaxAmount } from '@/app/utils/taxCalculation';
 
 export type { CompanyInfoForPDF };
 
@@ -423,7 +424,8 @@ function SingleInvoicePDFDocument({
           </View>
           {lines.map((line, i) => {
             const sub = toNum(line.unitPrice) * toNum(line.qty);
-            const tax = Math.floor(sub * 0.1);
+            // 明細1行の参考税額（全額課税10%の旧フロー）。合計は props の taxSum を表示する
+            const tax = simpleTaxAmount(sub);
             const rowStyle = i % 2 === 1 ? [s.tableRow, s.tableRowEven] : s.tableRow;
             return (
               <View key={i} style={rowStyle}>

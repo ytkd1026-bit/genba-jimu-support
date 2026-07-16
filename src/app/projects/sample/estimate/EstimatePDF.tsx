@@ -18,6 +18,7 @@ import {
   PdfTaxSummary,
   type CompanyInfoForPDF,
 } from '@/components/pdf/PdfCommon';
+import { simpleTaxAmount } from '@/app/utils/taxCalculation';
 
 export type { CompanyInfoForPDF };
 
@@ -119,7 +120,8 @@ function EstimateLinesTable({ lines }: { lines: EstimatePDFProps['lines'] }) {
       {/* データ行 */}
       {lines.map((line, i) => {
         const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-        const tax = Math.floor(subtotal * 0.1);
+        // 明細1行の参考税額（全額課税10%の旧フロー）。合計は props の taxSum を表示する
+        const tax = simpleTaxAmount(subtotal);
         const location =
           line.location1 && line.location2
             ? `${line.location1} / ${line.location2}`
