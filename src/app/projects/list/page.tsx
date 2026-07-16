@@ -6,12 +6,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   projectsStore,
   issueNewProjectId,
   createEmptyProject,
-  PROJECT_STATUS_LABELS,
   PROJECT_TYPE_LABELS,
   type Project,
 } from "@/app/utils/projects";
@@ -19,6 +18,9 @@ import {
   getUnmigratedLegacyProjects,
   migrateAllLegacyProjects,
 } from "@/app/utils/projectMigration";
+import { matchesKeyword } from "@/app/utils/search";
+import { ProjectStatusBadge } from "@/components/ProjectStatusBadge";
+import { CopyProjectId } from "@/components/CopyProjectId";
 
 export default function ProjectListPage() {
   const router = useRouter();
@@ -26,6 +28,7 @@ export default function ProjectListPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [legacyCount, setLegacyCount] = useState(0);
   const [migrateMsg, setMigrateMsg] = useState("");
+  const [keyword, setKeyword] = useState("");
 
   function reload() {
     const list = projectsStore
@@ -63,6 +66,17 @@ export default function ProjectListPage() {
     }
     router.push(`/projects/${encodeURIComponent(projectId)}`);
   }
+
+  // キーワード検索（案件ID・案件名・物件名・住所・顧客・元請を横断）
+  const filtered = useMemo(() => {
+    if (keyword.trim() === "") return projects;
+    return projects.filter((p) =>
+      matchesKeyword(
+        [p.projectId, p.projectName, p.propertyName, p.roomNumber, p.siteAddress, p.customerName, p.clientName],
+        keyword,
+      ),
+    );
+  }, [projects, keyword]);
 
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
@@ -116,6 +130,24 @@ export default function ProjectListPage() {
           </div>
         )}
 
+        {/* 検索（案件ID・案件名・物件名・住所・顧客・元請） */}
+        {projects.length > 0 && (
+          <div className="mb-3">
+            <input
+              type="search"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="🔍 案件ID・案件名・住所・元請などで検索"
+              className="min-h-[44px] w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-1 focus:ring-[#8B4A3C]/30"
+            />
+            {keyword.trim() !== "" && (
+              <p className="mt-1 px-1 text-xs text-stone-400">
+                {filtered.length}件が「{keyword.trim()}」に一致
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-3">
           {projects.length === 0 ? (
             <div className="rounded-2xl border-2 border-dashed border-stone-200 px-4 py-10 text-center">
@@ -124,18 +156,20 @@ export default function ProjectListPage() {
                 「新しい案件を作成する」から始めてください。
               </p>
             </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-stone-200 px-4 py-10 text-center">
+              <p className="text-sm text-stone-500">検索に一致する案件がありません。</p>
+            </div>
           ) : (
-            projects.map((p) => (
+            filtered.map((p) => (
               <Link
                 key={p.projectId}
                 href={`/projects/${encodeURIComponent(p.projectId)}`}
                 className="block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-stone-100 active:opacity-75"
               >
-                <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50 px-4 py-2.5">
-                  <span className="rounded-full bg-[#fdf0ec] px-2 py-0.5 text-xs font-bold text-[#8B4A3C]">
-                    {PROJECT_STATUS_LABELS[p.status]}
-                  </span>
-                  <span className="font-mono text-xs text-stone-400">{p.projectId}</span>
+                <div className="flex items-center justify-between border-b border-stone-100 bg-stone-50 px-4 py-2">
+                  <ProjectStatusBadge status={p.status} />
+                  <CopyProjectId projectId={p.projectId} />
                 </div>
                 <div className="space-y-0.5 px-4 py-3">
                   <p className="text-sm font-bold text-stone-800 leading-tight">
