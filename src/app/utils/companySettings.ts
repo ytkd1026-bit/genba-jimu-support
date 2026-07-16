@@ -15,6 +15,7 @@ export type CompanySettings = {
   tel: string;
   email: string;
   invoiceNumber: string;  // インボイス登録番号
+  projectCode: string;    // 案件ID用コード（半角英数2〜8文字・大文字。例: "REVO" / "YMD"）
 };
 
 export type BankSettings = {
@@ -46,6 +47,8 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   tel:            "090-0000-0000",
   email:          "example@example.com",
   invoiceNumber:  "T0000000000000",
+  // 案件ID用コードはデモ値で補完しない（未設定のまま案件を発番させないため空）
+  projectCode:    "",
 };
 
 export const DEFAULT_BANK_SETTINGS: BankSettings = {
@@ -82,7 +85,13 @@ export function getCompanySettings(): CompanySettings {
     tel:            str(saved.tel, d.tel),
     email:          str(saved.email, d.email),
     invoiceNumber:  str(saved.invoiceNumber, d.invoiceNumber),
+    projectCode:    str(saved.projectCode, d.projectCode),
   };
+}
+
+/** 案件ID用コードを取得する（未設定なら空文字。書式検証は projectNumbers.ts 側） */
+export function getProjectCode(): string {
+  return getCompanySettings().projectCode;
 }
 
 /** 振込先情報を取得する（未設定の項目はデフォルト値で補完） */

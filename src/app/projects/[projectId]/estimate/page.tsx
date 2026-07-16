@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, projectDisplayId, type Project } from "@/app/utils/projects";
 import { workItemsStore, type WorkItem } from "@/app/utils/workItems";
 import {
   getSavedEstimates,
@@ -183,11 +183,18 @@ export default function ProjectEstimatePage() {
   function saveNewVersion(): SavedEstimate | null {
     const saved = getSavedEstimates();
     const version = (latest?.version ?? 0) + 1;
-    const seq = nextEstimateSeq(saved, projectId);
+    // 書類番号の土台は表示用案件番号（例: REVO-26-0001-EST-01）。
+    // 番号付与前の旧案件や移行済み案件では、旧ベース（REV-...）の既存版とも
+    // 連番が競合しないよう両方の最大値から次の版番号を決める。
+    const docBase = project ? projectDisplayId(project) : projectId;
+    const seq = Math.max(
+      nextEstimateSeq(saved, docBase),
+      nextEstimateSeq(saved, projectId),
+    );
     const est = buildEstimate({
       id: `est-${Date.now()}`,
       createdAt: new Date().toLocaleString("ja-JP"),
-      estimateNo: projectDocumentNumber(projectId, "EST", seq),
+      estimateNo: projectDocumentNumber(docBase, "EST", seq),
       version,
       previousEstimateId: latest?.id,
       revisionReason: latest ? effectiveRevisionReason : undefined,
@@ -285,7 +292,7 @@ export default function ProjectEstimatePage() {
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         lines,
         subtotalSum: bd.subtotal,
         taxSum: bd.taxTotal,

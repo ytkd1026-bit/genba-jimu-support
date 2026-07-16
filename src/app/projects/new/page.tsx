@@ -10,10 +10,14 @@ import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { getSavedProjects, upsertProject } from "@/app/utils/savedProjects";
 import {
   projectsStore,
-  issueNewProjectId,
-  createEmptyProject,
+  registerNewProject,
+  projectDisplayId,
+  INFLOW_ROUTE_LABELS,
+  type InflowRoute,
 } from "@/app/utils/projects";
 import { recordMigration, migratedProjectIdOf } from "@/app/utils/projectMigration";
+import { getProjectCode } from "@/app/utils/companySettings";
+import { validateProjectCode } from "@/app/utils/projectNumbers";
 
 // 2つのキーの役割：
 //   DRAFT_PROJECT_KEY       → 「下書き保存」ボタン押下時の手動保存先（旧来のキー。後方互換のため維持）
@@ -30,6 +34,8 @@ type ProjectDraftData = {
     koujiTypes: string[]; koujiTypeOther: string; koujiContents: string[];
     koujiContentCustom: string; koujiContentMemo: string; scaleNote: string;
     parkingNote: string; sekouDate: string; mitsumoriState: string; seikyuuState: string; memo: string;
+    // 流入経路（2026-07追加。過去の下書きには無いため復元時はマージする）
+    inflowRoute?: InflowRoute | ""; inflowSourceName?: string;
   };
   selectedCustomerId: string;
 };
@@ -104,7 +110,16 @@ export default function NewProjectPage() {
     mitsumoriState:     "未作成",
     seikyuuState:       "未請求",
     memo:               "",
+    inflowRoute:        "" as InflowRoute | "",
+    inflowSourceName:   "",
   });
+
+  // 会社設定の案件ID用コード（未設定なら案件登録できない）
+  const [projectCode, setProjectCode] = useState<string>("");
+  useEffect(() => {
+    setProjectCode(getProjectCode());
+  }, []);
+  const projectCodeMissing = validateProjectCode(projectCode) !== null;
 
   const draftData = useMemo<ProjectDraftData>(() => ({
     projectId: currentProjectId ?? undefined,
@@ -143,7 +158,8 @@ export default function NewProjectPage() {
     if (!restoredDraft) return;
     const d = restoredDraft.data;
     if (d.projectId) setCurrentProjectId(d.projectId);
-    setForm(d.form);
+    // 旧下書きに新項目（流入経路）が無くても壊れないようにマージ復元する
+    setForm((prev) => ({ ...prev, ...d.form }));
     setSelectedCustomerId(d.selectedCustomerId);
     setShowRestoreBanner(false);
   }
@@ -232,9 +248,16 @@ export default function NewProjectPage() {
   //   互換維持 = savedProjects（旧「保存済み案件一覧 /projects/saved」を壊さないため継続保存）
   // 旧 id → 新 projectId のマッピングを記録し、案件一覧の移行バナーが二重計上しないようにする。
   // 既存IDがある場合は同じIDで上書き保存する（重複登録防止）。
-  function handleSaveProject() {
+  async function handleSaveProject() {
     if (!form.projectName.trim()) {
       alert("案件名を入力してから保存してください。");
+      return;
+    }
+    // 案件ID用コード未設定では案件化（発番）できない
+    if (projectCodeMissing) {
+      alert(
+        "案件ID用コードが未設定のため、案件を登録できません。\n事業者設定の「案件ID用コード」を登録してください（例：REVO）。",
+      );
       return;
     }
     try {
@@ -267,23 +290,42 @@ export default function NewProjectPage() {
         selectedCustomerId,
       });
 
+      // 共通の案件フィールド（新規・再保存の両方で使う）
+      const projectFields = {
+        projectName:      form.projectName,
+        siteAddress:      form.address,
+        customerName:     form.contactName,
+        clientName:       form.clientName,
+        submitTo:         form.clientName,
+        customerId:       selectedCustomerId || undefined,
+        inflowRoute:      form.inflowRoute === "" ? undefined : form.inflowRoute,
+        inflowSourceName: form.inflowSourceName?.trim() || undefined,
+      };
+
       // 2) 正本: 新 Project を作成/更新（同じ旧 id からは同じ projectId へ上書き）
       const existingProjectId = migratedProjectIdOf(legacyId);
-      const projectId = existingProjectId ?? issueNewProjectId();
-      const base =
-        (existingProjectId ? projectsStore.getById(existingProjectId) : null) ??
-        createEmptyProject(projectId);
-      const ok = projectsStore.upsert({
-        ...base,
-        projectId,
-        projectName:  form.projectName,
-        siteAddress:  form.address,
-        customerName: form.contactName,
-        clientName:   form.clientName,
-        submitTo:     form.clientName,
-        updatedAt:    new Date().toISOString(),
-      });
-      if (!ok) throw new Error("projectsStore.upsert failed");
+      let projectId: string;
+      if (existingProjectId && projectsStore.getById(existingProjectId)) {
+        // 再保存: 既存案件の上書き。発番済みの案件番号は変更しない（再発番禁止）
+        const base = projectsStore.getById(existingProjectId)!;
+        const ok = projectsStore.upsert({
+          ...base,
+          ...projectFields,
+          projectId: existingProjectId,
+          updatedAt: new Date().toISOString(),
+        });
+        if (!ok) throw new Error("projectsStore.upsert failed");
+        projectId = existingProjectId;
+      } else {
+        // 新規: 案件化＝内部UUID発行＋表示用案件番号（例: REVO-26-0001）の自動発番
+        const { project, error } = await registerNewProject(projectFields);
+        if (!project) {
+          setShowSavedLink(false);
+          setSavedMsg(error ?? "保存に失敗しました。");
+          return;
+        }
+        projectId = project.projectId;
+      }
       recordMigration(legacyId, projectId);
 
       setCurrentProjectId(legacyId);
@@ -323,6 +365,23 @@ export default function NewProjectPage() {
             「案件として保存」を押すと、保存済み案件一覧に登録されます。
           </p>
         </div>
+
+        {/* ── 案件ID用コード未設定の警告 ── */}
+        {projectCodeMissing && (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+            <p className="text-sm font-bold text-red-700">案件ID用コードが未設定です</p>
+            <p className="mt-1 text-xs leading-relaxed text-red-600">
+              案件番号（例：REVO-26-0001）の頭に付くコードが未設定のため、案件を登録できません。
+              先に事業者設定で登録してください。
+            </p>
+            <Link
+              href="/settings/company"
+              className="mt-2 inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white active:opacity-80"
+            >
+              事業者設定を開く →
+            </Link>
+          </div>
+        )}
 
         {/* ── 自動下書き保存ステータスバー ── */}
         <SaveStatusBar status={saveStatus} savedAt={savedAt} />
@@ -463,6 +522,42 @@ export default function NewProjectPage() {
                 value={form.address} onChange={handleChange}
                 placeholder="例：大阪府堺市〇〇区" className={inputCls}
               />
+            </div>
+
+            {/* ── 流入経路 ── */}
+            <div>
+              <label htmlFor="inflowRoute" className={labelCls}>流入経路（どこから来た案件か）</label>
+              <select
+                id="inflowRoute" name="inflowRoute"
+                value={form.inflowRoute} onChange={handleChange} className={inputCls}
+              >
+                <option value="">選択してください</option>
+                {(Object.keys(INFLOW_ROUTE_LABELS) as InflowRoute[]).map((r) => (
+                  <option key={r} value={r}>{INFLOW_ROUTE_LABELS[r]}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-stone-400">
+                経路別の売上・成約率を後から集計するために使います。
+              </p>
+              {form.inflowRoute === "contractor" && (
+                <div className="mt-2">
+                  <label htmlFor="inflowSourceName" className="mb-1 block text-xs text-stone-500">
+                    元請会社・取引先名
+                  </label>
+                  <input
+                    id="inflowSourceName" name="inflowSourceName" type="text"
+                    value={form.inflowSourceName} onChange={handleChange}
+                    list="inflow-contractor-options"
+                    placeholder="例：△△工務店（登録済みの得意先から選択もできます）"
+                    className={inputCls.replace("text-base", "text-sm")}
+                  />
+                  <datalist id="inflow-contractor-options">
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
+                </div>
+              )}
             </div>
 
             {/* ── 工事種別（複数選択） ── */}
@@ -631,6 +726,16 @@ export default function NewProjectPage() {
                 <ConfirmRow label="担当者"           value={form.contactName} />
                 <ConfirmRow label="案件名"           value={form.projectName} />
                 <ConfirmRow label="現場住所"         value={form.address} />
+                <ConfirmRow label="流入経路"
+                  value={
+                    form.inflowRoute === ""
+                      ? ""
+                      : INFLOW_ROUTE_LABELS[form.inflowRoute] +
+                        (form.inflowRoute === "contractor" && form.inflowSourceName
+                          ? `（${form.inflowSourceName}）`
+                          : "")
+                  }
+                />
                 <ConfirmRow label="工事種別"         value={koujiTypeLabel()} />
                 <ConfirmRow label="工事内容"         value={koujiContentLabel()} />
                 <ConfirmRow label="工事内容メモ"     value={form.koujiContentMemo} />
@@ -666,7 +771,13 @@ export default function NewProjectPage() {
                 <p className="text-sm font-bold text-green-700">{savedMsg}</p>
                 {showSavedLink && savedProjectId && (
                   <p className="mt-1 text-xs text-green-600">
-                    案件ID：<span className="font-mono font-bold">{savedProjectId}</span>
+                    案件ID：
+                    <span className="font-mono font-bold">
+                      {(() => {
+                        const p = projectsStore.getById(savedProjectId);
+                        return p ? projectDisplayId(p) : savedProjectId;
+                      })()}
+                    </span>
                   </p>
                 )}
                 {showSavedLink && (

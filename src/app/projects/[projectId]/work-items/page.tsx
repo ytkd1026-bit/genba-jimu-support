@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, projectDisplayId, type Project } from "@/app/utils/projects";
 import {
   workItemsStore,
   issueWorkItemId,
@@ -432,13 +432,13 @@ export default function WorkItemsPage() {
         project.projectType === "insurance" ? "損害復旧工事 見積明細書" : "見積明細書";
       const doc = makeWorkEstimatePDF({
         documentTitle: title,
-        documentNumber: `EST-${project.projectId}`,
+        documentNumber: `EST-${projectDisplayId(project)}`,
         createdDate: todaySlash(),
         submitTo: project.submitTo || project.clientName || "",
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         lines: buildSellingLines(),
         subtotalSum: totals.selling,
         taxSum: totals.tax,
@@ -470,13 +470,13 @@ export default function WorkItemsPage() {
       const { makeProjectInvoicePDF } = await import("@/components/pdf/ProjectInvoicePDF");
       const doc = makeProjectInvoicePDF({
         documentTitle: "請求書",
-        documentNumber: `INV-${project.projectId}`,
+        documentNumber: `INV-${projectDisplayId(project)}`,
         createdDate: todaySlash(),
         submitTo: project.submitTo || project.clientName || "",
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         lines: buildSellingLines(),
         subtotalSum: totals.selling,
         taxSum: totals.tax,

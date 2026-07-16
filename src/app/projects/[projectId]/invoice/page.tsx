@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, projectDisplayId, type Project } from "@/app/utils/projects";
 import { workItemsStore, type WorkItem } from "@/app/utils/workItems";
 import {
   getSavedInvoices,
@@ -113,8 +113,13 @@ export default function ProjectInvoicePage() {
 
   const docNumber = useMemo(() => {
     if (saved) return saved.invoiceNo;
-    return projectDocumentNumber(projectId, "INV", nextInvoiceSeq(getSavedInvoices(), projectId));
-  }, [projectId, saved]);
+    // 書類番号の土台は表示用案件番号（例: REVO-26-0001-INV-01）。
+    // 旧ベース（REV-...）で発行済みの請求とも連番が競合しないよう両方を見る。
+    const docBase = project ? projectDisplayId(project) : projectId;
+    const list = getSavedInvoices();
+    const seq = Math.max(nextInvoiceSeq(list, docBase), nextInvoiceSeq(list, projectId));
+    return projectDocumentNumber(docBase, "INV", seq);
+  }, [projectId, project, saved]);
 
   function toggleExclude(id: string) {
     setExcluded((prev) => {
@@ -241,7 +246,7 @@ export default function ProjectInvoicePage() {
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         lines,
         subtotalSum: bd.subtotal,
         taxSum: bd.taxTotal,

@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { projectsStore, type Project } from "@/app/utils/projects";
+import { projectsStore, projectDisplayId, type Project } from "@/app/utils/projects";
 import {
   photoRecordsStore,
   issuePhotoId,
@@ -270,13 +270,13 @@ export default function PhotoLedgerPage() {
       const { makePhotoLedgerPDF } = await import("@/components/pdf/PhotoLedgerPDF");
       const doc = makePhotoLedgerPDF({
         documentTitle: "写真報告台帳",
-        documentNumber: `PHT-${project.projectId}`,
+        documentNumber: `PHT-${projectDisplayId(project)}`,
         createdDate: todaySlash(),
         submitTo: project.submitTo || project.clientName || "",
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         photos: stored.map((p) => ({
           photoId: p.photoId,
           imageDataUrl: p.imageDataUrl,

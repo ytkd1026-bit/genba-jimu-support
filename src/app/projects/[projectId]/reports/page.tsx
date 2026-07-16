@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
+import { projectsStore, advanceProjectStatus, projectDisplayId, type Project } from "@/app/utils/projects";
 import {
   workReportsStore,
   issueWorkReportId,
@@ -196,13 +196,13 @@ export default function WorkReportsPage() {
         }));
       const doc = makeWorkReportPDF({
         documentTitle: "作業報告書",
-        documentNumber: `${record.reportId}-${project.projectId}`,
+        documentNumber: `${record.reportId}-${projectDisplayId(project)}`,
         createdDate: todaySlash(),
         submitTo: project.submitTo || project.clientName || "",
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         workDate: record.workDate,
         workerName: record.workerName,
         workSummary: record.workSummary,

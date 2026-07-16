@@ -8,6 +8,11 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import {
+  normalizeProjectCode,
+  validateProjectCode,
+  formatProjectNumber,
+} from "@/app/utils/projectNumbers";
 
 // ─── 定数 ────────────────────────────────────────────────────
 const ACCOUNT_TYPES = ["普通", "当座"] as const;
@@ -25,6 +30,7 @@ interface CompanyForm {
   tel: string;
   email: string;
   invoiceNumber: string;
+  projectCode: string; // 案件ID用コード（半角英数2〜8文字・自動大文字化）
 }
 
 interface BankForm {
@@ -51,6 +57,7 @@ const DEFAULT_COMPANY: CompanyForm = {
   tel:            "090-0000-0000",
   email:          "example@example.com",
   invoiceNumber:  "T0000000000000",
+  projectCode:    "", // デモ値で補完しない（未設定のまま発番させない）
 };
 
 const DEFAULT_BANK: BankForm = {
@@ -82,6 +89,7 @@ export default function CompanySettingsPage() {
         tel:            saved.tel            ?? DEFAULT_COMPANY.tel,
         email:          saved.email          ?? DEFAULT_COMPANY.email,
         invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY.invoiceNumber,
+        projectCode:    saved.projectCode    ?? DEFAULT_COMPANY.projectCode,
       });
       setBank({
         bankName:      saved.bankName      ?? DEFAULT_BANK.bankName,
@@ -96,8 +104,15 @@ export default function CompanySettingsPage() {
   }, []);
 
   function handleCompanyChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setCompany((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    // 案件ID用コードは入力時に自動で大文字化する（英字の小文字入力を許容）
+    const v = name === "projectCode" ? normalizeProjectCode(value) : value;
+    setCompany((prev) => ({ ...prev, [name]: v }));
   }
+
+  // 案件ID用コードの検証結果（未入力は「未設定」扱い、書式違反はエラー表示）
+  const projectCodeError =
+    company.projectCode === "" ? null : validateProjectCode(company.projectCode);
 
   function handleBankChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -106,6 +121,12 @@ export default function CompanySettingsPage() {
   }
 
   function handleSave() {
+    // 書式違反のコードは保存しない（発番エラーの原因を設定段階で止める）
+    if (company.projectCode !== "" && validateProjectCode(company.projectCode)) {
+      setSaveMsg("案件ID用コードの形式に誤りがあります。半角英数字2〜8文字で入力してください。");
+      setTimeout(() => setSaveMsg(""), 6000);
+      return;
+    }
     try {
       const payload = { ...company, ...bank };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
@@ -228,6 +249,48 @@ export default function CompanySettingsPage() {
               <p className="mt-1 text-xs text-stone-400">
                 「T」から始まる13桁の番号を入力してください。
               </p>
+            </div>
+
+            <div>
+              <label htmlFor="projectCode" className={labelCls}>
+                案件ID用コード <span className="text-[#8B4A3C]">*</span>
+              </label>
+              <input
+                id="projectCode" name="projectCode" type="text"
+                value={company.projectCode} onChange={handleCompanyChange}
+                placeholder="例：REVO" maxLength={8}
+                autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+                className={inputCls + " font-mono tracking-wider"}
+              />
+              <p className="mt-1 text-xs text-stone-400">
+                案件番号の頭に付くコードです。半角英数字2〜8文字（小文字は自動で大文字になります）。
+                空白・記号・日本語は使えません。
+              </p>
+              <p className="mt-0.5 text-xs text-stone-400">
+                入力例：屋号「REVO」→ <span className="font-mono">REVO</span>／
+                「山田内装」→ <span className="font-mono">YMD</span>／
+                「大阪インテリア」→ <span className="font-mono">OSI</span>
+              </p>
+              {projectCodeError && (
+                <p className="mt-1 text-xs font-bold text-red-600">{projectCodeError}</p>
+              )}
+              {company.projectCode === "" && (
+                <p className="mt-1 text-xs font-bold text-amber-700">
+                  ⚠️ 未設定の間は新しい案件を登録できません。
+                </p>
+              )}
+              {company.projectCode !== "" && !projectCodeError && (
+                <div className="mt-2 rounded-xl bg-stone-50 px-3 py-2.5 ring-1 ring-stone-100">
+                  <p className="text-xs text-stone-400">案件番号のイメージ</p>
+                  <p className="font-mono text-sm font-bold text-stone-800">
+                    {formatProjectNumber(company.projectCode, new Date().getFullYear(), 1)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-stone-400">
+                    コード-西暦下2桁-年内連番。連番は毎年0001へ戻ります。
+                    発行済みの案件番号は、後からコードを変えても変わりません。
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

@@ -12,6 +12,7 @@ import {
   BUILDING_TYPE_LABELS,
   PROJECT_STATUS_LABELS,
   PROJECT_TYPE_LABELS,
+  projectDisplayId,
   type Project,
   type ProjectType,
   type BuildingType,
@@ -222,7 +223,7 @@ export default function ProjectDetailPage() {
             <div>
               <label className={lbl}>案件ID（自動発行）</label>
               <div className={readOnlyFld}>
-                <span className="font-mono">{project.projectId}</span>
+                <span className="font-mono">{projectDisplayId(project)}</span>
               </div>
             </div>
             <div>

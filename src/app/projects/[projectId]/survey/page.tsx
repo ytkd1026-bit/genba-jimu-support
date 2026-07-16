@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { projectsStore, type Project } from "@/app/utils/projects";
+import { projectsStore, projectDisplayId, type Project } from "@/app/utils/projects";
 import {
   damageRecordsStore,
   issueDamageId,
@@ -257,13 +257,13 @@ export default function SurveyPage() {
         project.projectType === "insurance" ? insuranceInfoStore.getById(projectId) : null;
       const doc = makeSurveyReportPDF({
         documentTitle: "現地調査報告書",
-        documentNumber: `RPT-${project.projectId}`,
+        documentNumber: `RPT-${projectDisplayId(project)}`,
         createdDate: todaySlash(),
         submitTo: project.submitTo || project.clientName || "",
         projectName: project.projectName,
         siteAddress: project.siteAddress,
         companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
+        projectId: projectDisplayId(project),
         accident: insurance
           ? {
               accidentTypeLabel: ACCIDENT_TYPE_LABELS[insurance.accidentType],
