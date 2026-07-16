@@ -29,9 +29,11 @@ import { photoLedgerPdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { StructuredTextInput } from "@/components/StructuredTextInput";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
+import type { SaveStatus } from "@/hooks/useAutoDraft";
 import { fldInput, fldSelect, lbl } from "@/components/formStyles";
 
-type PhotoSaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
+type PhotoSaveStatus = SaveStatus;
 
 const QUOTA_HINT =
   "保存に失敗しました。写真の保存容量が上限に達している可能性があります。不要な写真を削除してください。";
@@ -52,6 +54,7 @@ export default function PhotoLedgerPage() {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [damages, setDamages] = useState<DamageRecord[]>([]);
   const [status, setStatus] = useState<PhotoSaveStatus>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -78,9 +81,37 @@ export default function PhotoLedgerPage() {
     setDamages(damageRecordsStore.getByProjectId(projectId));
   }, [projectId]);
 
+  // アンマウント時: タイマーを破棄するだけでなく、保存待ちのテキスト編集を必ず書き出す
+  // （画面遷移で debounce 中の入力を失わないため。setState はしない）
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      for (const id of dirtyIdsRef.current) {
+        const rec = photosRef.current.find((p) => p.photoId === id);
+        if (rec) photoRecordsStore.upsert(rec);
+      }
+      dirtyIdsRef.current.clear();
+    };
+  }, []);
+
+  // タブ非表示・ページ離脱時のフラッシュ保存
+  useEffect(() => {
+    const flush = () => {
+      if (dirtyIdsRef.current.size === 0) return;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      syncDirtyRef.current();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
@@ -107,12 +138,17 @@ export default function PhotoLedgerPage() {
     dirtyIdsRef.current.clear();
     if (ok) {
       setStatus("saved");
+      setSavedAt(new Date());
       setErrorMsg("");
     } else {
       setStatus("error");
       setErrorMsg(QUOTA_HINT);
     }
   }
+  const syncDirtyRef = useRef(syncDirty);
+  useEffect(() => {
+    syncDirtyRef.current = syncDirty;
+  });
 
   function scheduleSync(): void {
     setStatus("dirty");
@@ -138,6 +174,7 @@ export default function PhotoLedgerPage() {
     }
     if (ok) {
       setStatus("saved");
+      setSavedAt(new Date());
       setErrorMsg("");
     } else {
       setStatus("error");
@@ -348,23 +385,8 @@ export default function PhotoLedgerPage() {
         <ProjectHeader project={project} />
         <ProjectTabs projectId={projectId} active="photos" />
 
-        {/* 保存状態表示 */}
-        {status !== "idle" && (
-          <div className={`mb-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium ${
-            status === "saved"
-              ? "bg-green-50 text-green-600 ring-1 ring-green-200"
-              : status === "error"
-                ? "bg-red-50 text-red-600 ring-1 ring-red-200"
-                : "bg-blue-50 text-blue-500 ring-1 ring-blue-200"
-          }`}>
-            <span>
-              {status === "saved" && "✓ 保存済み"}
-              {status === "saving" && "⏳ 保存中..."}
-              {status === "dirty" && "✏️ 入力中（自動保存します）"}
-              {status === "error" && "⚠️ 保存エラー"}
-            </span>
-          </div>
-        )}
+        {/* 保存状態表示（共通コンポーネント。この画面はストアへ直接保存するため文言のみ差し替え） */}
+        <SaveStatusBar status={status} savedAt={savedAt} savedLabel="保存済み" savingLabel="保存中..." />
         {errorMsg && (
           <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600 ring-1 ring-red-200">
             {errorMsg}

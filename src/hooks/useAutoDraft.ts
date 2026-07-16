@@ -27,6 +27,9 @@ export type UseAutoDraftReturn<T> = {
  * @param data        保存するデータ（useMemo でメモ化して渡す）
  * @param options.debounceMs  保存までの遅延 ms（デフォルト 800）
  * @param options.enabled     false のとき保存を無効化（デモモード等）
+ *
+ * フラッシュ保存: debounce 待機中にタブが閉じられる・非表示になる・
+ * 画面遷移でアンマウントされる場合は、待たずに即時保存する（入力消失ゼロ）。
  */
 export function useAutoDraft<T>(
   key: string,
@@ -48,6 +51,16 @@ export function useAutoDraft<T>(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevDataStringRef = useRef<string | null>(null);
   const dataRef = useRef<T>(data);
+  // 保存待ち（debounce 中）の変更があるか
+  const pendingRef = useRef(false);
+  const keyRef = useRef(key);
+  const typeRef = useRef(type);
+  const idRef = useRef(id);
+  useEffect(() => {
+    keyRef.current = key;
+    typeRef.current = type;
+    idRef.current = id;
+  }, [key, type, id]);
 
   // マウント時に既存下書きを読み込む（一度だけ）
   useEffect(() => {
@@ -56,12 +69,51 @@ export function useAutoDraft<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // アンマウント時のタイマークリーンアップ
+  /**
+   * 保存待ちの変更があれば debounce を待たずに即時保存する。
+   * 保存待ちが無ければ null、保存したら成否を返す。
+   * setState を行わないため、アンマウント中でも安全に呼べる。
+   */
+  const commitPending = useCallback((): boolean | null => {
+    if (!pendingRef.current) return null;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    pendingRef.current = false;
+    return saveDraft(keyRef.current, typeRef.current, idRef.current, dataRef.current);
+  }, []);
+
+  // アンマウント時: タイマー破棄だけでなく、保存待ちの変更を必ず書き出す
+  // （タブ移動・画面遷移で debounce 中の入力を失わないため）
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      commitPending();
     };
-  }, []);
+  }, [commitPending]);
+
+  // タブ非表示・ページ離脱時のフラッシュ保存
+  useEffect(() => {
+    const flush = () => {
+      const ok = commitPending();
+      if (ok === null) return;
+      if (ok) {
+        setSaveStatus('saved');
+        setSavedAt(new Date());
+      } else {
+        setSaveStatus('error');
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [commitPending]);
 
   // データ変更の検知と debounced 自動保存
   useEffect(() => {
@@ -82,8 +134,10 @@ export function useAutoDraft<T>(
     prevDataStringRef.current = dataStr;
 
     setSaveStatus('dirty');
+    pendingRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      pendingRef.current = false;
       setSaveStatus('saving');
       const ok = saveDraft(key, type, id, dataRef.current);
       if (ok) {
@@ -98,6 +152,7 @@ export function useAutoDraft<T>(
   /** debounce をスキップして即時保存する（PDF発行前などに使う） */
   const forceSave = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    pendingRef.current = false;
     setSaveStatus('saving');
     const ok = saveDraft(key, type, id, dataRef.current);
     if (ok) {
@@ -112,6 +167,7 @@ export function useAutoDraft<T>(
   const clearDraft = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
+    pendingRef.current = false;
     removeDraft(key);
     setSaveStatus('idle');
     setSavedAt(null);
