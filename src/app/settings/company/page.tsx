@@ -347,7 +347,8 @@ export default function CompanySettingsPage() {
                 { label: "見積書兼注文書PDF", done: true },
                 { label: "保存用PDF",         done: true },
                 { label: "一括請求書PDF",     done: true },
-                { label: "単体請求書PDF",     done: false },
+                { label: "単体請求書PDF",     done: true },
+                { label: "案件帳票（見積明細書・請求書・調査報告・写真台帳・作業報告）", done: true },
               ].map(({ label, done }) => (
                 <li key={label} className="flex items-center gap-2 text-sm">
                   <span className={done ? "text-green-500" : "text-stone-300"}>

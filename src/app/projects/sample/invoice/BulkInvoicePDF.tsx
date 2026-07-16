@@ -7,34 +7,13 @@
 // TODO: インボイス登録番号は事業者設定からPDFへ反映する
 
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
-
-// フォントは /public/fonts にローカル配置した完全版Noto Sans JPを使用する。
-// 旧CDN（noto-sans-japanese@1.0.0）はグリフ収録が不完全で「△」等の記号が文字化けしていたため置き換えた。
-Font.register({
-  family: 'NotoSansJP',
-  fonts: [
-    {
-      src: '/fonts/NotoSansJP-Regular.ttf',
-      fontWeight: 400,
-    },
-    {
-      src: '/fonts/NotoSansJP-Bold.ttf',
-      fontWeight: 700,
-    },
-  ],
-});
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+// フォント登録・会社情報型・金額整形は PdfCommon に一元化している（S-8 PDF統一）。
+// PdfCommon を import した時点で NotoSansJP が登録される。
+import { fmtYen, type CompanyInfoForPDF } from '@/components/pdf/PdfCommon';
 
 // ─── 型定義 ──────────────────────────────────────────────────
-export type CompanyInfo = {
-  name: string;
-  postalCode: string;
-  address: string;
-  representative: string;
-  tel: string;
-  email: string;
-  invoiceNumber: string;
-};
+export type CompanyInfo = CompanyInfoForPDF;
 
 export type BulkInvoicePDFProps = {
   invoiceNo: string;
@@ -95,9 +74,6 @@ function splitIntoPages<T>(items: T[], first: number, rest: number): T[][] {
 // ─── ユーティリティ ───────────────────────────────────────────
 function fmtDate(s: string): string {
   return s ? s.replace(/-/g, '/') : '';
-}
-function fmtYen(n: number): string {
-  return '¥' + n.toLocaleString('ja-JP');
 }
 
 // ─── 定数 ────────────────────────────────────────────────────
