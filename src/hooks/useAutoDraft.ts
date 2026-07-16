@@ -48,6 +48,12 @@ export function useAutoDraft<T>(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevDataStringRef = useRef<string | null>(null);
   const dataRef = useRef<T>(data);
+  const enabledRef = useRef(enabled);
+  const keyRef = useRef(key);
+  const typeRef = useRef(type);
+  const idRef = useRef(id);
+  // 直近に localStorage へ書き込んだ内容。未保存分があるかの判定に使う。
+  const lastSavedStringRef = useRef<string | null>(null);
 
   // マウント時に既存下書きを読み込む（一度だけ）
   useEffect(() => {
@@ -60,6 +66,48 @@ export function useAutoDraft<T>(
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  // 最新の設定値を ref に反映（イベントハンドラは登録し直さずに最新値を参照する）
+  useEffect(() => {
+    enabledRef.current = enabled;
+    keyRef.current = key;
+    typeRef.current = type;
+    idRef.current = id;
+  }, [enabled, key, type, id]);
+
+  // ── 画面が隠れる/離脱するタイミングで、debounce 待機中の内容を同期保存する ──
+  // Safari のバックグラウンド移行やサーバークラッシュによる再読込で、
+  // debounce（既定 800ms）待ちの未保存入力が失われるのを防ぐ。
+  // visibilitychange(hidden) はモバイル Safari で最も確実に発火するため主軸に使う。
+  useEffect(() => {
+    // ref から最新値を読んで同期的に localStorage へ書き込む（setState は行わない）
+    const flushNow = () => {
+      if (!enabledRef.current) return;
+      const str = JSON.stringify(dataRef.current);
+      // 既に同じ内容を保存済みなら何もしない（無駄な書き込みを避ける）
+      if (str === lastSavedStringRef.current) return;
+      if (saveDraft(keyRef.current, typeRef.current, idRef.current, dataRef.current)) {
+        lastSavedStringRef.current = str;
+        // 保留中の debounce タイマーは不要になるのでキャンセル
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    // pagehide / beforeunload は離脱直前の最後の砦（Safari のタブ破棄・戻る操作を含む）
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushNow);
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flushNow);
+      window.removeEventListener('beforeunload', flushNow);
     };
   }, []);
 
@@ -87,6 +135,7 @@ export function useAutoDraft<T>(
       setSaveStatus('saving');
       const ok = saveDraft(key, type, id, dataRef.current);
       if (ok) {
+        lastSavedStringRef.current = JSON.stringify(dataRef.current);
         setSaveStatus('saved');
         setSavedAt(new Date());
       } else {
@@ -101,6 +150,7 @@ export function useAutoDraft<T>(
     setSaveStatus('saving');
     const ok = saveDraft(key, type, id, dataRef.current);
     if (ok) {
+      lastSavedStringRef.current = JSON.stringify(dataRef.current);
       setSaveStatus('saved');
       setSavedAt(new Date());
     } else {
@@ -117,6 +167,7 @@ export function useAutoDraft<T>(
     setSavedAt(null);
     setRestoredDraft(null);
     prevDataStringRef.current = null;
+    lastSavedStringRef.current = null;
   }, [key]);
 
   return { saveStatus, savedAt, forceSave, clearDraft, restoredDraft };
