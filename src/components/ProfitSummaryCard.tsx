@@ -153,7 +153,7 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
       {/* ── 下層: 詳細内訳（折りたたみなし・0円でも全項目表示） ── */}
       <dl className="mt-3 space-y-1.5 text-sm">
         <div className="flex items-center justify-between">
-          <dt className="text-amber-800">売上</dt>
+          <dt className="text-amber-800">売上（税抜）</dt>
           <dd className="font-bold text-amber-900">{fmtYen(sales)}</dd>
         </div>
         <div className="flex items-center justify-between border-t border-amber-200/60 pt-1.5">
@@ -185,17 +185,17 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
           <dd className={`font-bold ${netCls}`}>{fmtYen(netProfit)}</dd>
         </div>
 
-        {/* 資金繰り */}
+        {/* 資金繰り（請求書ベースのため税込。上の売上・粗利は税抜） */}
         <div className="flex items-center justify-between border-t border-amber-200/60 pt-1.5">
-          <dt className="text-amber-800">請求済</dt>
+          <dt className="text-amber-800">請求済（税込）</dt>
           <dd className="text-amber-900">{fmtYen(invoicedTotal)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-amber-800">入金済</dt>
+          <dt className="text-amber-800">入金済（税込）</dt>
           <dd className="text-amber-900">{fmtYen(paidTotal)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className={`${unpaidTotal > 0 ? "font-bold text-red-600" : "text-amber-800"}`}>未入金</dt>
+          <dt className={`${unpaidTotal > 0 ? "font-bold text-red-600" : "text-amber-800"}`}>未入金（税込）</dt>
           <dd className={`${unpaidTotal > 0 ? "font-bold text-red-600" : "text-amber-900"}`}>{fmtYen(unpaidTotal)}</dd>
         </div>
       </dl>
@@ -209,8 +209,13 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <p className="mt-2 text-[11px] leading-relaxed text-amber-600">
-        ※手残り予測（実質利益）は、案件粗利から固定費按分を差し引いた概算です。税金・社会保険・個人生活費は含みません。
+      {/* 固定費が未設定（現状は常に未設定）の間は、手残り予測＝粗利であることを明示する */}
+      {fixedCostAllocation === 0 && (
+        <p className="mt-2 text-[11px] leading-relaxed text-amber-600">
+          固定費が未設定のため、現在の手残り予測は粗利と同額です。税金・社会保険・借入返済・事業主生活費は含みません。
+        </p>
+      )}
+      <p className="mt-1 text-[11px] leading-relaxed text-amber-600">
         入金済は案件の進捗状況が「入金済み」のとき請求済み全額として表示します。
       </p>
 
