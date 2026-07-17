@@ -2,9 +2,21 @@
 
 import type { SaveStatus } from "@/hooks/useAutoDraft";
 
-// 自動下書き保存ステータス表示の共通コンポーネント。
-// 見積・単体請求書・案件登録・材料計算の各画面で重複していた表示をここに集約する。
-export function SaveStatusBar({ status, savedAt }: { status: SaveStatus; savedAt: Date | null }) {
+// 自動保存ステータス表示の共通コンポーネント。
+// 見積・請求書・案件登録・材料計算・写真台帳の各画面で重複していた表示をここに集約する。
+// 既定は「下書き保存」の文言。写真台帳のようにストアへ直接保存する画面は
+// savedLabel / savingLabel で文言だけ差し替えて同じ見た目を使う。
+export function SaveStatusBar({
+  status,
+  savedAt,
+  savedLabel = "下書き保存済み",
+  savingLabel = "下書き保存中...",
+}: {
+  status: SaveStatus;
+  savedAt: Date | null;
+  savedLabel?: string;
+  savingLabel?: string;
+}) {
   if (status === "idle") return null;
 
   const cls =
@@ -20,8 +32,8 @@ export function SaveStatusBar({ status, savedAt }: { status: SaveStatus; savedAt
 
   const label =
     status === "dirty" ? "入力中（自動保存します）" :
-    status === "saving" ? "下書き保存中..." :
-    status === "saved" ? `下書き保存済み ${savedAt ? savedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : ""}` :
+    status === "saving" ? savingLabel :
+    status === "saved" ? `${savedLabel} ${savedAt ? savedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : ""}` :
     "保存エラー";
 
   return (

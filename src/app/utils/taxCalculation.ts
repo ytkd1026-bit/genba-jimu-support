@@ -107,6 +107,17 @@ export function calculateTaxBreakdown(lines: TaxableLine[]): TaxBreakdown {
   };
 }
 
+/**
+ * 単一金額に対する消費税額（切り捨て）。
+ * 用途は次の2つに限る:
+ *  1. 税区分を持たない旧フロー（sample系）の「全額課税10%」計算
+ *  2. 明細1行あたりの参考税額表示（帳票の消費税列など）
+ * 複数明細の合計税額は必ず calculateTaxBreakdown（税率ごとに合算後切り捨て）を使うこと。
+ */
+export function simpleTaxAmount(amount: number, taxRate: TaxRate = 10): number {
+  return Math.floor(amount * (normalizeTaxRate(taxRate) / 100));
+}
+
 /** 税率が複数種類（10%と8%が両方）または非課税/不課税が混在するか */
 export function isMultiTax(b: TaxBreakdown): boolean {
   const buckets = [

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
+import { useState, useEffect, useMemo, type ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import {
   estimatePdfFileName,
   estimateOrderPdfFileName,
@@ -13,6 +15,7 @@ import { matchesKeyword } from "@/app/utils/search";
 import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
+import { simpleTaxAmount } from "@/app/utils/taxCalculation";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 // PDF出力用の案件情報（固定値・将来はDBまたはpropsから取得）
@@ -201,7 +204,7 @@ function LineCard({ line, index, canDelete, onUpdate, onDelete, onDuplicate }: {
   onDelete: () => void; onDuplicate: () => void;
 }) {
   const subtotal = toNum(line.qty) * toNum(line.unitPrice);
-  const lineTax = Math.floor(subtotal * 0.1);
+  const lineTax = simpleTaxAmount(subtotal);
   const taxIncluded = subtotal + lineTax;
   const pdfLocation = line.location1 && line.location2
     ? `${line.location1} / ${line.location2}`
@@ -487,7 +490,7 @@ export default function EstimatePage() {
   // TODO(税区分): この画面は案件に紐づかない単体手入力フロー（LineItem に税区分なし）のため
   //   全額を課税10%として計算する。税区分・税率対応は案件見積 /projects/[projectId]/estimate
   //   （WorkItem＋共通 calculateTaxBreakdown）に実装済み。単体フローの税区分UIは今後対応。
-  const taxSum = Math.floor(subtotalSum * 0.1);
+  const taxSum = simpleTaxAmount(subtotalSum);
   const totalWithTax = subtotalSum + taxSum;
   const costSum = costs.reduce((acc, c) => acc + toNum(c.qty) * toNum(c.costUnitPrice), 0);
   const grossProfit = subtotalSum - costSum;
@@ -602,8 +605,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimatePDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
+      const element: ReactElement<DocumentProps> = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimatePdfFileName({
         clientName:  submitTo,
@@ -630,8 +632,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeStoragePDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeStoragePDF({
+      const element: ReactElement<DocumentProps> = makeStoragePDF({
         lines,
         subtotalSum,
         taxSum,
@@ -671,8 +672,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimateOrderPDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
+      const element: ReactElement<DocumentProps> = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimateOrderPdfFileName({
         clientName:  submitTo,
@@ -703,6 +703,8 @@ export default function EstimatePage() {
             白い部分は提出用、黄色い部分は保存用の内部管理です。
           </p>
         </header>
+
+        <SampleDeprecationBanner note="新しい「案件管理」では、案件を開いて 04 工事項目・原価 → 05 見積書 の順で同じ見積PDFを作成できます。保存済みの見積はそのまま残ります。" />
 
         {/* ── この画面でできること ── */}
         <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">

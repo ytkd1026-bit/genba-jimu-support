@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
@@ -533,6 +534,8 @@ export default function MaterialsPage() {
             見積数量から、ロス率を含めた発注数量と材料費を確認します。
           </p>
         </header>
+
+        <SampleDeprecationBanner note="材料計算は今後「案件管理」へ統合予定です。保存済みの材料計算はそのまま残ります。" />
 
         {/* ── この画面でできること ── */}
         <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">

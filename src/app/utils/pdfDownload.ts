@@ -2,6 +2,7 @@
 // @react-pdf/renderer はバンドルが大きいため動的importする（各画面で重複していた処理を集約）
 
 import type React from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 
 /** PDFドキュメントを生成してブラウザダウンロードを開始する */
 export async function renderAndDownloadPdf(
@@ -9,8 +10,9 @@ export async function renderAndDownloadPdf(
   filename: string,
 ): Promise<void> {
   const { pdf } = await import("@react-pdf/renderer");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const blob = await pdf(element as any).toBlob();
+  // 渡される要素は各 makeXxxPDF が生成する <Document> ルート要素。
+  // any を使わず Document 要素型へ絞り込む（型注釈のみ・実行コードは不変）
+  const blob = await pdf(element as React.ReactElement<DocumentProps>).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

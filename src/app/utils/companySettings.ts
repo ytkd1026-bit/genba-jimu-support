@@ -98,6 +98,55 @@ export function getBankSettings(): BankSettings {
   };
 }
 
+// ─── 利用モード（経営／シンプル） ─────────────────────────────
+// 保存先は既存の genba_settings（company settings）。キーの追加のみで
+// 既存項目・保存形式は変更しない。モードは「表示」だけを切り替える。
+
+export type AppMode = "management" | "simple";
+
+export const APP_MODE_LABELS: Record<AppMode, string> = {
+  management: "経営モード",
+  simple: "シンプルモード",
+};
+
+/** 利用モードを取得する（未設定の初期値は「経営」） */
+export function getAppMode(): AppMode {
+  const raw = readRaw();
+  return raw.appMode === "simple" ? "simple" : "management";
+}
+
+/**
+ * 会社設定の未完了項目を返す（S-7 請求漏れ防止の警告カード用）。
+ * 空配列なら設定完了とみなす。デモ値のまま帳票を発行してしまう事故を防ぐ。
+ */
+export function getCompanySettingsIssues(): string[] {
+  const raw = readRaw();
+  if (Object.keys(raw).length === 0) {
+    return ["事業者設定が未保存です（帳票にデモ値が印字されます）"];
+  }
+  const issues: string[] = [];
+  const c = getCompanySettings();
+  const b = getBankSettings();
+  if (!c.invoiceNumber || c.invoiceNumber === DEFAULT_COMPANY_SETTINGS.invoiceNumber) {
+    issues.push("インボイス登録番号がデモ値のままです");
+  }
+  if (c.tel === DEFAULT_COMPANY_SETTINGS.tel) {
+    issues.push("電話番号がデモ値のままです");
+  }
+  if (c.address.includes("〇〇")) {
+    issues.push("住所がデモ値のままです");
+  }
+  if (
+    b.bankName.includes("〇〇") ||
+    b.branchName.includes("〇〇") ||
+    (b.accountNumber === DEFAULT_BANK_SETTINGS.accountNumber &&
+      b.accountHolder === DEFAULT_BANK_SETTINGS.accountHolder)
+  ) {
+    issues.push("振込先がデモ値のままです");
+  }
+  return issues;
+}
+
 /**
  * PDF帳票用の会社情報を取得する。
  * 代表者名は既存帳票と同じ「代表　◯◯」形式へ整形する。

@@ -31,13 +31,28 @@ import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { TaxTotalsBox } from "@/components/TaxTotalsBox";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { fldInput, lbl } from "@/components/formStyles";
 
 const DEFAULT_BANK_FEE_NOTE = "振込手数料はご負担くださいますようお願いいたします。";
 
+// 数値正規化ガード（S-3）: 保存データに null 等が混入していても明細表示でクラッシュしない。
+// 正常な有限数では恒等（従来と同一表示）。
 function fmtYen(n: number): string {
-  return "¥" + n.toLocaleString("ja-JP");
+  return "¥" + (Number.isFinite(n) ? n : 0).toLocaleString("ja-JP");
 }
+
+// 自動下書きの対象: 入力欄（日付・備考）と請求除外の選択。
+// 明細そのものは WorkItem（工事項目画面で自動下書き済み）から導出するため含めない。
+type InvoiceDraftData = {
+  invoiceDate: string;
+  dueDate: string;
+  invoiceNote: string;
+  bankFeeNote: string;
+  excludedIds: string[];
+};
 
 function nextInvoiceSeq(saved: SavedInvoice[], projectId: string): number {
   const prefix = `${projectId}-INV-`;
@@ -69,6 +84,8 @@ export default function ProjectInvoicePage() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
 
   useEffect(() => {
     const p = projectsStore.getById(projectId);
@@ -90,7 +107,45 @@ export default function ProjectInvoicePage() {
     } else {
       setMode("edit");
     }
+    setLoaded(true);
   }, [projectId]);
+
+  // ── 自動下書き保存（入力欄・請求除外の選択） ────────────────
+  const INVOICE_DRAFT_KEY = draftKey("project-invoice", projectId);
+  const draftData = useMemo<InvoiceDraftData>(
+    () => ({
+      invoiceDate,
+      dueDate,
+      invoiceNote,
+      bankFeeNote,
+      excludedIds: Array.from(excluded).sort(),
+    }),
+    [invoiceDate, dueDate, invoiceNote, bankFeeNote, excluded],
+  );
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<InvoiceDraftData>(
+    INVOICE_DRAFT_KEY, "project-invoice", projectId, draftData,
+    { enabled: loaded, debounceMs: 800 },
+  );
+
+  useEffect(() => {
+    if (restoredDraft?.data) setShowRestoreBanner(true);
+  }, [restoredDraft]);
+
+  function handleRestoreDraft() {
+    if (!restoredDraft?.data) return;
+    const d = restoredDraft.data;
+    setInvoiceDate(d.invoiceDate);
+    setDueDate(d.dueDate);
+    setInvoiceNote(d.invoiceNote);
+    setBankFeeNote(d.bankFeeNote);
+    setExcluded(new Set(d.excludedIds));
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
 
   // 表示明細・内訳
   const includedItems = useMemo(
@@ -150,7 +205,12 @@ export default function ProjectInvoicePage() {
       // 保存時点の明細（請求対象＝除外後）をスナップショット。lineSnapshots が請求対象の正本
       lineSnapshots: workItemsToSnapshots(includedItems),
     };
-    upsertInvoice(inv);
+    // 容量超過などで書き込みが失敗した場合は null（S-4: 無言失敗の防止）
+    try {
+      upsertInvoice(inv);
+    } catch {
+      return null;
+    }
     return inv;
   }
 
@@ -171,16 +231,22 @@ export default function ProjectInvoicePage() {
         bankFeeNote,
         updatedAt: new Date().toLocaleString("ja-JP"),
       };
-      upsertInvoice(inv);
+      // 容量超過などで書き込みが失敗した場合は失敗扱い（S-4: 無言失敗の防止）
+      try {
+        upsertInvoice(inv);
+      } catch {
+        inv = null;
+      }
     } else {
       inv = saveInvoice();
     }
     if (inv) {
       setSaved(inv);
       setMode("view");
+      clearDraft(); // 本保存が完了したため自動下書きは削除する
       setMsg({ ok: true, text: `請求書を保存しました（${inv.invoiceNo}）。` });
     } else {
-      setMsg({ ok: false, text: "保存に失敗しました。" });
+      setMsg({ ok: false, text: "保存に失敗しました。入力内容は下書きとして残っています。" });
     }
     setTimeout(() => setMsg(null), 6000);
   }
@@ -228,6 +294,27 @@ export default function ProjectInvoicePage() {
     } else {
       dueForPdf = dueDate.replace(/-/g, "/");
     }
+
+    // PDF前保存ガード: 表示中の保存済み請求書にも入力欄（日付・備考）の変更を保存してから発行する
+    if (mode === "view" && saved) {
+      const inv: SavedInvoice = {
+        ...saved,
+        invoiceDate: invoiceDate ? invoiceDate.replace(/-/g, "/") : saved.invoiceDate,
+        dueDate,
+        memo: invoiceNote,
+        bankFeeNote,
+        updatedAt: new Date().toLocaleString("ja-JP"),
+      };
+      // 書き込み失敗時はPDFを発行しない（S-4: 無言失敗の防止）
+      try {
+        upsertInvoice(inv);
+      } catch {
+        alert("保存に失敗しました。PDFは発行していません。");
+        return;
+      }
+      setSaved(inv);
+    }
+    clearDraft(); // 入力欄はすべて本保存済みのため自動下書きは削除する
 
     setPdfLoading(true);
     try {
@@ -305,6 +392,28 @@ export default function ProjectInvoicePage() {
 
         <ProjectHeader project={project} />
         <ProjectTabs projectId={projectId} active="invoice" />
+
+        {/* 下書き復元バナー */}
+        {showRestoreBanner && restoredDraft && (
+          <div className="mb-3 rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200">
+            <p className="text-xs font-bold text-amber-800">保存されていない入力（日付・備考など）があります。</p>
+            <p className="mt-0.5 text-xs text-amber-700">
+              最終更新：{new Date(restoredDraft.updatedAt).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={handleRestoreDraft}
+                className="min-h-[44px] flex-1 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white active:opacity-80">
+                下書きを復元する
+              </button>
+              <button type="button" onClick={handleDiscardDraft}
+                className="min-h-[44px] flex-1 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-700 active:opacity-80">
+                破棄する
+              </button>
+            </div>
+          </div>
+        )}
+
+        <SaveStatusBar status={saveStatus} savedAt={savedAt} />
 
         <div className="mb-3 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs ring-1 ring-stone-100">
           <span className="text-stone-400">請求番号</span>

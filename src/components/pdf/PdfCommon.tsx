@@ -56,8 +56,8 @@ export type CommonDocumentProps = {
 };
 
 // ─── 共通ユーティリティ ───────────────────────────────────────
-export function toNum(v: string): number {
-  const n = parseFloat(v);
+export function toNum(v: string | number): number {
+  const n = typeof v === 'number' ? v : parseFloat(v);
   return isNaN(n) ? 0 : n;
 }
 

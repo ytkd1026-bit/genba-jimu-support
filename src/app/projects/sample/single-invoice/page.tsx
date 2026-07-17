@@ -8,7 +8,9 @@
 // TODO: 将来的に /invoices/single を作り、単体請求書一覧専用ページにする。
 
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
+import { useState, useEffect, useMemo, type ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
@@ -17,6 +19,7 @@ import { upsertInvoice, getSavedInvoices } from "@/app/utils/savedInvoices";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
+import { simpleTaxAmount } from "@/app/utils/taxCalculation";
 
 // ─── 型定義 ──────────────────────────────────────────────────
 type CompanyInfo = {
@@ -235,7 +238,7 @@ export default function SingleInvoicePage() {
   const subtotalSum  = INVOICE_LINES.reduce((s, l) => s + toNum(l.unitPrice) * toNum(l.qty), 0);
   // TODO(税区分): この単体請求フローは INVOICE_LINES（税区分なし）を全額課税10%で計算する。
   //   税区分・税率対応は案件請求 /projects/[projectId]/invoice（WorkItem＋共通税計算）に実装済み。
-  const taxSum       = Math.floor(subtotalSum * 0.1);
+  const taxSum       = simpleTaxAmount(subtotalSum);
   const totalWithTax = subtotalSum + taxSum;
 
   // 検索結果（ボタン押下後のみ表示）
@@ -269,8 +272,7 @@ export default function SingleInvoicePage() {
     try {
       const { pdf } = await import("@react-pdf/renderer");
       const { makeSingleInvoicePDF } = await import("./SingleInvoicePDF");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeSingleInvoicePDF({
+      const element: ReactElement<DocumentProps> = makeSingleInvoicePDF({
         invoiceNo: INVOICE_NO,
         invoiceDate,
         dueDate,
@@ -327,6 +329,8 @@ export default function SingleInvoicePage() {
           <h1 className="text-xl font-bold text-stone-800">単体請求書作成</h1>
           <p className="mt-1 text-sm text-stone-500">この案件だけの請求書を作成します。</p>
         </header>
+
+        <SampleDeprecationBanner note="新しい「案件管理」では、案件を開いて 06 請求書 から税区分対応の請求書PDFを作成できます。保存済みの請求書はそのまま残ります。" />
 
         {/* ── この画面でできること ── */}
         <div className="mb-4 rounded-2xl border border-[#8B4A3C]/15 bg-[#fff8f5] p-4 shadow-sm">

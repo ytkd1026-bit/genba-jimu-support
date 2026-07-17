@@ -7,7 +7,9 @@
 
 import Link from "next/link";
 import type { Project } from "@/app/utils/projects";
-import { PROJECT_STATUS_LABELS, PROJECT_TYPE_LABELS } from "@/app/utils/projects";
+import { PROJECT_TYPE_LABELS } from "@/app/utils/projects";
+import { ProjectStatusBadge } from "@/components/ProjectStatusBadge";
+import { CopyProjectId } from "@/components/CopyProjectId";
 
 export type ProjectTabKey =
   | "detail"
@@ -104,12 +106,12 @@ export function ProjectHeader({ project }: { project: Project }) {
         <p className="min-w-0 truncate text-base font-bold text-stone-800">
           {project.projectName || "（案件名未入力）"}
         </p>
-        <span className="shrink-0 rounded-full bg-[#fdf0ec] px-2 py-0.5 text-xs font-bold text-[#8B4A3C]">
-          {PROJECT_STATUS_LABELS[project.status]}
+        <span className="shrink-0">
+          <ProjectStatusBadge status={project.status} showDetail={false} />
         </span>
       </div>
       <div className="mt-1 flex items-center gap-2 text-xs text-stone-400">
-        <span className="font-mono">{project.projectId}</span>
+        <CopyProjectId projectId={project.projectId} />
         <span
           className={`rounded-full px-2 py-0.5 font-bold ${
             project.projectType === "insurance"

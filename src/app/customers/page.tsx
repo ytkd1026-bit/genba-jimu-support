@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getCustomers, saveCustomer, deleteCustomer, type Customer } from "@/app/utils/customers";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
 
 const EMPTY_FORM = {
   name: "",
@@ -13,6 +16,17 @@ const EMPTY_FORM = {
   memo: "",
 };
 
+// 得意先フォームの自動下書き（入力消失対策）。
+// この画面は自動下書き未適用だったため、ページが再読み込みされると
+// 入力途中の内容が全消失していた（他の入力画面と同じ保護を適用する）。
+type CustomerDraftData = {
+  form: typeof EMPTY_FORM;
+  editId: string | null;
+  showForm: boolean;
+};
+
+const CUSTOMER_DRAFT_KEY = draftKey("customer", "new");
+
 const labelCls = "mb-1 block text-sm font-bold text-stone-700";
 const inputCls = "w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
 
@@ -22,10 +36,39 @@ export default function CustomersPage() {
   const [editId,    setEditId]      = useState<string | null>(null);
   const [form,      setForm]        = useState(EMPTY_FORM);
   const [savedMsg,  setSavedMsg]    = useState("");
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
 
   useEffect(() => {
     setCustomers(getCustomers());
   }, []);
+
+  // ── 自動下書き保存（フォーム表示中のみ） ────────────────────
+  const draftData = useMemo<CustomerDraftData>(
+    () => ({ form, editId, showForm }),
+    [form, editId, showForm],
+  );
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<CustomerDraftData>(
+    CUSTOMER_DRAFT_KEY, "customer", "new", draftData,
+    { enabled: showForm, debounceMs: 800 },
+  );
+
+  // 前回、保存せずにページが閉じられた／再読み込みされた場合のみ下書きが残っている
+  useEffect(() => {
+    if (restoredDraft?.data?.showForm) setShowRestoreBanner(true);
+  }, [restoredDraft]);
+
+  function handleRestoreDraft() {
+    if (!restoredDraft?.data) return;
+    setForm(restoredDraft.data.form);
+    setEditId(restoredDraft.data.editId);
+    setShowForm(true);
+    setShowRestoreBanner(false);
+  }
+
+  function handleDiscardDraft() {
+    clearDraft();
+    setShowRestoreBanner(false);
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -54,6 +97,7 @@ export default function CustomersPage() {
     setShowForm(false);
     setEditId(null);
     setForm(EMPTY_FORM);
+    clearDraft(); // 意図的な破棄のため下書きも削除
   }
 
   function handleSave() {
@@ -78,6 +122,7 @@ export default function CustomersPage() {
     setShowForm(false);
     setEditId(null);
     setForm(EMPTY_FORM);
+    clearDraft(); // 本保存が完了したため自動下書きは削除する
     setSavedMsg(editId ? "得意先を更新しました。" : "得意先を登録しました。");
     setTimeout(() => setSavedMsg(""), 4000);
   }
@@ -111,6 +156,29 @@ export default function CustomersPage() {
               <p className="text-sm font-bold text-green-700">{savedMsg}</p>
             </div>
           )}
+
+          {/* 下書き復元バナー（再読み込み等で入力が中断された場合） */}
+          {showRestoreBanner && restoredDraft && (
+            <div className="rounded-xl bg-amber-50 p-3 ring-1 ring-amber-200">
+              <p className="text-xs font-bold text-amber-800">保存されていない得意先の入力があります。</p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                最終更新：{new Date(restoredDraft.updatedAt).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button type="button" onClick={handleRestoreDraft}
+                  className="min-h-[44px] flex-1 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white active:opacity-80">
+                  下書きを復元する
+                </button>
+                <button type="button" onClick={handleDiscardDraft}
+                  className="min-h-[44px] flex-1 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-700 active:opacity-80">
+                  破棄する
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 自動下書きの保存状態（フォーム表示中のみ動作） */}
+          <SaveStatusBar status={saveStatus} savedAt={savedAt} />
 
           {/* 追加ボタン */}
           {!showForm && (

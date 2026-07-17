@@ -30,6 +30,7 @@ import { draftKey } from "@/app/utils/draftStorage";
 import { useAutoDraft } from "@/hooks/useAutoDraft";
 import { SaveStatusBar } from "@/components/SaveStatusBar";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
+import { ProfitSummaryCard } from "@/components/ProfitSummaryCard";
 import { StructuredTextInput } from "@/components/StructuredTextInput";
 import { fldInput, fldSelect, readOnlyFld, lbl } from "@/components/formStyles";
 
@@ -311,6 +312,9 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* ── 利益管理カード（内部管理・PDF非出力・読み取り専用） ── */}
+        <ProfitSummaryCard projectId={projectId} />
 
         {/* ── 保険案件情報（保険案件の場合のみ表示） ─────────── */}
         {isInsurance && (

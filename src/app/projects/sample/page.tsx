@@ -5,6 +5,7 @@
 // TODO: 一括請求対象フラグは invoice_items 作成時に利用する。
 
 import Link from "next/link";
+import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getTestMode } from "@/app/utils/testMode";
@@ -327,6 +328,8 @@ export default function SampleProjectPage() {
             案件を検索して、見積修正・請求書作成・進捗確認を行います。
           </p>
         </header>
+
+        <SampleDeprecationBanner />
 
         <div className="space-y-3">
 
