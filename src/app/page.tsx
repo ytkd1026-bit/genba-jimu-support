@@ -8,7 +8,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
+import { getAppMode, APP_MODE_LABELS, type AppMode } from "@/app/utils/companySettings";
 import { BillingAlertCards } from "@/components/BillingAlertCards";
+import { TestChecklistCard } from "@/components/TestChecklistCard";
 
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
@@ -74,10 +76,12 @@ const STATUS_STYLE: Record<string, string> = {
 // ─── コンポーネント ───────────────────────────────────────────
 export default function Home() {
   const [mode,    setMode]    = useState<TestMode>("normal");
+  const [appMode, setAppMode] = useState<AppMode | null>(null);
   const [infoMsg, setInfoMsg] = useState("");
 
   useEffect(() => {
     setMode(getTestMode());
+    setAppMode(getAppMode());
   }, []);
 
   const isDemo = mode === "demo";
@@ -95,7 +99,19 @@ export default function Home() {
         <header className="mb-3 text-center">
           <h1 className="text-2xl font-bold text-stone-800 tracking-wide">現場の事務サポ</h1>
           <p className="mt-0.5 text-sm text-stone-500">見積・材料・請求・予定を、スマホでひとまとめ。</p>
+          {/* 現在の利用モード（実機テスト準備: 利用者が一目でわかるように表示） */}
+          {appMode && (
+            <Link href="/settings/company"
+              className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs ring-1 ring-stone-200 active:opacity-75">
+              <span className="text-stone-400">現在モード</span>
+              <span className="font-bold text-[#8B4A3C]">{APP_MODE_LABELS[appMode]}</span>
+              <span className="text-stone-300">›</span>
+            </Link>
+          )}
         </header>
+
+        {/* 実機テストチェックリスト */}
+        <TestChecklistCard />
 
         {/* よく使う作業（作業名で案内） */}
         <section className="mb-3 space-y-2">

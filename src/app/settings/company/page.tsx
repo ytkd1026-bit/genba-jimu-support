@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { APP_MODE_LABELS, type AppMode } from "@/app/utils/companySettings";
 
 // ─── 定数 ────────────────────────────────────────────────────
 const ACCOUNT_TYPES = ["普通", "当座"] as const;
@@ -65,6 +66,8 @@ const DEFAULT_BANK: BankForm = {
 export default function CompanySettingsPage() {
   const [company, setCompany] = useState<CompanyForm>(DEFAULT_COMPANY);
   const [bank, setBank] = useState<BankForm>(DEFAULT_BANK);
+  // 利用モード（初期値: 経営）。保存先は同じ genba_settings（appMode 項目）
+  const [appMode, setAppMode] = useState<AppMode>("management");
   const [saveMsg, setSaveMsg] = useState("");
   const [pdfInfo, setPdfInfo] = useState(false);
 
@@ -90,6 +93,7 @@ export default function CompanySettingsPage() {
         accountNumber: saved.accountNumber ?? DEFAULT_BANK.accountNumber,
         accountHolder: saved.accountHolder ?? DEFAULT_BANK.accountHolder,
       });
+      setAppMode(saved.appMode === "simple" ? "simple" : "management");
     } catch {
       // localStorage読み込み失敗時はデフォルトのまま
     }
@@ -107,7 +111,7 @@ export default function CompanySettingsPage() {
 
   function handleSave() {
     try {
-      const payload = { ...company, ...bank };
+      const payload = { ...company, ...bank, appMode };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
       setSaveMsg("事業者設定を保存しました。");
       setTimeout(() => setSaveMsg(""), 4000);
@@ -124,6 +128,7 @@ export default function CompanySettingsPage() {
     if (!ok) return;
     setCompany(DEFAULT_COMPANY);
     setBank(DEFAULT_BANK);
+    setAppMode("management");
     try {
       localStorage.removeItem(SETTINGS_STORAGE_KEY);
     } catch {
@@ -157,6 +162,46 @@ export default function CompanySettingsPage() {
         </header>
 
         <div className="space-y-4">
+
+          {/* ── 利用モード（表示のみ切り替え。データには影響しない） ── */}
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h2 className="mb-1 border-b border-stone-100 pb-2 text-sm font-bold text-stone-700">
+              利用モード
+            </h2>
+            <p className="mb-3 text-xs text-stone-400">
+              利益管理カードの表示内容を切り替えます。データの保存内容・計算結果は変わりません。
+            </p>
+            <div className="space-y-2">
+              {([
+                { value: "simple",     label: APP_MODE_LABELS.simple,     desc: "手残り予測・売上・原価・粗利・粗利率のみ表示" },
+                { value: "management", label: APP_MODE_LABELS.management, desc: "原価内訳・利益ランク・資金繰り（請求・入金）まで表示" },
+              ] as Array<{ value: AppMode; label: string; desc: string }>).map((opt) => (
+                <label key={opt.value}
+                  className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 ${
+                    appMode === opt.value ? "border-[#8B4A3C] bg-[#fdf0ec]" : "border-stone-200 bg-white"
+                  }`}>
+                  <input
+                    type="radio"
+                    name="appMode"
+                    value={opt.value}
+                    checked={appMode === opt.value}
+                    onChange={() => setAppMode(opt.value)}
+                    className="h-4 w-4 accent-[#8B4A3C]"
+                  />
+                  <span>
+                    <span className={`block text-sm font-bold ${appMode === opt.value ? "text-[#8B4A3C]" : "text-stone-700"}`}>
+                      {opt.label}
+                      {opt.value === "management" && <span className="ml-1 text-xs font-normal text-stone-400">（初期値）</span>}
+                    </span>
+                    <span className="block text-xs text-stone-400">{opt.desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-stone-400">
+              変更後は下の「保存する」を押してください。
+            </p>
+          </div>
 
           {/* ── 基本情報 ── */}
           <div className="rounded-2xl bg-white p-4 shadow-sm space-y-4">

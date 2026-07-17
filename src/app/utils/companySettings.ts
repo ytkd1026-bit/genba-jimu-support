@@ -98,6 +98,23 @@ export function getBankSettings(): BankSettings {
   };
 }
 
+// ─── 利用モード（経営／シンプル） ─────────────────────────────
+// 保存先は既存の genba_settings（company settings）。キーの追加のみで
+// 既存項目・保存形式は変更しない。モードは「表示」だけを切り替える。
+
+export type AppMode = "management" | "simple";
+
+export const APP_MODE_LABELS: Record<AppMode, string> = {
+  management: "経営モード",
+  simple: "シンプルモード",
+};
+
+/** 利用モードを取得する（未設定の初期値は「経営」） */
+export function getAppMode(): AppMode {
+  const raw = readRaw();
+  return raw.appMode === "simple" ? "simple" : "management";
+}
+
 /**
  * 会社設定の未完了項目を返す（S-7 請求漏れ防止の警告カード用）。
  * 空配列なら設定完了とみなす。デモ値のまま帳票を発行してしまう事故を防ぐ。

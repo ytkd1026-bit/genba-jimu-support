@@ -32,6 +32,7 @@ import { useEffect, useState } from "react";
 import { workItemsStore, type WorkItem } from "@/app/utils/workItems";
 import { getSavedInvoices } from "@/app/utils/savedInvoices";
 import { projectsStore } from "@/app/utils/projects";
+import { getAppMode, type AppMode } from "@/app/utils/companySettings";
 
 function fmtYen(n: number): string {
   return "¥" + n.toLocaleString("ja-JP");
@@ -66,6 +67,7 @@ type MoneyState = {
   items: WorkItem[];
   invoicedTotal: number; // 請求済（保存済み請求書の税込合計）
   isPaid: boolean;       // 案件ステータスが「入金済み」か
+  mode: AppMode;         // 利用モード（表示のみ切り替え。計算は両モードで同一）
 };
 
 export function ProfitSummaryCard({ projectId }: { projectId: string }) {
@@ -78,12 +80,13 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
       .filter((inv) => inv.projectId === projectId)
       .reduce((s, inv) => s + inv.total, 0);
     const isPaid = projectsStore.getById(projectId)?.status === "paid";
-    setMoney({ items, invoicedTotal, isPaid });
+    setMoney({ items, invoicedTotal, isPaid, mode: getAppMode() });
   }, [projectId]);
 
   if (money === null) return null;
 
-  const { items, invoicedTotal, isPaid } = money;
+  const { items, invoicedTotal, isPaid, mode } = money;
+  const isSimple = mode === "simple";
   const workItemsHref = `/projects/${encodeURIComponent(projectId)}/work-items`;
 
   // ── 利益（既存 WorkItem 項目の合算） ───────────────────────
@@ -118,30 +121,34 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
         <span className="text-[11px] text-amber-600">PDFには出ません</span>
       </div>
 
-      {/* ── 上層: 手残り予測（最大表示）＋ 粗利率・利益ランク・回収率 ── */}
+      {/* ── 上層: 手残り予測（最大表示）。経営モードのみ利益ランク・回収率も表示 ── */}
       <div className="rounded-xl bg-white px-4 py-4 text-center ring-1 ring-amber-200/60">
         <p className="text-xs font-bold text-amber-800">この案件の手残り予測</p>
         <p className={`mt-1 text-3xl font-bold tracking-tight ${netCls}`}>
           {fmtYen(netProfit)}
         </p>
-        <div className="mt-2 grid grid-cols-3 gap-1.5">
-          <div className="rounded-lg bg-amber-50 px-1 py-1.5">
-            <p className="text-[10px] text-amber-600">粗利率</p>
-            <p className="text-sm font-bold text-amber-900">{fmtRate(grossProfitRate)}</p>
+        {isSimple ? (
+          <p className="mt-1 text-xs text-amber-700">粗利率 {fmtRate(grossProfitRate)}</p>
+        ) : (
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            <div className="rounded-lg bg-amber-50 px-1 py-1.5">
+              <p className="text-[10px] text-amber-600">粗利率</p>
+              <p className="text-sm font-bold text-amber-900">{fmtRate(grossProfitRate)}</p>
+            </div>
+            <div className="rounded-lg bg-amber-50 px-1 py-1.5">
+              <p className="text-[10px] text-amber-600">利益ランク</p>
+              <p className="mt-0.5">
+                <span className={`inline-block min-w-[28px] rounded-full px-2 text-sm font-bold ${RANK_CLS[rank]}`}>
+                  {rank}
+                </span>
+              </p>
+            </div>
+            <div className="rounded-lg bg-amber-50 px-1 py-1.5">
+              <p className="text-[10px] text-amber-600">回収率</p>
+              <p className="text-sm font-bold text-amber-900">{fmtRate(collectionRate)}</p>
+            </div>
           </div>
-          <div className="rounded-lg bg-amber-50 px-1 py-1.5">
-            <p className="text-[10px] text-amber-600">利益ランク</p>
-            <p className="mt-0.5">
-              <span className={`inline-block min-w-[28px] rounded-full px-2 text-sm font-bold ${RANK_CLS[rank]}`}>
-                {rank}
-              </span>
-            </p>
-          </div>
-          <div className="rounded-lg bg-amber-50 px-1 py-1.5">
-            <p className="text-[10px] text-amber-600">回収率</p>
-            <p className="text-sm font-bold text-amber-900">{fmtRate(collectionRate)}</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {items.length === 0 && (
@@ -150,7 +157,29 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
         </p>
       )}
 
-      {/* ── 下層: 詳細内訳（折りたたみなし・0円でも全項目表示） ── */}
+      {/* ── 下層（シンプルモード）: 売上・原価・粗利・粗利率のみ ──
+           表示を減らしても計算は経営モードと同一
+           （原価 = 材料費 + 外注費 + その他原価。外注費は必ず含める） */}
+      {isSimple ? (
+        <dl className="mt-3 space-y-1.5 text-sm">
+          <div className="flex items-center justify-between">
+            <dt className="text-amber-800">売上（税抜）</dt>
+            <dd className="font-bold text-amber-900">{fmtYen(sales)}</dd>
+          </div>
+          <div className="flex items-center justify-between border-t border-amber-200/60 pt-1.5">
+            <dt className="text-amber-800">原価</dt>
+            <dd className="text-amber-900">{fmtYen(costTotal)}</dd>
+          </div>
+          <div className="flex items-center justify-between border-t border-amber-200/60 pt-1.5">
+            <dt className="font-bold text-amber-800">粗利</dt>
+            <dd className={`font-bold ${profitCls}`}>{fmtYen(grossProfit)}</dd>
+          </div>
+          <div className="flex items-center justify-between">
+            <dt className="text-amber-800">粗利率</dt>
+            <dd className="text-amber-900">{fmtRate(grossProfitRate)}</dd>
+          </div>
+        </dl>
+      ) : (
       <dl className="mt-3 space-y-1.5 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-amber-800">売上（税抜）</dt>
@@ -199,6 +228,7 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
           <dd className={`${unpaidTotal > 0 ? "font-bold text-red-600" : "text-amber-900"}`}>{fmtYen(unpaidTotal)}</dd>
         </div>
       </dl>
+      )}
 
       {costMissing && (
         <div className="mt-2 rounded-xl bg-white px-3 py-2 ring-1 ring-amber-300">
@@ -215,9 +245,11 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
           固定費が未設定のため、現在の手残り予測は粗利と同額です。税金・社会保険・借入返済・事業主生活費は含みません。
         </p>
       )}
-      <p className="mt-1 text-[11px] leading-relaxed text-amber-600">
-        入金済は案件の進捗状況が「入金済み」のとき請求済み全額として表示します。
-      </p>
+      {!isSimple && (
+        <p className="mt-1 text-[11px] leading-relaxed text-amber-600">
+          入金済は案件の進捗状況が「入金済み」のとき請求済み全額として表示します。
+        </p>
+      )}
 
       <Link href={workItemsHref}
         className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-xl border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 active:opacity-75">
