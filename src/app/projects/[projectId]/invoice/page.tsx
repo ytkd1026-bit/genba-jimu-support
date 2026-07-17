@@ -205,7 +205,12 @@ export default function ProjectInvoicePage() {
       // 保存時点の明細（請求対象＝除外後）をスナップショット。lineSnapshots が請求対象の正本
       lineSnapshots: workItemsToSnapshots(includedItems),
     };
-    upsertInvoice(inv);
+    // 容量超過などで書き込みが失敗した場合は null（S-4: 無言失敗の防止）
+    try {
+      upsertInvoice(inv);
+    } catch {
+      return null;
+    }
     return inv;
   }
 
@@ -226,7 +231,12 @@ export default function ProjectInvoicePage() {
         bankFeeNote,
         updatedAt: new Date().toLocaleString("ja-JP"),
       };
-      upsertInvoice(inv);
+      // 容量超過などで書き込みが失敗した場合は失敗扱い（S-4: 無言失敗の防止）
+      try {
+        upsertInvoice(inv);
+      } catch {
+        inv = null;
+      }
     } else {
       inv = saveInvoice();
     }
@@ -295,7 +305,13 @@ export default function ProjectInvoicePage() {
         bankFeeNote,
         updatedAt: new Date().toLocaleString("ja-JP"),
       };
-      upsertInvoice(inv);
+      // 書き込み失敗時はPDFを発行しない（S-4: 無言失敗の防止）
+      try {
+        upsertInvoice(inv);
+      } catch {
+        alert("保存に失敗しました。PDFは発行していません。");
+        return;
+      }
       setSaved(inv);
     }
     clearDraft(); // 入力欄はすべて本保存済みのため自動下書きは削除する

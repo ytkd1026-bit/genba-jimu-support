@@ -166,6 +166,8 @@ export default function ProjectEstimatePage() {
   }
 
   // 現在の版（latest）を現在の WorkItem で上書き保存
+  // 容量超過などで localStorage への書き込みが失敗した場合は null を返す
+  // （S-4: 無言失敗の防止。呼び出し側で必ず失敗メッセージを出す）
   function overwriteLatest(): SavedEstimate | null {
     if (!latest) return null;
     const est = buildEstimate({
@@ -176,12 +178,16 @@ export default function ProjectEstimatePage() {
       previousEstimateId: latest.previousEstimateId,
       revisionReason: latest.revisionReason,
     });
-    upsertEstimate(est);
-    setSelectedEstimateId(est.id);
+    try {
+      upsertEstimate(est);
+      setSelectedEstimateId(est.id);
+    } catch {
+      return null;
+    }
     return est;
   }
 
-  // 新しい版として保存（前版は残す）
+  // 新しい版として保存（前版は残す）。書き込み失敗時は null（S-4）
   function saveNewVersion(): SavedEstimate | null {
     const saved = getSavedEstimates();
     const version = (latest?.version ?? 0) + 1;
@@ -194,8 +200,12 @@ export default function ProjectEstimatePage() {
       previousEstimateId: latest?.id,
       revisionReason: latest ? effectiveRevisionReason : undefined,
     });
-    upsertEstimate(est);
-    setSelectedEstimateId(est.id);
+    try {
+      upsertEstimate(est);
+      setSelectedEstimateId(est.id);
+    } catch {
+      return null;
+    }
     return est;
   }
 
@@ -208,6 +218,12 @@ export default function ProjectEstimatePage() {
     setTimeout(() => setMsg(null), 6000);
   }
 
+  // 保存失敗時の共通メッセージ（S-4: 無言失敗の防止。文言は既存画面と同一）
+  function showSaveFailed() {
+    setMsg({ ok: false, text: "保存に失敗しました。入力内容は下書きとして残っています。" });
+    setTimeout(() => setMsg(null), 6000);
+  }
+
   function handleSaveFirst() {
     if (!hasContent()) {
       setMsg({ ok: false, text: "工事項目がありません。「04 工事項目・原価」で追加してください。" });
@@ -215,12 +231,14 @@ export default function ProjectEstimatePage() {
     }
     const est = saveNewVersion(); // 初回は v01
     if (est) afterSave(est, `見積を保存しました（${est.estimateNo}）。`);
+    else showSaveFailed();
   }
 
   function handleOverwrite() {
     if (!hasContent() || !latest) return;
     const est = overwriteLatest();
     if (est) afterSave(est, `現在の版を上書き保存しました（${est.estimateNo}）。`);
+    else showSaveFailed();
   }
 
   function handleNewVersion() {
@@ -231,6 +249,7 @@ export default function ProjectEstimatePage() {
     }
     const est = saveNewVersion();
     if (est) afterSave(est, `新しい版として保存しました（${est.estimateNo}・v${est.version}）。`);
+    else showSaveFailed();
   }
 
   // 現在の工事項目から新しい版を作成モードへ
