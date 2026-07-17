@@ -36,8 +36,10 @@ import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 import { fldSelect, lbl } from "@/components/formStyles";
 
+// 数値正規化ガード（S-3）: 保存データに null 等が混入していても明細表示でクラッシュしない。
+// 正常な有限数では恒等（従来と同一表示）。
 function fmtYen(n: number): string {
-  return "¥" + n.toLocaleString("ja-JP");
+  return "¥" + (Number.isFinite(n) ? n : 0).toLocaleString("ja-JP");
 }
 
 const REVISION_REASONS = [

@@ -38,8 +38,10 @@ import { fldInput, lbl } from "@/components/formStyles";
 
 const DEFAULT_BANK_FEE_NOTE = "振込手数料はご負担くださいますようお願いいたします。";
 
+// 数値正規化ガード（S-3）: 保存データに null 等が混入していても明細表示でクラッシュしない。
+// 正常な有限数では恒等（従来と同一表示）。
 function fmtYen(n: number): string {
-  return "¥" + n.toLocaleString("ja-JP");
+  return "¥" + (Number.isFinite(n) ? n : 0).toLocaleString("ja-JP");
 }
 
 // 自動下書きの対象: 入力欄（日付・備考）と請求除外の選択。
