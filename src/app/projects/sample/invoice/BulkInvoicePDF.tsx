@@ -7,7 +7,7 @@
 // TODO: インボイス登録番号は事業者設定からPDFへ反映する
 
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
 // フォント登録・会社情報型・金額整形は PdfCommon に一元化している（S-8 PDF統一）。
 // PdfCommon を import した時点で NotoSansJP が登録される。
 import { fmtYen, type CompanyInfoForPDF } from '@/components/pdf/PdfCommon';
@@ -575,6 +575,6 @@ function BulkInvoicePDFDocument({
 }
 
 // ─── ファクトリ関数（動的importで呼び出す） ────────────────────
-export function makeBulkInvoicePDF(props: BulkInvoicePDFProps): React.ReactElement {
+export function makeBulkInvoicePDF(props: BulkInvoicePDFProps): React.ReactElement<DocumentProps> {
   return <BulkInvoicePDFDocument {...props} />;
 }

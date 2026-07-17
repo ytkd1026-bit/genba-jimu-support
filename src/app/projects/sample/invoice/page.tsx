@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { bulkInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
@@ -364,8 +365,7 @@ export default function InvoicePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeBulkInvoicePDF } = await import('./BulkInvoicePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeBulkInvoicePDF({
+      const element: ReactElement<DocumentProps> = makeBulkInvoicePDF({
         invoiceNo,
         invoiceDate,
         periodFrom,

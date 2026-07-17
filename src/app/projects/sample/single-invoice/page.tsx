@@ -9,7 +9,8 @@
 
 import Link from "next/link";
 import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { getTestMode } from "@/app/utils/testMode";
 import { matchesKeyword } from "@/app/utils/search";
@@ -271,8 +272,7 @@ export default function SingleInvoicePage() {
     try {
       const { pdf } = await import("@react-pdf/renderer");
       const { makeSingleInvoicePDF } = await import("./SingleInvoicePDF");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeSingleInvoicePDF({
+      const element: ReactElement<DocumentProps> = makeSingleInvoicePDF({
         invoiceNo: INVOICE_NO,
         invoiceDate,
         dueDate,

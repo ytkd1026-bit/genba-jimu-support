@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { SampleDeprecationBanner } from "@/components/SampleDeprecationBanner";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactElement } from "react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import {
   estimatePdfFileName,
   estimateOrderPdfFileName,
@@ -604,8 +605,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimatePDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
+      const element: ReactElement<DocumentProps> = makeEstimatePDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimatePdfFileName({
         clientName:  submitTo,
@@ -632,8 +632,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeStoragePDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeStoragePDF({
+      const element: ReactElement<DocumentProps> = makeStoragePDF({
         lines,
         subtotalSum,
         taxSum,
@@ -673,8 +672,7 @@ export default function EstimatePage() {
     try {
       const { pdf } = await import('@react-pdf/renderer');
       const { makeEstimateOrderPDF } = await import('./EstimatePDF');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const element: any = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
+      const element: ReactElement<DocumentProps> = makeEstimateOrderPDF({ lines, subtotalSum, taxSum, totalWithTax, companyInfo, clientName: submitTo, projectName: estProjectName, siteAddress: estAddress });
       const blob = await pdf(element).toBlob();
       await downloadPdf(blob, estimateOrderPdfFileName({
         clientName:  submitTo,

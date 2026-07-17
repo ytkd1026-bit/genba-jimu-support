@@ -2,7 +2,7 @@
 // 原価・粗利・利益率は一切含まない
 
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
 // フォント登録・会社情報型・金額整形は PdfCommon に一元化している（S-8 PDF統一）。
 // PdfCommon を import した時点で NotoSansJP が登録される。
 import {
@@ -510,6 +510,6 @@ function SingleInvoicePDFDocument({
 }
 
 // ─── ファクトリ関数 ───────────────────────────────────────────
-export function makeSingleInvoicePDF(props: SingleInvoicePDFProps): React.ReactElement {
+export function makeSingleInvoicePDF(props: SingleInvoicePDFProps): React.ReactElement<DocumentProps> {
   return <SingleInvoicePDFDocument {...props} />;
 }

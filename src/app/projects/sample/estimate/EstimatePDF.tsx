@@ -4,7 +4,7 @@
 // ヘッダー・自社情報・明細テーブル・合計のスタイルは共通部品
 // （src/components/pdf/PdfCommon.tsx）へ分解した。デザインは分解前と同一。
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
 import {
   ACCENT,
   BORDER,
@@ -163,7 +163,7 @@ function EstimatePDFDocument(props: EstimatePDFProps) {
 }
 
 // ページコンポーネントから動的importで呼び出すファクトリ関数
-export function makeEstimatePDF(props: EstimatePDFProps): React.ReactElement {
+export function makeEstimatePDF(props: EstimatePDFProps): React.ReactElement<DocumentProps> {
   return <EstimatePDFDocument {...props} />;
 }
 
@@ -402,7 +402,7 @@ function EstimateOrderPDFDocument(props: EstimatePDFProps) {
 }
 
 // ファクトリ関数（見積書兼注文書PDF）
-export function makeEstimateOrderPDF(props: EstimatePDFProps): React.ReactElement {
+export function makeEstimateOrderPDF(props: EstimatePDFProps): React.ReactElement<DocumentProps> {
   return <EstimateOrderPDFDocument {...props} />;
 }
 
@@ -732,6 +732,6 @@ function StoragePDFDocument(props: StoragePDFProps) {
 }
 
 // ファクトリ関数（保存用PDF）
-export function makeStoragePDF(props: StoragePDFProps): React.ReactElement {
+export function makeStoragePDF(props: StoragePDFProps): React.ReactElement<DocumentProps> {
   return <StoragePDFDocument {...props} />;
 }
