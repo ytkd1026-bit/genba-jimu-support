@@ -109,6 +109,14 @@ function fmtYen(n: number): string {
   return n.toLocaleString("ja-JP") + "円";
 }
 
+/**
+ * 数値正規化ガード（S-1）: 有限数以外（欠損・文字列・NaN・Infinity）は 0 として集計する。
+ * 正常データでは恒等（値をそのまま返す）。保存データは変更しない（読み取り側のみ）。
+ */
+function fin(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
 // ─── ステータス表示ラベル ──────────────────────────────────────
 const STATUS_LABEL: Record<BillingStatus, string> = {
   unbilled:        "未請求",
@@ -187,7 +195,7 @@ function ProjectCard({
         {/* 金額（目立つ表示） */}
         <div className="rounded-xl bg-[#fdf0ec] px-3 py-2 text-right">
           <p className="text-xs text-[#8B4A3C]">税込金額</p>
-          <p className="text-xl font-bold text-[#8B4A3C]">{fmtYen(project.totalAmount)}</p>
+          <p className="text-xl font-bold text-[#8B4A3C]">{fmtYen(fin(project.totalAmount))}</p>
         </div>
       </div>
 
@@ -317,7 +325,7 @@ export default function UnbilledPage() {
   const unbilledCount       = invoiceProjects.filter((p) => p.billingStatus === "unbilled").length;
   const unbilledTotal       = invoiceProjects
     .filter((p) => p.billingStatus === "unbilled")
-    .reduce((s, p) => s + p.totalAmount, 0);
+    .reduce((s, p) => s + fin(p.totalAmount), 0);
   const singleInvoicedCount = invoiceProjects.filter((p) => p.billingStatus === "single_invoiced").length;
   const bulkSelectedCount   = invoiceProjects.filter((p) => p.billingStatus === "bulk_selected").length;
   const paidWaitingCount    = invoiceProjects.filter((p) => p.billingStatus === "paid_waiting").length;

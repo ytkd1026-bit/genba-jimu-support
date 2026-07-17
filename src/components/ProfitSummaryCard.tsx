@@ -38,6 +38,15 @@ function fmtYen(n: number): string {
   return "¥" + n.toLocaleString("ja-JP");
 }
 
+/**
+ * 数値正規化ガード（S-1）: 有限数以外（欠損・文字列・NaN・Infinity）は 0 として集計する。
+ * 正常データでは恒等（値をそのまま返す）。1件の異常データで手残り予測・請求済が
+ * NaN 表示になるのを防ぐ。保存データは変更しない（読み取り側のみ）。
+ */
+function fin(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
 function fmtRate(n: number): string {
   return n.toFixed(1) + "%";
 }
@@ -78,7 +87,7 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
     const items = workItemsStore.getByProjectId(projectId);
     const invoicedTotal = getSavedInvoices()
       .filter((inv) => inv.projectId === projectId)
-      .reduce((s, inv) => s + inv.total, 0);
+      .reduce((s, inv) => s + fin(inv.total), 0);
     const isPaid = projectsStore.getById(projectId)?.status === "paid";
     setMoney({ items, invoicedTotal, isPaid, mode: getAppMode() });
   }, [projectId]);
@@ -90,11 +99,11 @@ export function ProfitSummaryCard({ projectId }: { projectId: string }) {
   const workItemsHref = `/projects/${encodeURIComponent(projectId)}/work-items`;
 
   // ── 利益（既存 WorkItem 項目の合算） ───────────────────────
-  const sales = items.reduce((s, w) => s + w.sellingAmount, 0);
-  const material = items.reduce((s, w) => s + w.materialCost, 0);
-  const subcontract = items.reduce((s, w) => s + w.subcontractCost, 0);
+  const sales = items.reduce((s, w) => s + fin(w.sellingAmount), 0);
+  const material = items.reduce((s, w) => s + fin(w.materialCost), 0);
+  const subcontract = items.reduce((s, w) => s + fin(w.subcontractCost), 0);
   const otherCosts = items.reduce(
-    (s, w) => s + w.laborCost + w.expenseCost + w.otherCost,
+    (s, w) => s + fin(w.laborCost) + fin(w.expenseCost) + fin(w.otherCost),
     0,
   );
   const costTotal = material + subcontract + otherCosts;

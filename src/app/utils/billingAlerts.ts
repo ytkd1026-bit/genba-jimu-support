@@ -48,6 +48,15 @@ function parseDueDate(v: string | undefined): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
+/**
+ * 数値正規化ガード（S-1）: 有限数以外（欠損・文字列・NaN・Infinity）は 0 として集計する。
+ * 正常データでは恒等（値をそのまま返す）。1件の異常データで合計が NaN になり
+ * 警告判定が壊れるのを防ぐ。保存データは変更しない（読み取り側のみ）。
+ */
+function fin(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
 function todayIso(): string {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -121,8 +130,8 @@ export function collectBillingAlerts(): BillingAlerts {
     if (COST_CHECK_STATUSES.includes(p.status)) {
       const items = workItemsStore.getByProjectId(p.projectId);
       if (items.length > 0) {
-        const selling = items.reduce((s, w) => s + w.sellingAmount, 0);
-        const cost = items.reduce((s, w) => s + w.totalCost, 0);
+        const selling = items.reduce((s, w) => s + fin(w.sellingAmount), 0);
+        const cost = items.reduce((s, w) => s + fin(w.totalCost), 0);
         if (selling > 0 && cost === 0) {
           missingCost.push({
             projectId: p.projectId,
