@@ -1,0 +1,9 @@
+# Supabase Edge Functions 設定
+# Make等の外部から叩く関数は verify_jwt=false にし、
+# 代わりに x-edge-token（EDGE_SHARED_TOKEN）で発信元検証する。
+
+[functions.ask-multi-ai]
+verify_jwt = false
+
+[functions.synthesize]
+verify_jwt = false
