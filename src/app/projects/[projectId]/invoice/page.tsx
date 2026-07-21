@@ -32,6 +32,19 @@ import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDown
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 import { fldInput, lbl } from "@/components/formStyles";
+import { draftKey } from "@/app/utils/draftStorage";
+import { useAutoDraft } from "@/hooks/useAutoDraft";
+import { SaveStatusBar } from "@/components/SaveStatusBar";
+
+// 編集中の請求ヘッダ入力（請求日・支払期限・備考・除外項目）の自動下書き型。
+// 明細金額は WorkItem を正本とするため下書きには入力欄のみを保持する。
+type InvoiceDraft = {
+  invoiceDate: string;
+  dueDate: string;
+  invoiceNote: string;
+  bankFeeNote: string;
+  excluded: string[];
+};
 
 const DEFAULT_BANK_FEE_NOTE = "振込手数料はご負担くださいますようお願いいたします。";
 
@@ -69,6 +82,7 @@ export default function ProjectInvoicePage() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [restoreDismissed, setRestoreDismissed] = useState(false);
 
   useEffect(() => {
     const p = projectsStore.getById(projectId);
@@ -91,6 +105,40 @@ export default function ProjectInvoicePage() {
       setMode("edit");
     }
   }, [projectId]);
+
+  // 編集ヘッダ入力の自動下書き（保存前の請求日・期限・備考・除外を保護）。
+  // 保存済み請求書を表示中（view）は下書きしない。
+  const invoiceDraftData = useMemo<InvoiceDraft>(
+    () => ({ invoiceDate, dueDate, invoiceNote, bankFeeNote, excluded: [...excluded] }),
+    [invoiceDate, dueDate, invoiceNote, bankFeeNote, excluded],
+  );
+  const { saveStatus, savedAt, clearDraft, restoredDraft } = useAutoDraft<InvoiceDraft>(
+    draftKey("invoice", projectId), "invoice", projectId, invoiceDraftData,
+    { enabled: mode === "edit", debounceMs: 800 },
+  );
+
+  // 下書き復元バナーの表示可否（編集モードで、意味のある入力がある下書きがあるとき）。
+  // effect 内 setState を避けるため派生値で算出する。
+  const showRestore =
+    mode === "edit" && !restoreDismissed && !!restoredDraft &&
+    ((restoredDraft.data.dueDate ?? "") !== "" ||
+      (restoredDraft.data.invoiceNote ?? "") !== "" ||
+      (restoredDraft.data.excluded?.length ?? 0) > 0);
+
+  function handleRestoreDraft() {
+    if (!restoredDraft) return;
+    const d = restoredDraft.data;
+    if (d.invoiceDate) setInvoiceDate(d.invoiceDate);
+    setDueDate(d.dueDate ?? "");
+    setInvoiceNote(d.invoiceNote ?? "");
+    setBankFeeNote(d.bankFeeNote ?? DEFAULT_BANK_FEE_NOTE);
+    setExcluded(new Set(d.excluded ?? []));
+    setRestoreDismissed(true);
+  }
+  function handleDiscardDraft() {
+    clearDraft();
+    setRestoreDismissed(true);
+  }
 
   // 表示明細・内訳
   const includedItems = useMemo(
@@ -178,6 +226,8 @@ export default function ProjectInvoicePage() {
     if (inv) {
       setSaved(inv);
       setMode("view");
+      clearDraft(); // 本保存できたので編集下書きは不要
+      setRestoreDismissed(true);
       setMsg({ ok: true, text: `請求書を保存しました（${inv.invoiceNo}）。` });
     } else {
       setMsg({ ok: false, text: "保存に失敗しました。" });
@@ -214,6 +264,8 @@ export default function ProjectInvoicePage() {
       }
       setSaved(inv);
       setMode("view");
+      clearDraft(); // PDF発行前に本保存できたので編集下書きは不要
+      setRestoreDismissed(true);
       lines = snapshotsToSellingLines(inv.lineSnapshots ?? []);
       bd = inv.taxBreakdown ?? breakdown;
       docNo = inv.invoiceNo;
@@ -310,6 +362,27 @@ export default function ProjectInvoicePage() {
           <span className="text-stone-400">請求番号</span>
           <span className="font-mono font-bold text-stone-700">{docNumber}</span>
         </div>
+
+        {/* 編集中の入力は自動で下書き保存される（本保存で確定） */}
+        {mode === "edit" && <SaveStatusBar status={saveStatus} savedAt={savedAt} />}
+
+        {mode === "edit" && showRestore && (
+          <div className="mb-3 overflow-hidden rounded-2xl border border-amber-300 bg-amber-50 shadow-sm">
+            <div className="border-b border-amber-200 bg-amber-100 px-4 py-2.5">
+              <p className="text-sm font-bold text-amber-800">前回入力途中の請求内容があります</p>
+            </div>
+            <div className="flex gap-2 px-4 py-3">
+              <button type="button" onClick={handleRestoreDraft}
+                className="flex-1 min-h-[44px] rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white active:opacity-80">
+                下書きを復元する
+              </button>
+              <button type="button" onClick={handleDiscardDraft}
+                className="flex-1 min-h-[44px] rounded-xl border border-amber-300 bg-white py-2.5 text-sm font-bold text-amber-700 active:opacity-80">
+                破棄する
+              </button>
+            </div>
+          </div>
+        )}
 
         {mode === "view" && saved && (
           <div className="mb-3 rounded-xl bg-amber-50 p-3 text-xs ring-1 ring-amber-200">

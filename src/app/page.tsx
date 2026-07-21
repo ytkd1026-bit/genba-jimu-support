@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
+import { ProjectWarningCards } from "@/components/ProjectWarningCards";
 
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
@@ -94,6 +95,9 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-stone-800 tracking-wide">現場の事務サポ</h1>
           <p className="mt-0.5 text-sm text-stone-500">見積・材料・請求・予定を、スマホでひとまとめ。</p>
         </header>
+
+        {/* S-7 請求漏れ・入力漏れ 警告（該当があるものだけ表示・読取専用） */}
+        <ProjectWarningCards />
 
         {/* よく使う作業（作業名で案内） */}
         <section className="mb-3 space-y-2">

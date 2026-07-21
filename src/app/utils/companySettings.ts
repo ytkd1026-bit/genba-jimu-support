@@ -114,3 +114,20 @@ export function getCompanyInfoForPdf(): CompanyInfoForPdf {
     invoiceNumber:  c.invoiceNumber,
   };
 }
+
+/**
+ * 会社設定が「未完了」かどうかを判定する（S-7 警告用・読取専用）。
+ * 保存済み設定が無い、または必須項目（屋号・インボイス番号・振込先銀行名）が
+ * 空、もしくは既定プレースホルダのままなら未完了とみなす。
+ * getCompanySettings は未設定をデフォルト補完するため、ここでは生の保存値を見る。
+ */
+export function isCompanySettingsIncomplete(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = readRaw();
+  const filled = (v: unknown, placeholder: string): boolean =>
+    typeof v === "string" && v.trim() !== "" && v.trim() !== placeholder;
+  const businessOk = filled(raw.businessName, DEFAULT_COMPANY_SETTINGS.businessName);
+  const invoiceOk = filled(raw.invoiceNumber, DEFAULT_COMPANY_SETTINGS.invoiceNumber);
+  const bankOk = filled(raw.bankName, DEFAULT_BANK_SETTINGS.bankName);
+  return !(businessOk && invoiceOk && bankOk);
+}
