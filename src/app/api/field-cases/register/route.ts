@@ -36,14 +36,24 @@ import {
   uploadFieldPhoto,
   type FieldCaseInput,
   type FieldPhotoInput,
+  type DiagnosisStatus,
 } from "@/app/utils/fieldCases";
 
 export const dynamic = "force-dynamic";
 
+function isDiagnosisStatus(v: unknown): v is DiagnosisStatus {
+  return (
+    v === "suspected" ||
+    v === "confirmed" ||
+    v === "manufacturer_confirmed" ||
+    v === "unresolved"
+  );
+}
+
 type PhotoPayload = {
   fileName?: string;
   contentType?: string;
-  base64?: string;      // data URL でも純 base64 でも可
+  base64?: string;      // data URL でも純 base64 でも可（無い場合はメタデータ先行登録）
   photoTag?: string;
   caption?: string;
 };
@@ -89,8 +99,12 @@ export async function POST(req: NextRequest) {
     manufacturedOn: typeof body.manufacturedOn === "string" ? body.manufacturedOn : undefined,
     symptoms: asStringArray(body.symptoms),
     cause: typeof body.cause === "string" ? body.cause : undefined,
+    suspectedCause: typeof body.suspectedCause === "string" ? body.suspectedCause : undefined,
+    confirmedCause: typeof body.confirmedCause === "string" ? body.confirmedCause : undefined,
+    diagnosisStatus: isDiagnosisStatus(body.diagnosisStatus) ? body.diagnosisStatus : undefined,
     diagnosis: typeof body.diagnosis === "string" ? body.diagnosis : undefined,
     recommendedActions: asStringArray(body.recommendedActions),
+    repairCandidates: asStringArray(body.repairCandidates),
     emergencyAction: typeof body.emergencyAction === "string" ? body.emergencyAction : undefined,
     aiJudgment: typeof body.aiJudgment === "string" ? body.aiJudgment : undefined,
     risk: typeof body.risk === "string" ? body.risk : undefined,
@@ -110,20 +124,32 @@ export async function POST(req: NextRequest) {
       const tempId = crypto.randomUUID();
       for (let i = 0; i < photoPayloads.length; i++) {
         const p = photoPayloads[i];
-        if (!p?.base64) continue;
-        const { bytes, contentType } = base64ToBytes(p.base64);
-        const fileName = p.fileName ?? `${i + 1}.jpg`;
-        uploaded.push(
-          await uploadFieldPhoto(supabase, {
-            caseId: tempId,
-            file: bytes,
-            fileName,
-            contentType: p.contentType ?? contentType,
-            photoTag: p.photoTag,
-            caption: p.caption,
+        const fileName = p?.fileName ?? `${i + 1}.jpg`;
+        if (p?.base64) {
+          // 実ファイルあり → Storage へアップロードして URL 付きで登録
+          const { bytes, contentType } = base64ToBytes(p.base64);
+          uploaded.push(
+            await uploadFieldPhoto(supabase, {
+              caseId: tempId,
+              file: bytes,
+              fileName,
+              contentType: p.contentType ?? contentType,
+              photoTag: p.photoTag,
+              caption: p.caption,
+              sortOrder: i,
+            }),
+          );
+        } else {
+          // 実ファイルなし → メタデータのみ先行登録（pending_upload）
+          uploaded.push({
+            storagePath: `${tempId}/${fileName}`,
+            url: null,
+            photoTag: p?.photoTag,
+            caption: p?.caption,
             sortOrder: i,
-          }),
-        );
+            photoStatus: "pending_upload",
+          });
+        }
       }
     }
     input.photos = uploaded;

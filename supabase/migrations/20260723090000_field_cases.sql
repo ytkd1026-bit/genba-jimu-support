@@ -20,6 +20,17 @@
 create extension if not exists "pgcrypto";   -- gen_random_uuid()
 create extension if not exists "pg_trgm";     -- 日本語部分一致・類似検索用の GIN インデックス
 
+-- ── IMMUTABLE な配列→文字列ヘルパ ───────────────────────────────────────────
+-- 標準 array_to_string は STABLE 指定のため生成カラム（IMMUTABLE 要件）に使えない。
+-- text[] に限れば実質 immutable なので、明示的に IMMUTABLE なラッパを用意する。
+create or replace function public.array_to_text_imm(arr text[])
+returns text
+language sql
+immutable
+as $$
+  select coalesce(array_to_string(arr, ' '), '');
+$$;
+
 -- ── 更新日時トリガ関数 ───────────────────────────────────────────────────────
 create or replace function public.set_updated_at()
 returns trigger
@@ -61,10 +72,10 @@ create table if not exists public.field_cases (
   -- 全文検索用の生成カラム ---------------------------------------------------
   -- 原因・症状・対応方法を中心に、検索したい本文を1本にまとめる（部分一致 pg_trgm 用）
   search_body text generated always as (
-    coalesce(array_to_string(symptoms, ' '), '') || ' ' ||
+    public.array_to_text_imm(symptoms) || ' ' ||
     coalesce(cause, '')            || ' ' ||
     coalesce(diagnosis, '')        || ' ' ||
-    coalesce(array_to_string(recommended_actions, ' '), '') || ' ' ||
+    public.array_to_text_imm(recommended_actions) || ' ' ||
     coalesce(emergency_action, '') || ' ' ||
     coalesce(ai_judgment, '')      || ' ' ||
     coalesce(risk, '')             || ' ' ||
@@ -74,12 +85,13 @@ create table if not exists public.field_cases (
   ) stored,
 
   -- 語トークン検索用（型式・エラー番号などの英数字トークンに有効）
+  -- config は pg_catalog.simple とスキーマ修飾する（生成カラムの immutable 要件のため）
   search_vector tsvector generated always as (
-    to_tsvector('simple',
-      coalesce(array_to_string(symptoms, ' '), '') || ' ' ||
+    to_tsvector('pg_catalog.simple',
+      public.array_to_text_imm(symptoms) || ' ' ||
       coalesce(cause, '')            || ' ' ||
       coalesce(diagnosis, '')        || ' ' ||
-      coalesce(array_to_string(recommended_actions, ' '), '') || ' ' ||
+      public.array_to_text_imm(recommended_actions) || ' ' ||
       coalesce(emergency_action, '') || ' ' ||
       coalesce(risk, '')             || ' ' ||
       coalesce(model_number, '')

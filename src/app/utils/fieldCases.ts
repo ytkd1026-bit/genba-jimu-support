@@ -13,6 +13,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const FIELD_PHOTO_BUCKET = "field-photos";
 
+/** 診断ステータス。原因が推定/確定/メーカー確定/未解決のいずれかを表す。 */
+export type DiagnosisStatus =
+  | "suspected"              // 推定（未確定）
+  | "confirmed"             // 現地診断で確定
+  | "manufacturer_confirmed" // メーカー点検で確定
+  | "unresolved";           // 未解決
+
+/** 写真の登録状態。実ファイル未アップロードのメタデータ先行登録を表現する。 */
+export type PhotoStatus = "pending_upload" | "uploaded" | "failed";
+
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
 
 /** 登録前の入力（画像は別途アップロードして photos に URL を渡す）。 */
@@ -24,24 +34,29 @@ export type FieldCaseInput = {
   /** 製造年月。YYYY-MM または YYYY-MM-DD。年月のみは月初として保存する。 */
   manufacturedOn?: string;
   symptoms: string[];               // 症状（複数）
-  cause?: string;                   // 原因
-  diagnosis?: string;               // 診断
+  cause?: string;                   // 原因（旧・後方互換用。基本は suspected/confirmed を使う）
+  suspectedCause?: string;          // 推定原因
+  confirmedCause?: string;          // 確定原因（未確定なら未設定）
+  diagnosisStatus?: DiagnosisStatus; // 診断ステータス（既定 'suspected'）
+  diagnosis?: string;               // 診断（所見サマリ）
   recommendedActions: string[];     // 推奨対応（複数）
+  repairCandidates?: string[];      // 修理候補（本体交換ではなく修理する場合の候補）
   emergencyAction?: string;         // 応急対応
   aiJudgment?: string;              // AI判定
   risk?: string;                    // リスク
   tags: string[];                   // タグ（別テーブルで正規化管理）
   source?: string;                  // 既定 'AI棟梁'
-  photos?: FieldPhotoInput[];       // 紐付ける画像（URL 済み）
+  photos?: FieldPhotoInput[];       // 紐付ける画像（URL 済み / メタデータ先行）
 };
 
-/** アップロード済み画像を現場データへ紐付けるための入力。 */
+/** 画像を現場データへ紐付けるための入力（実ファイル未アップロードの先行登録も可）。 */
 export type FieldPhotoInput = {
-  storagePath: string;              // バケット内パス
-  url: string;                      // 公開/署名 URL
+  storagePath: string;              // バケット内パス（先行登録時は想定パス）
+  url?: string | null;             // 公開/署名 URL（先行登録時は未設定）
   photoTag?: string;                // 写真タグ 例: 給湯器型式ラベル
   caption?: string;                 // 補足 例: エラー651表示
   sortOrder?: number;
+  photoStatus?: PhotoStatus;        // 既定 'uploaded'。実ファイル未登録は 'pending_upload'
 };
 
 /** DB に格納された現場データ（行の形）。 */
@@ -54,8 +69,12 @@ export type FieldCase = {
   manufacturedOn: string | null;
   symptoms: string[];
   cause: string | null;
+  suspectedCause: string | null;
+  confirmedCause: string | null;
+  diagnosisStatus: DiagnosisStatus;
   diagnosis: string | null;
   recommendedActions: string[];
+  repairCandidates: string[];
   emergencyAction: string | null;
   aiJudgment: string | null;
   risk: string | null;
@@ -68,10 +87,11 @@ export type FieldCasePhoto = {
   id: string;
   caseId: string;
   storagePath: string;
-  url: string;
+  url: string | null;
   photoTag: string | null;
   caption: string | null;
   sortOrder: number;
+  photoStatus: PhotoStatus;
   createdAt: string;
 };
 
@@ -118,8 +138,12 @@ function rowToFieldCase(row: Record<string, unknown>): FieldCase {
     manufacturedOn: (row.manufactured_on as string | null) ?? null,
     symptoms: (row.symptoms as string[] | null) ?? [],
     cause: (row.cause as string | null) ?? null,
+    suspectedCause: (row.suspected_cause as string | null) ?? null,
+    confirmedCause: (row.confirmed_cause as string | null) ?? null,
+    diagnosisStatus: ((row.diagnosis_status as DiagnosisStatus | null) ?? "suspected"),
     diagnosis: (row.diagnosis as string | null) ?? null,
     recommendedActions: (row.recommended_actions as string[] | null) ?? [],
+    repairCandidates: (row.repair_candidates as string[] | null) ?? [],
     emergencyAction: (row.emergency_action as string | null) ?? null,
     aiJudgment: (row.ai_judgment as string | null) ?? null,
     risk: (row.risk as string | null) ?? null,
@@ -176,6 +200,7 @@ export async function uploadFieldPhoto(
     photoTag: args.photoTag,
     caption: args.caption,
     sortOrder: args.sortOrder,
+    photoStatus: "uploaded",
   };
 }
 
@@ -220,8 +245,12 @@ export async function insertFieldCase(
       manufactured_on: normalizeManufacturedOn(input.manufacturedOn),
       symptoms: input.symptoms ?? [],
       cause: input.cause ?? null,
+      suspected_cause: input.suspectedCause ?? null,
+      confirmed_cause: input.confirmedCause ?? null,
+      diagnosis_status: input.diagnosisStatus ?? "suspected",
       diagnosis: input.diagnosis ?? null,
       recommended_actions: input.recommendedActions ?? [],
+      repair_candidates: input.repairCandidates ?? [],
       emergency_action: input.emergencyAction ?? null,
       ai_judgment: input.aiJudgment ?? null,
       risk: input.risk ?? null,
@@ -254,10 +283,11 @@ export async function insertFieldCase(
       photos.map((p, i) => ({
         case_id: fieldCase.id,
         storage_path: p.storagePath,
-        url: p.url,
+        url: p.url ?? null,
         photo_tag: p.photoTag ?? null,
         caption: p.caption ?? null,
         sort_order: p.sortOrder ?? i,
+        photo_status: p.photoStatus ?? (p.url ? "uploaded" : "pending_upload"),
       })),
     );
     if (photoErr) {
@@ -275,7 +305,14 @@ export async function insertFieldCase(
     detail: {
       case: fieldCase,
       tags,
-      photos: photos.map((p) => ({ photoTag: p.photoTag, url: p.url })),
+      photos: photos.map((p) => ({
+        photoTag: p.photoTag,
+        url: p.url ?? null,
+        photoStatus: p.photoStatus ?? (p.url ? "uploaded" : "pending_upload"),
+      })),
+      suspectedCause: fieldCase.suspectedCause,
+      confirmedCause: fieldCase.confirmedCause,
+      diagnosisStatus: fieldCase.diagnosisStatus,
       aiJudgment: fieldCase.aiJudgment,
       risk: fieldCase.risk,
     },
