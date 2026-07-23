@@ -23,6 +23,14 @@ export type DiagnosisStatus =
 /** 写真の登録状態。実ファイル未アップロードのメタデータ先行登録を表現する。 */
 export type PhotoStatus = "pending_upload" | "uploaded" | "failed";
 
+/** 登録ワークフローの状態。承認前（draft/pending_approval/rejected）は検索に出さない。 */
+export type WorkflowStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "verified";
+
 // ─── 型定義 ──────────────────────────────────────────────────────────────────
 
 /** 登録前の入力（画像は別途アップロードして photos に URL を渡す）。 */
@@ -79,6 +87,14 @@ export type FieldCase = {
   aiJudgment: string | null;
   risk: string | null;
   source: string;
+  // ── ワークフロー拡張 ──
+  title: string | null;
+  errorCodes: string[];
+  additionalChecks: string[];
+  alternativeActions: string[];
+  workflowStatus: WorkflowStatus;
+  caseNo: string | null;
+  serviceYears: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -128,7 +144,7 @@ export function normalizeManufacturedOn(value?: string): string | null {
 }
 
 /** DB 行（snake_case）→ アプリ型（camelCase）。 */
-function rowToFieldCase(row: Record<string, unknown>): FieldCase {
+export function rowToFieldCase(row: Record<string, unknown>): FieldCase {
   return {
     id: String(row.id),
     category: String(row.category),
@@ -148,6 +164,16 @@ function rowToFieldCase(row: Record<string, unknown>): FieldCase {
     aiJudgment: (row.ai_judgment as string | null) ?? null,
     risk: (row.risk as string | null) ?? null,
     source: (row.source as string | null) ?? "AI棟梁",
+    title: (row.title as string | null) ?? null,
+    errorCodes: (row.error_codes as string[] | null) ?? [],
+    additionalChecks: (row.additional_checks as string[] | null) ?? [],
+    alternativeActions: (row.alternative_actions as string[] | null) ?? [],
+    workflowStatus: ((row.workflow_status as WorkflowStatus | null) ?? "draft"),
+    caseNo: (row.case_no as string | null) ?? null,
+    serviceYears:
+      row.service_years === null || row.service_years === undefined
+        ? null
+        : Number(row.service_years),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at ?? row.created_at),
   };
@@ -357,9 +383,12 @@ export type SearchFieldCasesArgs = {
   subcategory?: string;
   limit?: number;
   offset?: number;
+  /** 既定 false。承認前（draft等）も含めるのは管理用途のみ。 */
+  includeUnapproved?: boolean;
 };
 
-/** search_field_cases RPC を呼び出し、camelCase の結果に変換して返す。 */
+/** search_field_cases RPC を呼び出し、camelCase の結果に変換して返す。
+ *  既定では workflow_status='approved' のみ返る（承認前データの混入防止）。 */
 export async function searchFieldCases(
   supabase: SupabaseClient,
   args: SearchFieldCasesArgs,
@@ -370,6 +399,7 @@ export async function searchFieldCases(
     p_subcategory: args.subcategory ?? null,
     p_limit: args.limit ?? 20,
     p_offset: args.offset ?? 0,
+    p_include_unapproved: args.includeUnapproved ?? false,
   });
   if (error) {
     throw new Error(`検索に失敗しました: ${error.message}`);
