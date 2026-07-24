@@ -25,12 +25,11 @@ supabase/
   templates/
     INS-TPL-001/                                     # アップロード元ファイルの置き場所
       AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf   # ✅ 追加済み
-      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx  # ← 要追加（未提供）
+      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx  # ✅ 追加済み
 ```
 
 > `body_text` は上記 PDF の本文全文を seed に投入済みです（プレースホルダは解消）。
-> DOCX はまだ提供されていないため、`INS-TPL-001/…docx` のパスは登録済みですが
-> 実ファイルは未配置です。DOCX を追加したら同フォルダへ置いてアップロードしてください。
+> PDF・DOCX とも配置済みのため、あとは Storage バケットへアップロードするだけです。
 
 ## テーブル構造（ライブ "AI-touryou" 準拠）
 
@@ -109,16 +108,14 @@ psql "$SUPABASE_DB_URL" -f supabase/migrations/20260724000003_seed_ins_tpl_001.s
 ### 3. 実ファイルのアップロード（フォルダ `INS-TPL-001/`）
 
 SQL ではファイル本体を投入できないため、
-`supabase/templates/INS-TPL-001/` のファイルをアップロードします。
-PDF は追加済み、DOCX は提供され次第同フォルダへ配置してからアップロードします。
+`supabase/templates/INS-TPL-001/` の 2 ファイル（PDF・DOCX とも配置済み）を
+アップロードします。
 
 ```bash
-# PDF（追加済み）
 supabase storage cp \
   "supabase/templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf" \
   "ss:///insurance-templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf"
 
-# DOCX（未提供・配置後に実行）
 supabase storage cp \
   "supabase/templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx" \
   "ss:///insurance-templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx"
