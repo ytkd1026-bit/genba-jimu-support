@@ -24,9 +24,13 @@ supabase/
     20260724000003_seed_ins_tpl_001.sql             # INS-TPL-001 の初期データ
   templates/
     INS-TPL-001/                                     # アップロード元ファイルの置き場所
-      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf   # ← 要追加
-      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx  # ← 要追加
+      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf   # ✅ 追加済み
+      AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx  # ← 要追加（未提供）
 ```
+
+> `body_text` は上記 PDF の本文全文を seed に投入済みです（プレースホルダは解消）。
+> DOCX はまだ提供されていないため、`INS-TPL-001/…docx` のパスは登録済みですが
+> 実ファイルは未配置です。DOCX を追加したら同フォルダへ置いてアップロードしてください。
 
 ## テーブル構造（ライブ "AI-touryou" 準拠）
 
@@ -105,13 +109,16 @@ psql "$SUPABASE_DB_URL" -f supabase/migrations/20260724000003_seed_ins_tpl_001.s
 ### 3. 実ファイルのアップロード（フォルダ `INS-TPL-001/`）
 
 SQL ではファイル本体を投入できないため、
-`supabase/templates/INS-TPL-001/` の 2 ファイルをアップロードします。
+`supabase/templates/INS-TPL-001/` のファイルをアップロードします。
+PDF は追加済み、DOCX は提供され次第同フォルダへ配置してからアップロードします。
 
 ```bash
+# PDF（追加済み）
 supabase storage cp \
   "supabase/templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf" \
   "ss:///insurance-templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf"
 
+# DOCX（未提供・配置後に実行）
 supabase storage cp \
   "supabase/templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx" \
   "ss:///insurance-templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx"
@@ -123,13 +130,15 @@ supabase storage cp \
 - `INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf`
 - `INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx`
 
-### 4. `body_text`（PDF 本文全文）の投入
+### 4. `body_text`（PDF 本文全文）について
 
-seed ではプレースホルダを入れています。PDF の本文全文が確定したら差し替えてください:
+`body_text` は PDF の本文全文を seed（`20260724000003_seed_ins_tpl_001.sql`）に
+**投入済み**です。レイアウト由来のページヘッダ・改ページ等を除去して整形しています。
+再編集する場合は seed の `$BODY$ … $BODY$` を書き換えて再適用するか、直接 UPDATE します:
 
 ```sql
 update public.insurance_document_templates
-set body_text = $$（ここに PDF 本文全文を貼り付け）$$
+set body_text = $$（本文全文）$$
 where template_code = 'INS-TPL-001';
 ```
 
