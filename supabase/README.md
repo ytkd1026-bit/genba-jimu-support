@@ -107,9 +107,38 @@ psql "$SUPABASE_DB_URL" -f supabase/migrations/20260724000003_seed_ins_tpl_001.s
 
 ### 3. 実ファイルのアップロード（フォルダ `INS-TPL-001/`）
 
-SQL ではファイル本体を投入できないため、
-`supabase/templates/INS-TPL-001/` の 2 ファイル（PDF・DOCX とも配置済み）を
-アップロードします。
+SQL ではファイル本体を投入できないため、`supabase/templates/INS-TPL-001/` の
+2 ファイル（PDF・DOCX とも配置済み）を Storage へアップロードします。
+
+#### 方法 A（推奨）: 専用スクリプト `scripts/upload-insurance-template.ts`
+
+`@supabase/supabase-js` を使い、**バケット存在確認 →（無ければ非公開で作成）→
+PDF/DOCX を upsert アップロード → 一覧で存在確認 → DB の `pdf_path`/`docx_path`
+との一致確認**までを一括で行います。**seed（DB 書き込み）は行いません。**
+
+```bash
+# service role キーはシェル履歴に残さないよう、環境変数で一時的に渡す
+export SUPABASE_URL="https://<PROJECT_REF>.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="<service_role キー>"
+
+npm run upload:insurance-template
+# もしくは: npx tsx scripts/upload-insurance-template.ts
+
+# 実行後は環境変数を破棄
+unset SUPABASE_SERVICE_ROLE_KEY
+```
+
+必要な環境変数:
+
+| 変数 | 説明 |
+| --- | --- |
+| `SUPABASE_URL` | 対象プロジェクト（**AI-touryou**）の URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | `service_role` キー。**サーバー専用の秘匿値。コード・Git・PR に絶対に保存しない** |
+
+> `service_role` キーは RLS をバイパスします。ローカルの一時的な環境変数
+> としてのみ使用し、`.env` をコミットしたりログ・PR に貼り付けたりしないこと。
+
+#### 方法 B: Supabase CLI
 
 ```bash
 supabase storage cp \
@@ -121,8 +150,8 @@ supabase storage cp \
   "ss:///insurance-templates/INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx"
 ```
 
-`insurance_template_versions.pdf_path` / `docx_path` に登録済みのパスと
-一致していることが重要です:
+いずれの方法でも、`insurance_template_versions.pdf_path` / `docx_path` に
+登録済みのパスと一致していることが重要です（方法 A は自動で照合します）:
 
 - `INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.pdf`
 - `INS-TPL-001/AIG提出用_漏水事故復旧工事_見積項目施工必要性説明書.docx`
