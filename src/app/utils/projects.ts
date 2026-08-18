@@ -46,6 +46,12 @@ export type Project = {
   projectType: ProjectType;
   buildingType: BuildingType;
   status: ProjectStatus;
+  /** 元請マスタのID（任意・後方互換）。名前文字列でなくIDで関連付ける（仕様21） */
+  contractorId?: string;
+  /** テストデータ識別（任意・後方互換）。実行環境でなくデータ自身が保持する。 */
+  isTestData?: boolean;
+  /** 旧フラグ（後方互換の読み取り専用。新規は isTestData を使う） */
+  environment?: "development" | "production";
   createdAt: string;
   updatedAt: string;
 };

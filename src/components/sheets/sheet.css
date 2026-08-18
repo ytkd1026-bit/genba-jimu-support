@@ -1,0 +1,279 @@
+/* 帳票直接入力のスタイル（段3-2A・PC向けモック）
+ *
+ * 方針:
+ *   通常時   … input の白い箱を見せない。帳票に印字された文字として見せる
+ *   フォーカス時 … そのセルだけを強調する。枠線は outline で描き、レイアウトを動かさない
+ *   readonly … 自動計算値。編集不可であることが分かる灰色
+ */
+
+/* ── 用紙の束（工種セクションごとにページが増える） ───────── */
+.sheet-stack { display: flex; flex-direction: column; gap: 22px; }
+
+/* ── 工種セクション ─────────────────────────── */
+.sheet-section { margin-bottom: 10px; }
+.sheet-section-heading {
+  margin: 0 0 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8b4a3c;
+  letter-spacing: 0.04em;
+}
+.sheet-cont { font-size: 11px; font-weight: 400; color: #a8865c; }
+
+.sheet-subtotal {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #8b4a3c;
+}
+.sheet-subtotal-label { font-size: 10px; color: #8b4a3c; }
+.sheet-subtotal-amount { font-size: 13px; font-weight: 700; color: #8b4a3c; }
+
+/* ── 用紙 ───────────────────────────────────── */
+.sheet-paper {
+  /* A4横 297:210 を維持する */
+  aspect-ratio: 297 / 210;
+  width: 100%;
+  background: #fff;
+  color: #1c1917;
+  padding: 3.2% 3.4%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 28px rgb(0 0 0 / 0.14);
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ── ヘッダー ────────────────────────────────── */
+.sheet-head { display: flex; justify-content: space-between; gap: 24px; }
+.sheet-head-left { flex: 1; min-width: 0; }
+.sheet-head-right { width: 34%; flex-shrink: 0; text-align: right; }
+
+.sheet-title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #8b4a3c;
+  letter-spacing: 0.06em;
+}
+
+.sheet-fields {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 2px 8px;
+  margin: 0;
+  align-items: center;
+}
+.sheet-fields dt { color: #a8a29e; font-size: 10px; }
+.sheet-fields dd { margin: 0; min-width: 0; }
+.sheet-field-strong { font-size: 13px; font-weight: 700; }
+
+.sheet-docinfo {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: end;
+  gap: 1px 10px;
+  margin: 0 0 10px;
+  font-size: 10px;
+}
+.sheet-docinfo dt { color: #a8a29e; }
+.sheet-docinfo dd { margin: 0; }
+
+.sheet-company { font-size: 10px; line-height: 1.6; color: #44403c; }
+.sheet-company p { margin: 0; }
+.sheet-company-name { font-size: 13px; font-weight: 700; color: #1c1917; }
+.sheet-invoice-no { font-weight: 700; color: #8b4a3c; margin-top: 2px !important; }
+
+.sheet-total-box {
+  margin-top: 10px;
+  margin-left: auto;
+  width: 60%;
+  border: 1.5px solid #8b4a3c;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+.sheet-total-label { margin: 0; font-size: 9px; color: #8b4a3c; }
+.sheet-total-amount { margin: 2px 0 0; font-size: 19px; font-weight: 700; color: #8b4a3c; }
+
+/* ── 明細表 ─────────────────────────────────── */
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  table-layout: fixed;
+}
+.sheet-table thead th {
+  background: #8b4a3c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px 4px;
+  border-right: 1px solid rgb(255 255 255 / 0.25);
+}
+.sheet-table thead th:last-child { border-right: 0; }
+
+.sheet-td {
+  border: 1px solid #e7e5e4;
+  padding: 0;
+  vertical-align: middle;
+  height: 30px;
+}
+.sheet-table tbody tr:nth-child(even) .sheet-td { background: #fdfaf7; }
+
+/* 施工箇所は2部品を縦に並べる */
+.sheet-td-split { display: table-cell; }
+.sheet-td-split > div { border-bottom: 1px dotted #e7e5e4; }
+.sheet-td-split > div:last-child { border-bottom: 0; }
+
+/* ── セル：通常時は帳票の文字に見せる ─────────── */
+.sheet-cell-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 4px 5px;
+  font: inherit;
+  color: inherit;
+  outline: none;
+  border-radius: 2px;
+}
+.sheet-cell-input::placeholder { color: #d6d3d1; }
+
+/* フォーカス時だけ強調。outline なのでレイアウトは動かない */
+.sheet-cell-input:focus {
+  outline: 2px solid #8b4a3c;
+  outline-offset: -2px;
+  background: #fffdf9;
+  box-shadow: inset 0 0 0 100vmax rgb(139 74 60 / 0.04);
+}
+
+.sheet-cell-textarea { resize: none; overflow: hidden; line-height: 1.45; }
+
+/* select の矢印を目立たせない */
+.sheet-cell-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, #d6d3d1 50%),
+    linear-gradient(135deg, #d6d3d1 50%, transparent 50%);
+  background-position: calc(100% - 9px) 50%, calc(100% - 5px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  padding-right: 14px;
+}
+.sheet-cell-select:focus { background-color: #fffdf9; }
+
+/* 自動計算値 */
+.sheet-cell-static {
+  display: block;
+  width: 100%;
+  padding: 4px 5px;
+  color: #57534e;
+  background: #fafaf9;
+}
+
+.sheet-tax-mark {
+  display: block;
+  padding: 0 5px 3px;
+  font-size: 9px;
+  color: #a16207;
+}
+
+/* ── コンボボックス ─────────────────────────── */
+.sheet-combo-btn {
+  border: 0;
+  background: transparent;
+  color: #d6d3d1;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 1;
+}
+.sheet-combo-btn:hover { color: #8b4a3c; }
+
+.sheet-combo-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  margin: 2px 0 0;
+  padding: 3px;
+  list-style: none;
+  min-width: 100%;
+  max-height: 170px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #d6d3d1;
+  border-radius: 5px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.14);
+}
+.sheet-combo-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 5px 9px;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.sheet-combo-item:hover { background: #f5f5f4; }
+.sheet-combo-item.is-selected { background: #f7ece9; color: #8b4a3c; font-weight: 700; }
+
+/* ── 行追加（表の最終行として置く） ───────────── */
+.sheet-addrow td {
+  border: 1px dashed #e7e5e4;
+  border-top: 0;
+  padding: 0;
+}
+.sheet-addrow-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 5px;
+  font: inherit;
+  font-size: 10px;
+  color: #a8a29e;
+  cursor: pointer;
+}
+.sheet-addrow-btn:hover { background: #fdfaf7; color: #8b4a3c; }
+
+/* ── 合計欄 ─────────────────────────────────── */
+.sheet-totals { display: flex; justify-content: flex-end; margin-top: 12px; }
+.sheet-totals-box { width: 30%; }
+.sheet-totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-bottom: 1px solid #f5f5f4;
+  font-size: 11px;
+}
+.sheet-totals-row.is-grand {
+  background: #fdf2f0;
+  color: #8b4a3c;
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: 0;
+}
+
+.sheet-footer {
+  margin: auto 0 0;
+  padding-top: 8px;
+  font-size: 9px;
+  color: #a8a29e;
+  display: flex;
+  justify-content: space-between;
+}
+.sheet-pageno {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-pageno-cat { color: #8b4a3c; font-weight: 700; }
+.sheet-mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }

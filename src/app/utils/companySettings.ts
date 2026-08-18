@@ -15,7 +15,11 @@ export type CompanySettings = {
   tel: string;
   email: string;
   invoiceNumber: string;  // インボイス登録番号
+  standardProfitRate: number; // 標準目標粗利率（0〜1。単価マスタ・見積の既定値）
 };
+
+/** 標準目標粗利率の既定値（25%） */
+export const DEFAULT_STANDARD_PROFIT_RATE = 0.25;
 
 export type BankSettings = {
   bankName: string;
@@ -46,6 +50,7 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   tel:            "090-0000-0000",
   email:          "example@example.com",
   invoiceNumber:  "T0000000000000",
+  standardProfitRate: DEFAULT_STANDARD_PROFIT_RATE,
 };
 
 export const DEFAULT_BANK_SETTINGS: BankSettings = {
@@ -70,6 +75,13 @@ function str(v: unknown, fallback: string): string {
   return typeof v === "string" && v !== "" ? v : fallback;
 }
 
+/** 標準目標粗利率を取得する（0〜1。未設定や不正値は既定 0.25） */
+export function getStandardProfitRate(): number {
+  const saved = readRaw();
+  const v = saved.standardProfitRate;
+  return typeof v === "number" && v >= 0 && v < 1 ? v : DEFAULT_STANDARD_PROFIT_RATE;
+}
+
 /** 会社情報を取得する（未設定の項目はデフォルト値で補完） */
 export function getCompanySettings(): CompanySettings {
   const saved = readRaw();
@@ -82,6 +94,7 @@ export function getCompanySettings(): CompanySettings {
     tel:            str(saved.tel, d.tel),
     email:          str(saved.email, d.email),
     invoiceNumber:  str(saved.invoiceNumber, d.invoiceNumber),
+    standardProfitRate: getStandardProfitRate(),
   };
 }
 

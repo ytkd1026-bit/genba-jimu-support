@@ -65,6 +65,7 @@ const DEFAULT_BANK: BankForm = {
 export default function CompanySettingsPage() {
   const [company, setCompany] = useState<CompanyForm>(DEFAULT_COMPANY);
   const [bank, setBank] = useState<BankForm>(DEFAULT_BANK);
+  const [standardProfitRatePct, setStandardProfitRatePct] = useState("25");
   const [saveMsg, setSaveMsg] = useState("");
   const [pdfInfo, setPdfInfo] = useState(false);
 
@@ -90,6 +91,9 @@ export default function CompanySettingsPage() {
         accountNumber: saved.accountNumber ?? DEFAULT_BANK.accountNumber,
         accountHolder: saved.accountHolder ?? DEFAULT_BANK.accountHolder,
       });
+      if (typeof saved.standardProfitRate === "number") {
+        setStandardProfitRatePct(String(Math.round(saved.standardProfitRate * 1000) / 10));
+      }
     } catch {
       // localStorage読み込み失敗時はデフォルトのまま
     }
@@ -107,7 +111,16 @@ export default function CompanySettingsPage() {
 
   function handleSave() {
     try {
-      const payload = { ...company, ...bank };
+      // 既存キー（他機能が保存した値）を保持したままマージする
+      let existing: Record<string, unknown> = {};
+      try {
+        existing = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
+      } catch {
+        existing = {};
+      }
+      const ratePct = parseFloat(standardProfitRatePct.replace(/[^0-9.]/g, ""));
+      const standardProfitRate = !isNaN(ratePct) && ratePct >= 0 && ratePct < 100 ? ratePct / 100 : 0.25;
+      const payload = { ...existing, ...company, ...bank, standardProfitRate };
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
       setSaveMsg("事業者設定を保存しました。");
       setTimeout(() => setSaveMsg(""), 4000);
@@ -227,6 +240,20 @@ export default function CompanySettingsPage() {
               />
               <p className="mt-1 text-xs text-stone-400">
                 「T」から始まる13桁の番号を入力してください。
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="standardProfitRate" className={labelCls}>標準目標粗利率（%）</label>
+              <input
+                id="standardProfitRate" name="standardProfitRate" type="text" inputMode="numeric"
+                value={standardProfitRatePct}
+                onChange={(e) => setStandardProfitRatePct(e.target.value)}
+                onBlur={(e) => setStandardProfitRatePct(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder="例：25" className={inputCls}
+              />
+              <p className="mt-1 text-xs text-stone-400">
+                単価マスタ・見積の参考売価を計算するときの既定の粗利率です。
               </p>
             </div>
           </div>

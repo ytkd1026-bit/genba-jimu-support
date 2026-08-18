@@ -9,6 +9,7 @@
 import type { WorkItem } from "./workItems";
 import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
 import type { EstimateItem, SavedEstimate, LineSnapshot } from "./savedEstimates";
+import { resolveWorkCategory } from "@/components/sheets/workCategoryMaster";
 import {
   calculateTaxBreakdown,
   normalizeTaxType,
@@ -41,27 +42,38 @@ export function workItemsToSellingLines(workItems: WorkItem[]): SellingLine[] {
 
 /** WorkItem[] を保存用の明細スナップショットへ変換する */
 export function workItemsToSnapshots(workItems: WorkItem[]): LineSnapshot[] {
-  return workItems.map((w) => ({
-    workItemId: w.workItemId,
-    workName: w.workName,
-    quantity: w.quantity,
-    unit: w.unit,
-    unitPrice: w.sellingUnitPrice,
-    amount: w.sellingAmount,
-    taxType: normalizeTaxType(w.taxType),
-    taxRate: normalizeTaxRate(w.taxRate),
-  }));
+  return workItems.map((w) => {
+    // 工種は保存時点の値をコピーして版へ固定する。
+    // 後から WorkItem の工種を変えても、過去の版の表示は変わらない。
+    const cat = resolveWorkCategory(w.category);
+    return {
+      workItemId: w.workItemId,
+      workName: w.workName,
+      quantity: w.quantity,
+      unit: w.unit,
+      unitPrice: w.sellingUnitPrice,
+      amount: w.sellingAmount,
+      taxType: normalizeTaxType(w.taxType),
+      taxRate: normalizeTaxRate(w.taxRate),
+      categoryId: cat.categoryId,
+      categoryName: cat.categoryName,
+      analysisGroup: cat.analysisGroup,
+    };
+  });
 }
 
 /**
  * 保存済みスナップショットを提出用明細（SellingLine）へ復元する。
  * 保存済み見積・請求の再表示／再発行に使う（現在の WorkItem は読まない）。
- * スナップショットに無い明細項目（分類・工事内容・施工箇所・備考）は空にする。
+ * スナップショットに無い明細項目（工事内容・施工箇所・備考）は空にする。
+ * 工種は保存時点の categoryName を使う（旧データは空 → 「その他」）。
  */
 export function snapshotsToSellingLines(snaps: LineSnapshot[]): SellingLine[] {
   return snaps.map((s) => ({
     workItemId: s.workItemId,
-    category: "",
+    // 保存時点の工種名。旧データ（undefined）は空のままとし、
+    // グループ化の際に「その他」へ分類される。
+    category: s.categoryName ?? "",
     workName: s.workName,
     workDescription: "",
     location1: "",

@@ -28,6 +28,17 @@ export type LineSnapshot = {
   amount: number;
   taxType: TaxType;
   taxRate: TaxRate;
+
+  // ── 工種（保存時点のスナップショット・後方互換のため任意） ──────
+  // 保存時に WorkItem からコピーする。後から WorkItem を編集しても
+  // 過去の版は変化しない（版管理の一貫性を保つため）。
+  // 表示順は保存しない。並び順は工種マスタが管理する。
+  /** 利益分析で使う。工種マスタの不変ID */
+  categoryId?: string;
+  /** 提出用PDFで使う。保存時点の表示名 */
+  categoryName?: string;
+  /** AI棟梁・横断分析で使う。工種より粗い分析軸 */
+  analysisGroup?: string;
 };
 
 export type SavedEstimate = {
@@ -56,6 +67,19 @@ export type SavedEstimate = {
   previousEstimateId?: string;
   /** 修正理由（新しい版として保存したときに入力） */
   revisionReason?: string;
+  // ── 元請の関連付け・提出先スナップショット（後方互換のため任意・仕様21/22） ──
+  /** 元請マスタのID（名前でなくIDで関連付ける） */
+  contractorId?: string;
+  /** 発行時点の提出先情報のスナップショット（後から元請マスタが変わっても過去帳票は不変） */
+  submitToSnapshot?: {
+    contractorId: string;
+    name: string;
+    contactName: string;
+    postalCode: string;
+    address: string;
+    tel: string;
+    email: string;
+  };
 };
 
 export function getSavedEstimates(): SavedEstimate[] {

@@ -8,11 +8,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
+import { isSetupCompleted } from "@/app/utils/appSetup";
 
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
+  { title: "見積を作る",           desc: "元請と工事項目を選ぶだけ。案件登録は自動です。", icon: "📋", href: "/estimate/new" },
   { title: "新しい案件を登録する", desc: "現場名・元請・住所を登録します。",       icon: "📝", href: "/projects/new" },
-  { title: "見積を作る",           desc: "工事内容を入力してPDFを作ります。",     icon: "📋", href: "/projects/sample/estimate" },
   { title: "請求書を作る",         desc: "完了した案件の請求書を作ります。",       icon: "📄", href: "/projects/sample/single-invoice" },
   { title: "未請求を確認する",     desc: "請求漏れがないか確認します。",           icon: "⚠️", href: "/invoices/unbilled" },
   { title: "材料を計算する",       desc: "クロス・CF・FTなどの材料を拾います。",   icon: "📐", href: "/projects/sample/materials" },
@@ -73,9 +74,11 @@ const STATUS_STYLE: Record<string, string> = {
 export default function Home() {
   const [mode,    setMode]    = useState<TestMode>("normal");
   const [infoMsg, setInfoMsg] = useState("");
+  const [setupDone, setSetupDone] = useState(true); // 初期は非表示（判定後に出す）
 
   useEffect(() => {
     setMode(getTestMode());
+    setSetupDone(isSetupCompleted());
   }, []);
 
   const isDemo = mode === "demo";
@@ -94,6 +97,18 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-stone-800 tracking-wide">現場の事務サポ</h1>
           <p className="mt-0.5 text-sm text-stone-500">見積・材料・請求・予定を、スマホでひとまとめ。</p>
         </header>
+
+        {/* 初期設定バナー（未完了のときのみ） */}
+        {!setupDone && (
+          <Link href="/setup" className="mb-3 flex items-center gap-3 rounded-2xl bg-[#1e3a5f] px-4 py-3.5 text-white shadow-sm active:opacity-80">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">⚙️</span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold">はじめに初期設定をしましょう</p>
+              <p className="mt-0.5 text-xs leading-snug text-blue-100">自社情報・元請・単価を一度登録すれば、見積が毎回すぐ作れます。</p>
+            </div>
+            <span className="ml-auto shrink-0 text-white/50">›</span>
+          </Link>
+        )}
 
         {/* よく使う作業（作業名で案内） */}
         <section className="mb-3 space-y-2">
@@ -257,10 +272,38 @@ export default function Home() {
               管理
             </h2>
             <div className="space-y-1">
+              <Link href="/setup" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
+                <div>
+                  <p className="text-sm font-bold text-stone-700">🚀 初期設定</p>
+                  <p className="text-xs text-stone-400">自社情報・元請・単価をまとめて登録</p>
+                </div>
+                <span className="text-stone-300">›</span>
+              </Link>
               <Link href="/settings/company" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
                 <div>
                   <p className="text-sm font-bold text-stone-700">⚙️ 事業者設定</p>
-                  <p className="text-xs text-stone-400">自社情報・振込先・インボイス番号</p>
+                  <p className="text-xs text-stone-400">自社情報・振込先・インボイス番号・標準粗利率</p>
+                </div>
+                <span className="text-stone-300">›</span>
+              </Link>
+              <Link href="/settings/contractors" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
+                <div>
+                  <p className="text-sm font-bold text-stone-700">🏢 元請マスタ</p>
+                  <p className="text-xs text-stone-400">元請を登録して見積で選ぶだけにする</p>
+                </div>
+                <span className="text-stone-300">›</span>
+              </Link>
+              <Link href="/settings/unit-master" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
+                <div>
+                  <p className="text-sm font-bold text-stone-700">💴 単価マスタ</p>
+                  <p className="text-xs text-stone-400">自社単価を登録・編集する</p>
+                </div>
+                <span className="text-stone-300">›</span>
+              </Link>
+              <Link href="/settings/dev-data" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
+                <div>
+                  <p className="text-sm font-bold text-stone-700">🧹 テストデータ管理</p>
+                  <p className="text-xs text-stone-400">テスト用に登録したデータを一括削除</p>
                 </div>
                 <span className="text-stone-300">›</span>
               </Link>

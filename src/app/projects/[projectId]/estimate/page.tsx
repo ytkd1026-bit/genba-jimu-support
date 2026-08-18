@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { projectsStore, advanceProjectStatus, type Project } from "@/app/utils/projects";
 import { workItemsStore, type WorkItem } from "@/app/utils/workItems";
 import {
@@ -29,9 +29,12 @@ import {
   nextEstimateSeq,
 } from "@/app/utils/workItemEstimate";
 import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
+import type { TaxBreakdown } from "@/app/utils/taxCalculation";
 import { getCompanyInfoForPdf } from "@/app/utils/companySettings";
 import { estimatePdfFileName } from "@/app/utils/pdfFileName";
-import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
+import { todaySlash, todayDash } from "@/app/utils/pdfDownload";
+import { usePdfJob } from "@/hooks/usePdfJob";
+import { PdfOverlay } from "@/components/PdfOverlay";
 import { ProjectTabs, ProjectHeader } from "@/components/ProjectTabs";
 import { TaxTotalsBox } from "@/components/TaxTotalsBox";
 import { fldSelect, lbl } from "@/components/formStyles";
@@ -62,7 +65,15 @@ export default function ProjectEstimatePage() {
   const [mode, setMode] = useState<"view" | "edit">("edit");
   const [revisionReason, setRevisionReason] = useState(REVISION_REASONS[0]);
   const [revisionReasonFree, setRevisionReasonFree] = useState("");
-  const [pdfLoading, setPdfLoading] = useState(false);
+  // PDF発行の状態・提示・後始末は usePdfJob が一元管理する
+  const pdfJob = usePdfJob();
+  const pdfLoading = pdfJob.busy;
+  // save() で確定した発行内容を build()/filename() へ渡す
+  const pdfCtxRef = useRef<{
+    docNumber: string;
+    lines: SellingLine[];
+    bd: TaxBreakdown;
+  } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   function reloadSaved(): SavedEstimate[] {
@@ -247,70 +258,76 @@ export default function ProjectEstimatePage() {
   }
 
   // ── PDF（表示中の内容で発行。edit モードは現在WorkItemを保存してから） ──
-  async function handlePdf() {
-    if (!project || pdfLoading) return;
-    let docNumber = viewing?.estimateNo ?? "";
-    let lines = sellingLines;
-    let bd = breakdown;
+  // 処理順: 1.本保存 → 2.PDF生成 → 3.端末へ提示（共有／新規タブ／ダウンロード）
+  // 連打防止・ローディング表示・キャンセル／失敗後の再実行・Blob URLの後始末は
+  // usePdfJob 側が持つ。保存形式（SavedEstimate）には一切手を触れていない。
+  function handlePdf() {
+    void pdfJob.run({
+      kind: "estimate",
 
-    if (mode === "edit") {
-      if (!hasContent()) {
-        alert("工事項目がありません。「04 工事項目・原価」で追加してからPDFを発行してください。");
-        return;
-      }
-      // 発行前に保存（v01 または新しい版）。過去版は残す（非破壊）。
-      const est = saveNewVersion();
-      if (!est) {
-        alert("保存に失敗しました。PDFは発行していません。");
-        return;
-      }
-      docNumber = est.estimateNo;
-      lines = snapshotsToSellingLines(est.lineSnapshots ?? []);
-      bd = est.taxBreakdown ?? breakdown;
-      reloadSaved();
-      setViewingId(est.id);
-      setMode("view");
-    }
+      save: () => {
+        if (!project) return false;
+        let docNumber = viewing?.estimateNo ?? "";
+        let lines = sellingLines;
+        let bd = breakdown;
 
-    setPdfLoading(true);
-    try {
-      const { makeWorkEstimatePDF } = await import("@/components/pdf/WorkEstimatePDF");
-      const title =
-        project.projectType === "insurance" ? "損害復旧工事 見積明細書" : "見積明細書";
-      const doc = makeWorkEstimatePDF({
-        documentTitle: title,
-        documentNumber: docNumber,
-        createdDate: todaySlash(),
-        submitTo: project.submitTo || project.clientName || "",
-        projectName: project.projectName,
-        siteAddress: project.siteAddress,
-        companyInfo: getCompanyInfoForPdf(),
-        projectId: project.projectId,
-        lines,
-        subtotalSum: bd.subtotal,
-        taxSum: bd.taxTotal,
-        totalWithTax: bd.total,
-        taxBreakdown: bd,
-      });
-      await renderAndDownloadPdf(
-        doc,
+        if (mode === "edit") {
+          if (!hasContent()) {
+            alert("工事項目がありません。「04 工事項目・原価」で追加してからPDFを発行してください。");
+            return false;
+          }
+          // 発行前に保存（v01 または新しい版）。過去版は残す（非破壊）。
+          const est = saveNewVersion();
+          if (!est) {
+            alert("保存に失敗しました。PDFは発行していません。");
+            return false;
+          }
+          docNumber = est.estimateNo;
+          lines = snapshotsToSellingLines(est.lineSnapshots ?? []);
+          bd = est.taxBreakdown ?? breakdown;
+          reloadSaved();
+          setViewingId(est.id);
+          setMode("view");
+        }
+
+        pdfCtxRef.current = { docNumber, lines, bd };
+        // 見積PDF発行で案件ステータスを「見積提出済み」へ前進（後退はしない）
+        advanceProjectStatus(projectId, "submitted");
+        setMsg({ ok: true, text: `見積書PDFを発行しました（${docNumber}）。` });
+        setTimeout(() => setMsg(null), 6000);
+        return true;
+      },
+
+      build: async () => {
+        const ctx = pdfCtxRef.current!;
+        const { makeWorkEstimatePDF } = await import("@/components/pdf/WorkEstimatePDF");
+        const title =
+          project!.projectType === "insurance" ? "損害復旧工事 見積明細書" : "見積明細書";
+        return makeWorkEstimatePDF({
+          documentTitle: title,
+          documentNumber: ctx.docNumber,
+          createdDate: todaySlash(),
+          submitTo: project!.submitTo || project!.clientName || "",
+          projectName: project!.projectName,
+          siteAddress: project!.siteAddress,
+          companyInfo: getCompanyInfoForPdf(),
+          projectId: project!.projectId,
+          lines: ctx.lines,
+          subtotalSum: ctx.bd.subtotal,
+          taxSum: ctx.bd.taxTotal,
+          totalWithTax: ctx.bd.total,
+          taxBreakdown: ctx.bd,
+        });
+      },
+
+      filename: () =>
         estimatePdfFileName({
-          clientName: project.clientName || project.submitTo,
-          projectName: project.projectName,
-          workContent: (lines[0]?.workName) ?? "",
+          clientName: project!.clientName || project!.submitTo,
+          projectName: project!.projectName,
+          workContent: pdfCtxRef.current?.lines[0]?.workName ?? "",
           date: todayDash(),
         }),
-      );
-      // 見積PDF発行で案件ステータスを「見積提出済み」へ前進（後退はしない）
-      advanceProjectStatus(projectId, "submitted");
-      setMsg({ ok: true, text: `見積書PDFを発行しました（${docNumber}）。` });
-      setTimeout(() => setMsg(null), 6000);
-    } catch (err) {
-      console.error("見積書PDF生成エラー:", err);
-      alert("PDFの生成に失敗しました。もう一度お試しください。");
-    } finally {
-      setPdfLoading(false);
-    }
+    });
   }
 
   if (notFound) {
@@ -336,6 +353,16 @@ export default function ProjectEstimatePage() {
 
   return (
     <div className="min-h-screen bg-[#fdf8f2] pb-24">
+      {/* PDF発行中のローディング／完了・キャンセル・失敗ダイアログ。
+          このツリー内にのみ存在するため、遷移後に残留しない。
+          全画面を覆うので発行中は戻るリンク・タブへのタップも遮断される。 */}
+      <PdfOverlay
+        phase={pdfJob.phase}
+        result={pdfJob.result}
+        errorMessage={pdfJob.errorMessage}
+        onRetry={pdfJob.retry}
+        onClose={pdfJob.dismiss}
+      />
       <div className="mx-auto max-w-md px-4 py-4 sm:max-w-lg">
 
         <header className="mb-3">
