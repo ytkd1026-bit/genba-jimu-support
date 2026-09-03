@@ -18,7 +18,7 @@ export default function PageHeader({
 }) {
   return (
     <header
-      className="sticky top-0 z-30 border-b border-[#e6ebeb] bg-white/95 px-4 py-3 backdrop-blur"
+      className="sticky top-0 z-30 border-b border-[var(--nu-border)] bg-white/95 px-4 py-3 backdrop-blur"
       style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -33,7 +33,7 @@ export default function PageHeader({
             </Link>
           )}
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold text-[#1f2a2e]">{title}</h1>
+            <h1 className="truncate text-lg font-bold text-[var(--nu-text)]">{title}</h1>
             {subtitle && <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>}
           </div>
         </div>

@@ -19,7 +19,7 @@ import { PROJECT_STATUS_LABELS } from "@/app/utils/projects";
 
 // 作成メニュー（既存ルートへの導線）
 const CREATE_MENU = [
-  { title: "新規案件",   desc: "現場・元請・住所を登録",   icon: "📝", href: "/projects/new",                    primary: true },
+  { title: "新規案件",   desc: "現場・元請・住所を登録",   icon: "📝", href: "/new/projects/new",                    primary: true },
   { title: "見積書",     desc: "案件を選んで見積・原価入力", icon: "📋", href: "/new/projects?from=estimate",       primary: true },
   { title: "請求書",     desc: "完了案件の請求書を作成",   icon: "📄", href: "/new/invoices",                    primary: true },
   { title: "発注書",     desc: "材料計算・発注候補を管理", icon: "📦", href: "/new/materials",                   primary: false },
@@ -50,7 +50,7 @@ export default function NewCreatePage() {
       kind: "見積",
       title: e.projectName || e.estimateNo || "見積書",
       amount: e.total || 0,
-      href: "/estimates/saved",
+      href: "/new/estimates/saved",
       updatedAt: e.updatedAt || e.createdAt || "",
     }));
     const invs: RecentDoc[] = loadInvoices().slice(0, 6).map((i) => ({
@@ -58,7 +58,7 @@ export default function NewCreatePage() {
       kind: "請求",
       title: i.projectName || i.invoiceNo || "請求書",
       amount: i.total || 0,
-      href: "/invoices",
+      href: "/new/invoices",
       updatedAt: i.updatedAt || i.createdAt || "",
     }));
     const merged = [...ests, ...invs]
@@ -75,7 +75,7 @@ export default function NewCreatePage() {
       <div className="space-y-5 px-4 py-4">
         {/* 作成メニュー */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">なにを作りますか？</h2>
+          <h2 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">なにを作りますか？</h2>
           <div className="grid grid-cols-2 gap-3">
             {CREATE_MENU.map((m) => (
               <Link
@@ -84,7 +84,7 @@ export default function NewCreatePage() {
                 className={`flex flex-col rounded-2xl border p-4 shadow-sm active:scale-[0.98] ${
                   m.primary
                     ? "border-transparent bg-[var(--nu-primary)] text-white"
-                    : "border-[#e6ebeb] bg-white text-[#1f2a2e]"
+                    : "border-[var(--nu-border)] bg-white text-[var(--nu-text)]"
                 }`}
               >
                 <span className="text-2xl">{m.icon}</span>
@@ -106,7 +106,7 @@ export default function NewCreatePage() {
 
         {/* 最近の案件から作成 */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">最近の案件から作成</h2>
+          <h2 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">最近の案件から作成</h2>
           {!ready ? (
             <div className="h-16 animate-pulse rounded-2xl bg-white" />
           ) : recentProjects.length === 0 ? (
@@ -117,13 +117,13 @@ export default function NewCreatePage() {
                 <li key={p.projectId}>
                   <Link
                     href={`/new/projects/${encodeURIComponent(p.projectId)}`}
-                    className="flex items-center gap-3 rounded-2xl border border-[#e6ebeb] bg-white p-3 shadow-sm active:bg-[#f6f8f8]"
+                    className="flex items-center gap-3 rounded-2xl border border-[var(--nu-border)] bg-white p-3 shadow-sm active:bg-[var(--nu-bg)]"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--nu-primary-bg)] text-lg">
                       📁
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[#1f2a2e]">
+                      <p className="truncate text-sm font-semibold text-[var(--nu-text)]">
                         {p.projectName || "（名称未設定の案件）"}
                       </p>
                       <p className="truncate text-xs text-slate-500">
@@ -146,7 +146,7 @@ export default function NewCreatePage() {
 
         {/* 最近の作成物 */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">最近の作成物</h2>
+          <h2 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">最近の作成物</h2>
           {!ready ? (
             <div className="h-16 animate-pulse rounded-2xl bg-white" />
           ) : recentDocs.length === 0 ? (
@@ -157,7 +157,7 @@ export default function NewCreatePage() {
                 <li key={d.key}>
                   <Link
                     href={d.href}
-                    className="flex items-center gap-3 rounded-2xl border border-[#e6ebeb] bg-white p-3 shadow-sm active:bg-[#f6f8f8]"
+                    className="flex items-center gap-3 rounded-2xl border border-[var(--nu-border)] bg-white p-3 shadow-sm active:bg-[var(--nu-bg)]"
                   >
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${
@@ -168,7 +168,7 @@ export default function NewCreatePage() {
                     >
                       {d.kind}
                     </span>
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-[#1f2a2e]">
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--nu-text)]">
                       {d.title}
                     </p>
                     <span className="shrink-0 text-sm font-bold text-[var(--nu-primary-dk)]">

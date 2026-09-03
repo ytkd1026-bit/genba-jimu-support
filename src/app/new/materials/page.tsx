@@ -16,8 +16,8 @@ import {
 
 const MENU = [
   { icon: "🎙", title: "拾い出しから発注候補を作る", desc: "音声採寸→数量→発注候補", href: "/new/takeoff", primary: true, old: false },
-  { icon: "📐", title: "材料計算", desc: "案件を選んで必要数量を計算", href: "/projects/sample/materials", primary: false, old: true },
-  { icon: "⏰", title: "材料アラート確認", desc: "施工日前の発注漏れを確認", href: "/schedule", primary: false, old: true },
+  { icon: "📐", title: "材料計算", desc: "案件を選んで必要数量を計算", href: "/new/materials/calc", primary: false, old: true },
+  { icon: "⏰", title: "材料アラート確認", desc: "施工日前の発注漏れを確認", href: "/new/schedule", primary: false, old: true },
 ];
 
 export default function NewMaterialsPage() {

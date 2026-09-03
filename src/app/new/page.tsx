@@ -68,12 +68,12 @@ export default function NewHome() {
 
       <div className="space-y-4 px-4 py-4">
         {/* ── 今日のスケジュール（予定は未連携） ── */}
-        <section className="rounded-2xl border border-[#e6ebeb] bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-[var(--nu-border)] bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#1f2a2e]">今日のスケジュール</h2>
+            <h2 className="text-sm font-bold text-[var(--nu-text)]">今日のスケジュール</h2>
             <span className="text-[11px] text-slate-400">予定連携は準備中</span>
           </div>
-          <div className="rounded-xl bg-[#f6f8f8] px-3 py-4 text-center text-sm text-slate-500">
+          <div className="rounded-xl bg-[var(--nu-bg)] px-3 py-4 text-center text-sm text-slate-500">
             予定データ（現調・施工・請求など）の連携は今後の工程です。<br />
             現在は案件情報のみ表示しています。
           </div>
@@ -81,7 +81,7 @@ export default function NewHome() {
 
         {/* ── 要対応 ── */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">要対応</h2>
+          <h2 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">要対応</h2>
           <div className="grid grid-cols-3 gap-2">
             <ActionTile
               label="見積未提出"
@@ -112,7 +112,7 @@ export default function NewHome() {
         {/* ── 本日の案件（進行中を表示） ── */}
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-[#1f2a2e]">進行中の案件</h2>
+            <h2 className="text-sm font-bold text-[var(--nu-text)]">進行中の案件</h2>
             <Link href="/new/projects" className="text-xs font-medium text-[var(--nu-primary)]">
               すべて見る ›
             </Link>
@@ -124,7 +124,7 @@ export default function NewHome() {
             <EmptyState
               text="進行中の案件はまだありません。"
               cta="案件を登録する"
-              href="/projects/new"
+              href="/new/projects/new"
             />
           ) : (
             <ul className="space-y-2">
@@ -132,10 +132,10 @@ export default function NewHome() {
                 <li key={p.projectId}>
                   <Link
                     href={`/new/projects/${encodeURIComponent(p.projectId)}`}
-                    className="block rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm active:bg-[#f6f8f8]"
+                    className="block rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 shadow-sm active:bg-[var(--nu-bg)]"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 flex-1 truncate font-bold text-[#1f2a2e]">
+                      <p className="min-w-0 flex-1 truncate font-bold text-[var(--nu-text)]">
                         {p.projectName || "（名称未設定の案件）"}
                       </p>
                       <span
@@ -162,8 +162,8 @@ export default function NewHome() {
         </section>
 
         {/* ── 今月サマリー（実データのみ） ── */}
-        <section className="rounded-2xl border border-[#e6ebeb] bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-bold text-[#1f2a2e]">今月サマリー</h2>
+        <section className="rounded-2xl border border-[var(--nu-border)] bg-white p-4 shadow-sm">
+          <h2 className="mb-2 text-sm font-bold text-[var(--nu-text)]">今月サマリー</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-slate-500">発行済み請求（今月）</p>
@@ -212,7 +212,7 @@ function ActionTile({
   return (
     <Link
       href={href}
-      className="flex flex-col items-center rounded-2xl border border-[#e6ebeb] bg-white px-2 py-3 text-center shadow-sm active:bg-[#f6f8f8]"
+      className="flex flex-col items-center rounded-2xl border border-[var(--nu-border)] bg-white px-2 py-3 text-center shadow-sm active:bg-[var(--nu-bg)]"
     >
       <span className={`text-2xl font-bold ${count > 0 ? toneClass : "text-slate-300"}`}>
         {count}
@@ -224,13 +224,13 @@ function ActionTile({
 
 function SkeletonCard() {
   return (
-    <div className="h-20 animate-pulse rounded-2xl border border-[#e6ebeb] bg-white" />
+    <div className="h-20 animate-pulse rounded-2xl border border-[var(--nu-border)] bg-white" />
   );
 }
 
 function EmptyState({ text, cta, href }: { text: string; cta: string; href: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#cfdad8] bg-white px-4 py-6 text-center">
+    <div className="rounded-2xl border border-dashed border-[var(--nu-border)] bg-white px-4 py-6 text-center">
       <p className="text-sm text-slate-500">{text}</p>
       <Link
         href={href}

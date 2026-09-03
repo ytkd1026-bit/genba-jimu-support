@@ -11,9 +11,9 @@ import PageHeader from "../_components/PageHeader";
 import { loadProjects, loadInvoices, formatYen, type Project, type SavedInvoice } from "../_lib/data";
 
 const MENU = [
-  { icon: "⚠️", title: "未請求確認", desc: "請求漏れを確認する", href: "/invoices/unbilled", primary: true },
-  { icon: "📄", title: "単体請求書作成", desc: "1案件ごとの請求書を作る", href: "/projects/sample/single-invoice", primary: false },
-  { icon: "📋", title: "一括請求書作成", desc: "元請ごとにまとめて請求する", href: "/projects/sample/invoice", primary: false },
+  { icon: "⚠️", title: "未請求確認", desc: "請求漏れを確認する", href: "/new/invoices/unbilled", primary: true },
+  { icon: "📄", title: "単体請求書作成", desc: "1案件ごとの請求書を作る", href: "/new/invoices/single", primary: false },
+  { icon: "📋", title: "一括請求書作成", desc: "元請ごとにまとめて請求する", href: "/new/invoices/bulk", primary: false },
 ];
 
 export default function NewInvoicesPage() {

@@ -83,7 +83,7 @@ export default function NewProjectDetailPage() {
       <div>
         <PageHeader title="案件詳細" back="/new/projects" />
         <div className="px-4 py-10 text-center">
-          <p className="text-sm font-bold text-[#1f2a2e]">案件が見つかりません。</p>
+          <p className="text-sm font-bold text-[var(--nu-text)]">案件が見つかりません。</p>
           <p className="mt-1 font-mono text-xs text-slate-400">{projectId}</p>
           <Link
             href="/new/projects"
@@ -115,9 +115,9 @@ export default function NewProjectDetailPage() {
 
       <div className="space-y-4 px-4 py-4">
         {/* ── 見出し・ステータス ── */}
-        <section className="rounded-2xl border border-[#e6ebeb] bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-[var(--nu-border)] bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-2">
-            <h2 className="min-w-0 flex-1 text-base font-bold text-[#1f2a2e]">
+            <h2 className="min-w-0 flex-1 text-base font-bold text-[var(--nu-text)]">
               {p.projectName || "（名称未設定の案件）"}
             </h2>
             <span
@@ -151,7 +151,7 @@ export default function NewProjectDetailPage() {
         </section>
 
         {/* ── 見積サマリー ── */}
-        <section className="rounded-2xl border border-[#e6ebeb] bg-white p-4 shadow-sm">
+        <section className="rounded-2xl border border-[var(--nu-border)] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-slate-500">見積（税抜・売価合計）</p>
@@ -165,7 +165,7 @@ export default function NewProjectDetailPage() {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-500">工事項目</p>
-              <p className="mt-0.5 text-xl font-bold text-[#1f2a2e]">{itemCount}件</p>
+              <p className="mt-0.5 text-xl font-bold text-[var(--nu-text)]">{itemCount}件</p>
             </div>
           </div>
           <Link
@@ -178,8 +178,8 @@ export default function NewProjectDetailPage() {
 
         {/* ── 基本情報 ── */}
         <section>
-          <h3 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">基本情報</h3>
-          <dl className="divide-y divide-[#f0f3f3] rounded-2xl border border-[#e6ebeb] bg-white px-4 shadow-sm">
+          <h3 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">基本情報</h3>
+          <dl className="divide-y divide-[var(--nu-border-soft)] rounded-2xl border border-[var(--nu-border)] bg-white px-4 shadow-sm">
             <InfoRow label="物件名" value={p.propertyName} />
             <InfoRow label="部屋番号" value={p.roomNumber} />
             <InfoRow label="住所" value={p.siteAddress} />
@@ -191,7 +191,7 @@ export default function NewProjectDetailPage() {
 
         {/* ── 機能（既存機能を再利用。見た目は新UI） ── */}
         <section>
-          <h3 className="mb-2 px-1 text-sm font-bold text-[#1f2a2e]">この案件でできること</h3>
+          <h3 className="mb-2 px-1 text-sm font-bold text-[var(--nu-text)]">この案件でできること</h3>
           <div className="grid grid-cols-2 gap-3">
             <FeatureLink
               icon="📋"
@@ -202,27 +202,27 @@ export default function NewProjectDetailPage() {
             <FeatureLink
               icon="📝"
               label="案件情報を編集"
-              href={`/projects/${encodeURIComponent(p.projectId)}`}
+              href={`/new/projects/${encodeURIComponent(p.projectId)}/edit`}
             />
             <FeatureLink
               icon="🔍"
               label="現地調査"
-              href={`/projects/${encodeURIComponent(p.projectId)}/survey`}
+              href={`/new/projects/${encodeURIComponent(p.projectId)}/survey`}
             />
             <FeatureLink
               icon="📷"
               label="写真台帳"
-              href={`/projects/${encodeURIComponent(p.projectId)}/photos`}
+              href={`/new/projects/${encodeURIComponent(p.projectId)}/photos`}
             />
             <FeatureLink
               icon="📄"
               label="請求書"
-              href={`/projects/${encodeURIComponent(p.projectId)}/invoice`}
+              href={`/new/projects/${encodeURIComponent(p.projectId)}/invoice`}
             />
             <FeatureLink
               icon="✅"
               label="作業報告"
-              href={`/projects/${encodeURIComponent(p.projectId)}/reports`}
+              href={`/new/projects/${encodeURIComponent(p.projectId)}/reports`}
             />
           </div>
           <p className="mt-2 px-1 text-[11px] text-slate-400">
@@ -238,7 +238,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 py-2.5">
       <dt className="shrink-0 text-xs text-slate-500">{label}</dt>
-      <dd className="min-w-0 flex-1 break-words text-right text-sm text-[#1f2a2e]">
+      <dd className="min-w-0 flex-1 break-words text-right text-sm text-[var(--nu-text)]">
         {value || "—"}
       </dd>
     </div>
@@ -262,7 +262,7 @@ function FeatureLink({
       className={`flex items-center gap-2.5 rounded-2xl border p-3.5 shadow-sm active:scale-[0.98] ${
         primary
           ? "border-transparent bg-[var(--nu-primary)] text-white"
-          : "border-[#e6ebeb] bg-white text-[#1f2a2e]"
+          : "border-[var(--nu-border)] bg-white text-[var(--nu-text)]"
       }`}
     >
       <span className="text-xl">{icon}</span>

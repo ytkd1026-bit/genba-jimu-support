@@ -32,7 +32,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="メインナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e6ebeb] bg-white/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--nu-border)] bg-white/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex max-w-md items-end justify-around px-2 pt-1.5">
@@ -72,7 +72,7 @@ export default function BottomNav() {
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 active:bg-[#f1f5f5]"
+                className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 active:bg-[var(--nu-bg)]"
               >
                 <span className={`text-xl leading-none ${active ? "" : "opacity-55"}`}>
                   {tab.icon}

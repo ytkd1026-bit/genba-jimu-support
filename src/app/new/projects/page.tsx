@@ -111,7 +111,7 @@ function ProjectsInner() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="案件名・物件・部屋番号・元請・住所・ID"
-            className="w-full rounded-xl border border-[#e6ebeb] bg-white py-2.5 pl-9 pr-3 text-sm text-[#1f2a2e] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)]"
+            className="w-full rounded-xl border border-[var(--nu-border)] bg-white py-2.5 pl-9 pr-3 text-sm text-[var(--nu-text)] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)]"
           />
         </div>
 
@@ -132,7 +132,7 @@ function ProjectsInner() {
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                   filter === f
                     ? "bg-[var(--nu-primary)] text-white"
-                    : "border border-[#e6ebeb] bg-white text-slate-600 active:bg-[#f6f8f8]"
+                    : "border border-[var(--nu-border)] bg-white text-slate-600 active:bg-[var(--nu-bg)]"
                 }`}
               >
                 {FILTER_LABELS[f]}
@@ -150,14 +150,14 @@ function ProjectsInner() {
             <div className="h-24 animate-pulse rounded-2xl bg-white" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#cfdad8] bg-white px-4 py-8 text-center">
+          <div className="rounded-2xl border border-dashed border-[var(--nu-border)] bg-white px-4 py-8 text-center">
             <p className="text-sm text-slate-500">
               {projects.length === 0
                 ? "案件がまだありません。"
                 : "条件に合う案件がありません。"}
             </p>
             <Link
-              href="/projects/new"
+              href="/new/projects/new"
               className="mt-3 inline-flex items-center gap-1 rounded-xl bg-[var(--nu-primary)] px-4 py-2 text-sm font-semibold text-white active:bg-[var(--nu-primary-dk)]"
             >
               ＋ 新しい案件を登録
@@ -171,10 +171,10 @@ function ProjectsInner() {
                 <li key={p.projectId}>
                   <Link
                     href={`/new/projects/${encodeURIComponent(p.projectId)}${fromEstimate ? "/estimate" : ""}`}
-                    className="block rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm active:bg-[#f6f8f8]"
+                    className="block rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 shadow-sm active:bg-[var(--nu-bg)]"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 flex-1 font-bold text-[#1f2a2e]">
+                      <p className="min-w-0 flex-1 font-bold text-[var(--nu-text)]">
                         {p.projectName || "（名称未設定の案件）"}
                       </p>
                       <span
@@ -216,7 +216,7 @@ function SummaryTile({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-[#e6ebeb] bg-white px-2 py-2.5 text-center shadow-sm">
+    <div className="rounded-2xl border border-[var(--nu-border)] bg-white px-2 py-2.5 text-center shadow-sm">
       <p className={`text-xl font-bold ${accent ? "text-rose-600" : "text-[var(--nu-primary-dk)]"}`}>
         {value}
       </p>

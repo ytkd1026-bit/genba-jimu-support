@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../../_components/PageHeader";
+import { NuProjectTabs } from "../../../_components/NuProject";
 import {
   projectsStore,
   advanceProjectStatus,
@@ -65,9 +66,9 @@ function taxComboValue(taxType: TaxType, taxRate: TaxRate): string {
 // ── 新UI 入力スタイル ──────────────────────────────────────────
 const lbl = "mb-1 block text-xs font-medium text-slate-500";
 const fld =
-  "w-full rounded-xl border border-[#e6ebeb] bg-white px-3 py-2.5 text-sm text-[#1f2a2e] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)] min-h-[44px]";
+  "w-full rounded-xl border border-[var(--nu-border)] bg-white px-3 py-2.5 text-sm text-[var(--nu-text)] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)] min-h-[44px]";
 const sel =
-  "w-full appearance-none rounded-xl border border-[#e6ebeb] bg-white px-3 py-2.5 text-sm text-[#1f2a2e] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)] min-h-[44px]";
+  "w-full appearance-none rounded-xl border border-[var(--nu-border)] bg-white px-3 py-2.5 text-sm text-[var(--nu-text)] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)] min-h-[44px]";
 // 内部管理（原価）＝黄系で「外部帳票には出ない」ことを明示
 const costFld =
   "w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-200/60 min-h-[44px]";
@@ -408,7 +409,7 @@ export default function NewEstimatePage() {
       <div>
         <PageHeader title="見積・原価入力" back="/new/projects" />
         <div className="px-4 py-10 text-center">
-          <p className="text-sm font-bold text-[#1f2a2e]">案件が見つかりません。</p>
+          <p className="text-sm font-bold text-[var(--nu-text)]">案件が見つかりません。</p>
           <p className="mt-1 font-mono text-xs text-slate-400">{projectId}</p>
         </div>
       </div>
@@ -438,6 +439,8 @@ export default function NewEstimatePage() {
       />
 
       <div className="space-y-3 px-4 py-4">
+        <NuProjectTabs projectId={projectId} active="estimate" />
+
         {/* 説明 */}
         <p className="rounded-xl bg-[var(--nu-primary-bg)] px-3 py-2 text-[11px] leading-snug text-[var(--nu-primary-dk)]">
           白い欄は<strong>提出用（外部帳票）</strong>、黄色い欄は<strong>内部管理（原価・粗利）</strong>です。
@@ -468,20 +471,20 @@ export default function NewEstimatePage() {
         {legacyEstimates.length > 0 && (
           <div>
             <button type="button" onClick={() => setShowImport((v) => !v)}
-              className="flex min-h-[44px] w-full items-center justify-between rounded-2xl border border-[#e6ebeb] bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm active:bg-[#f6f8f8]">
+              className="flex min-h-[44px] w-full items-center justify-between rounded-2xl border border-[var(--nu-border)] bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm active:bg-[var(--nu-bg)]">
               <span>📥 保存済みの見積から取り込む</span>
               <span className="text-slate-300">{showImport ? "▲" : "▼"}</span>
             </button>
             {showImport && (
-              <div className="mt-2 space-y-2 rounded-2xl border border-[#e6ebeb] bg-white p-3 shadow-sm">
+              <div className="mt-2 space-y-2 rounded-2xl border border-[var(--nu-border)] bg-white p-3 shadow-sm">
                 <p className="text-[11px] text-slate-400">
                   見積明細を工事項目としてコピーします（元の見積は変更されません）。原価は0で取り込まれます。
                 </p>
                 {legacyEstimates.map((est) => (
                   <button key={est.id} type="button" onClick={() => handleImport(est.id)}
-                    className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-[#e6ebeb] bg-[#f6f8f8] px-3 py-2 text-left active:opacity-80">
+                    className="flex min-h-[44px] w-full items-center justify-between rounded-xl border border-[var(--nu-border)] bg-[var(--nu-bg)] px-3 py-2 text-left active:opacity-80">
                     <span className="min-w-0">
-                      <span className="block truncate text-xs font-bold text-[#1f2a2e]">{est.projectName || "（案件名なし）"}</span>
+                      <span className="block truncate text-xs font-bold text-[var(--nu-text)]">{est.projectName || "（案件名なし）"}</span>
                       <span className="block text-[11px] text-slate-400">{est.estimateNo}・{est.estimateItems.length}行・{fmtYen(est.total)}</span>
                     </span>
                     <span className="shrink-0 text-xs font-bold text-[var(--nu-primary-dk)]">取り込む</span>
@@ -499,7 +502,7 @@ export default function NewEstimatePage() {
 
         {/* 工事項目カード */}
         {rows.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#cfdad8] bg-white px-4 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-[var(--nu-border)] bg-white px-4 py-10 text-center">
             <p className="text-sm text-slate-500">まだ工事項目がありません。</p>
             <p className="mt-1 text-sm text-slate-500">下の「＋ 工事項目を追加」から入力を始めてください。</p>
           </div>
@@ -513,9 +516,9 @@ export default function NewEstimatePage() {
               const g = toNum(targetMargin[row.workItemId] ?? "");
               const refUnit = g > 0 && g < 100 ? costUnit / (1 - g / 100) : 0;
               return (
-                <div key={row.workItemId} className="overflow-hidden rounded-2xl border border-[#e6ebeb] bg-white shadow-sm">
+                <div key={row.workItemId} className="overflow-hidden rounded-2xl border border-[var(--nu-border)] bg-white shadow-sm">
                   {/* ヘッダー */}
-                  <div className="flex items-center justify-between border-b border-[#f0f3f3] bg-[#f6f8f8] px-4 py-2.5">
+                  <div className="flex items-center justify-between border-b border-[var(--nu-border-soft)] bg-[var(--nu-bg)] px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <span className="rounded-full bg-[var(--nu-primary)] px-2 py-0.5 font-mono text-[11px] font-bold text-white">{row.workItemId}</span>
                       <span className="text-xs font-bold text-slate-500">項目 {index + 1}</span>
@@ -600,9 +603,9 @@ export default function NewEstimatePage() {
                       </select>
                     </div>
                     {/* 見積金額（自動） */}
-                    <div className="flex items-center justify-between rounded-xl bg-[#f6f8f8] px-3 py-2.5">
+                    <div className="flex items-center justify-between rounded-xl bg-[var(--nu-bg)] px-3 py-2.5">
                       <span className="text-xs text-slate-500">見積金額（自動・{row.taxType === "taxable" ? `課税${row.taxRate}%` : TAX_TYPE_LABELS[row.taxType]}）</span>
-                      <span className="text-sm font-bold text-[#1f2a2e]">{fmtYen(a.sellingAmount)}</span>
+                      <span className="text-sm font-bold text-[var(--nu-text)]">{fmtYen(a.sellingAmount)}</span>
                     </div>
                     <div>
                       <label className={lbl}>備考</label>
@@ -701,13 +704,13 @@ export default function NewEstimatePage() {
         {/* 集計 */}
         {rows.length > 0 && (
           <div className="space-y-2">
-            <div className="rounded-2xl border border-[#e6ebeb] bg-white p-4 shadow-sm">
-              <h3 className="mb-2 text-sm font-bold text-[#1f2a2e]">見積合計（提出用）</h3>
+            <div className="rounded-2xl border border-[var(--nu-border)] bg-white p-4 shadow-sm">
+              <h3 className="mb-2 text-sm font-bold text-[var(--nu-text)]">見積合計（提出用）</h3>
               <div className="space-y-1 text-sm">
                 <Line label="小計（税抜）" value={fmtYen(totals.selling)} />
                 <Line label="消費税" value={fmtYen(totals.tax)} />
-                <div className="flex justify-between border-t border-[#f0f3f3] pt-1.5">
-                  <span className="font-bold text-[#1f2a2e]">見積合計（税込）</span>
+                <div className="flex justify-between border-t border-[var(--nu-border-soft)] pt-1.5">
+                  <span className="font-bold text-[var(--nu-text)]">見積合計（税込）</span>
                   <span className="text-base font-bold text-[var(--nu-primary-dk)]">{fmtYen(totals.totalWithTax)}</span>
                 </div>
               </div>
@@ -742,7 +745,7 @@ export default function NewEstimatePage() {
               {pdfLoading === "estimate" ? "PDF作成中…" : "💾 保存して見積書を確認（PDF）"}
             </button>
             <button type="button" disabled={pdfLoading !== null} onClick={() => void handleInvoicePdf()}
-              className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[#e6ebeb] bg-white px-4 py-3 text-sm font-semibold text-slate-600 active:bg-[#f6f8f8] disabled:opacity-50">
+              className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[var(--nu-border)] bg-white px-4 py-3 text-sm font-semibold text-slate-600 active:bg-[var(--nu-bg)] disabled:opacity-50">
               {pdfLoading === "invoice" ? "PDF作成中…" : "📄 請求書PDFを作成"}
             </button>
             <p className="text-center text-[11px] text-slate-400">提出用PDFに原価・粗利は表示されません。</p>
@@ -766,7 +769,7 @@ function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <span className="text-slate-500">{label}</span>
-      <span className="font-semibold text-[#1f2a2e]">{value}</span>
+      <span className="font-semibold text-[var(--nu-text)]">{value}</span>
     </div>
   );
 }

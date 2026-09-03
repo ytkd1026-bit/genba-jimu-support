@@ -41,11 +41,11 @@ export default function NewMyPage() {
         <ThemeSection />
 
         {/* 自社情報 */}
-        <Section title="自社情報" actionLabel="編集" actionHref="/settings/company">
+        <Section title="自社情報" actionLabel="編集" actionHref="/new/settings/company">
           {!ready || !company ? (
             <Loading />
           ) : (
-            <dl className="divide-y divide-[#f0f3f3]">
+            <dl className="divide-y divide-[var(--nu-border-soft)]">
               <Row label="会社名" value={company.businessName} />
               <Row label="代表者" value={company.representative} />
               <Row label="住所" value={`${company.postalCode} ${company.address}`} />
@@ -63,8 +63,8 @@ export default function NewMyPage() {
         </Section>
 
         {/* 取引先管理 */}
-        <Section title="取引先管理" actionLabel="開く" actionHref="/customers">
-          <LinkRow icon="🏢" label="元請・顧客・協力会社" href="/customers">
+        <Section title="取引先管理" actionLabel="開く" actionHref="/new/customers">
+          <LinkRow icon="🏢" label="元請・顧客・協力会社" href="/new/customers">
             {ready ? `${customerCount}件` : "…"}
           </LinkRow>
         </Section>
@@ -72,10 +72,10 @@ export default function NewMyPage() {
         {/* 帳票設定 */}
         <Section title="帳票設定">
           <div className="grid grid-cols-2 gap-2">
-            <TileLink label="見積" href="/settings/company" />
-            <TileLink label="請求" href="/settings/company" />
-            <TileLink label="発注" href="/settings/company" />
-            <TileLink label="完了報告" href="/settings/company" />
+            <TileLink label="見積" href="/new/settings/company" />
+            <TileLink label="請求" href="/new/settings/company" />
+            <TileLink label="発注" href="/new/settings/company" />
+            <TileLink label="完了報告" href="/new/settings/company" />
           </div>
           <p className="mt-2 text-[11px] text-slate-400">
             会社情報・振込先は「自社情報」の編集から設定します。
@@ -100,7 +100,7 @@ export default function NewMyPage() {
 
         {/* 設定 */}
         <Section title="設定">
-          <div className="divide-y divide-[#f0f3f3]">
+          <div className="divide-y divide-[var(--nu-border-soft)]">
             <SettingRow icon="🔔" label="通知" note="準備中" />
             <SettingRow icon="💾" label="バックアップ" note="準備中" />
             <SettingRow icon="👤" label="アカウント" note="準備中" />
@@ -109,8 +109,8 @@ export default function NewMyPage() {
 
         {/* 旧UIへ */}
         <Link
-          href="/"
-          className="flex items-center justify-center rounded-2xl border border-[#e6ebeb] bg-white px-4 py-3 text-sm font-medium text-slate-500 active:bg-[#f6f8f8]"
+          href="/new"
+          className="flex items-center justify-center rounded-2xl border border-[var(--nu-border)] bg-white px-4 py-3 text-sm font-medium text-slate-500 active:bg-[var(--nu-bg)]"
         >
           従来のホーム画面へ移動
         </Link>
@@ -125,10 +125,10 @@ function ThemeSection() {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-sm font-bold text-[#1f2a2e]">表示テーマ</h2>
+        <h2 className="text-sm font-bold text-[var(--nu-text)]">表示テーマ</h2>
         <span className="text-[11px] text-slate-400">この端末に保存</span>
       </div>
-      <div className="rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm">
+      <div className="rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 shadow-sm">
         <div className="grid grid-cols-2 gap-2">
           {THEME_OPTIONS.map((opt) => {
             const active = theme === opt.id;
@@ -141,7 +141,7 @@ function ThemeSection() {
                 className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left active:scale-[0.98] ${
                   active
                     ? "border-[var(--nu-primary)] bg-[var(--nu-primary-bg)]"
-                    : "border-[#e6ebeb] bg-white"
+                    : "border-[var(--nu-border)] bg-white"
                 }`}
               >
                 <span
@@ -153,7 +153,7 @@ function ThemeSection() {
                   {active && <span className="text-xs font-bold text-white">✓</span>}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-[#1f2a2e]">
+                  <span className="block truncate text-sm font-bold text-[var(--nu-text)]">
                     {opt.label}
                   </span>
                   <span className="block truncate text-[11px] text-slate-500">
@@ -187,14 +187,14 @@ function Section({
   return (
     <section>
       <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-sm font-bold text-[#1f2a2e]">{title}</h2>
+        <h2 className="text-sm font-bold text-[var(--nu-text)]">{title}</h2>
         {actionLabel && actionHref && (
           <Link href={actionHref} className="text-xs font-medium text-[var(--nu-primary)]">
             {actionLabel} ›
           </Link>
         )}
       </div>
-      <div className="rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm">
+      <div className="rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 shadow-sm">
         {children}
       </div>
     </section>
@@ -202,14 +202,14 @@ function Section({
 }
 
 function Loading() {
-  return <div className="h-20 animate-pulse rounded-xl bg-[#f6f8f8]" />;
+  return <div className="h-20 animate-pulse rounded-xl bg-[var(--nu-bg)]" />;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 py-2">
       <dt className="shrink-0 text-xs text-slate-500">{label}</dt>
-      <dd className="min-w-0 flex-1 break-words text-right text-sm text-[#1f2a2e]">
+      <dd className="min-w-0 flex-1 break-words text-right text-sm text-[var(--nu-text)]">
         {value || "—"}
       </dd>
     </div>
@@ -230,7 +230,7 @@ function LinkRow({
   return (
     <Link href={href} className="flex items-center gap-3 py-1 active:opacity-75">
       <span className="text-lg">{icon}</span>
-      <span className="flex-1 text-sm text-[#1f2a2e]">{label}</span>
+      <span className="flex-1 text-sm text-[var(--nu-text)]">{label}</span>
       <span className="text-sm font-semibold text-[var(--nu-primary-dk)]">{children}</span>
       <span className="text-slate-300">›</span>
     </Link>
@@ -241,7 +241,7 @@ function TileLink({ label, href }: { label: string; href: string }) {
   return (
     <Link
       href={href}
-      className="rounded-xl bg-[#f6f8f8] px-3 py-3 text-center text-sm font-medium text-[#1f2a2e] active:bg-[#eef2f2]"
+      className="rounded-xl bg-[var(--nu-bg)] px-3 py-3 text-center text-sm font-medium text-[var(--nu-text)] active:bg-[var(--nu-bg)]"
     >
       {label}
     </Link>
@@ -250,7 +250,7 @@ function TileLink({ label, href }: { label: string; href: string }) {
 
 function Metric({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="rounded-xl bg-[#f6f8f8] px-3 py-2.5">
+    <div className="rounded-xl bg-[var(--nu-bg)] px-3 py-2.5">
       <p className="text-[11px] text-slate-500">{label}</p>
       <p className="mt-0.5 text-base font-bold text-[var(--nu-primary-dk)]">
         {value === null ? <span className="text-sm font-medium text-slate-400">未集計</span> : value}
@@ -263,7 +263,7 @@ function SettingRow({ icon, label, note }: { icon: string; label: string; note: 
   return (
     <div className="flex items-center gap-3 py-2.5">
       <span className="text-lg">{icon}</span>
-      <span className="flex-1 text-sm text-[#1f2a2e]">{label}</span>
+      <span className="flex-1 text-sm text-[var(--nu-text)]">{label}</span>
       <span className="text-[11px] text-slate-400">{note}</span>
     </div>
   );

@@ -14,9 +14,9 @@ export default function ProjectCard({
   href?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm">
+    <div className="rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 text-sm font-bold text-[#1f2a2e]">
+        <p className="min-w-0 flex-1 text-sm font-bold text-[var(--nu-text)]">
           {project.projectName}
         </p>
         <span
@@ -46,9 +46,9 @@ export default function ProjectCard({
 
 function StateCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-[#f6f8f8] px-1 py-1.5">
+    <div className="rounded-xl bg-[var(--nu-bg)] px-1 py-1.5">
       <dt className="text-[10px] text-slate-400">{label}</dt>
-      <dd className="mt-0.5 text-xs font-semibold text-[#1f2a2e]">{value}</dd>
+      <dd className="mt-0.5 text-xs font-semibold text-[var(--nu-text)]">{value}</dd>
     </div>
   );
 }

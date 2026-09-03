@@ -37,14 +37,14 @@ export default function NewChatPage() {
             <li key={room.id}>
               <button
                 onClick={() => setOpenRoom(room)}
-                className="flex w-full items-center gap-3 rounded-2xl border border-[#e6ebeb] bg-white p-3.5 text-left shadow-sm active:bg-[#f6f8f8]"
+                className="flex w-full items-center gap-3 rounded-2xl border border-[var(--nu-border)] bg-white p-3.5 text-left shadow-sm active:bg-[var(--nu-bg)]"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--nu-primary-bg)] text-lg">
                   🏢
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-bold text-[#1f2a2e]">
+                    <p className="truncate text-sm font-bold text-[var(--nu-text)]">
                       {room.counterparty}
                     </p>
                     <span className="shrink-0 text-[11px] text-slate-400">{room.lastAt}</span>
@@ -90,7 +90,7 @@ function ChatThread({ room, onBack }: { room: ChatRoom; onBack: () => void }) {
         right={
           <button
             onClick={onBack}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-[var(--nu-primary)] active:bg-[#f1f5f5]"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-[var(--nu-primary)] active:bg-[var(--nu-bg)]"
           >
             ← 戻る
           </button>
@@ -128,7 +128,7 @@ function ChatThread({ room, onBack }: { room: ChatRoom; onBack: () => void }) {
                     className={`rounded-2xl px-3 py-2 text-sm ${
                       m.from === "self"
                         ? "bg-[var(--nu-primary)] text-white"
-                        : "border border-[#e6ebeb] bg-white text-[#1f2a2e]"
+                        : "border border-[var(--nu-border)] bg-white text-[var(--nu-text)]"
                     }`}
                   >
                     {m.body}
@@ -149,18 +149,18 @@ function ChatThread({ room, onBack }: { room: ChatRoom; onBack: () => void }) {
 
       {/* 入力欄（プレビュー・非活性） */}
       <div
-        className="fixed inset-x-0 z-30 mx-auto max-w-md border-t border-[#e6ebeb] bg-white px-3 py-2"
+        className="fixed inset-x-0 z-30 mx-auto max-w-md border-t border-[var(--nu-border)] bg-white px-3 py-2"
         style={{ bottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
         <div className="flex items-center gap-2">
           <input
             disabled
             placeholder="メッセージ（連携準備中）"
-            className="flex-1 rounded-full border border-[#e6ebeb] bg-[#f6f8f8] px-4 py-2 text-sm text-slate-400"
+            className="flex-1 rounded-full border border-[var(--nu-border)] bg-[var(--nu-bg)] px-4 py-2 text-sm text-slate-400"
           />
           <button
             disabled
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#cfdad8] text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--nu-border)] text-white"
             aria-label="送信"
           >
             ↑
