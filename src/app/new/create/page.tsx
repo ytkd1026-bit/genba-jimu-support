@@ -25,6 +25,7 @@ const CREATE_MENU = [
   { title: "発注書",     desc: "材料計算・発注書を作成",   icon: "📦", href: "/materials",                       primary: false },
   { title: "完了報告書", desc: "案件を選んで報告書を作成", icon: "✅", href: "/new/projects?from=report",       primary: false },
   { title: "施工記録",   desc: "案件を選んで写真・記録",   icon: "📷", href: "/new/projects?from=log",           primary: false },
+  { title: "拾い出し",   desc: "音声で採寸→数量を自動計算", icon: "🎙", href: "/new/takeoff",                     primary: false },
 ];
 
 type RecentDoc = {
