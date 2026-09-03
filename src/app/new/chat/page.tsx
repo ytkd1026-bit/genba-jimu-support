@@ -27,7 +27,7 @@ export default function NewChatPage() {
       <PageHeader title="チャット" subtitle="元請・顧客との連絡（設計プレビュー）" />
 
       <div className="px-4 py-3">
-        <p className="mb-3 rounded-xl bg-[#e6f4f2] px-3 py-2 text-[11px] leading-snug text-[#0f766e]">
+        <p className="mb-3 rounded-xl bg-[var(--nu-primary-bg)] px-3 py-2 text-[11px] leading-snug text-[var(--nu-primary-dk)]">
           これは画面設計のプレビューです。メッセージ送受信の連携は今後の工程で、
           正本の案件DBを壊さない形で追加します。
         </p>
@@ -39,7 +39,7 @@ export default function NewChatPage() {
                 onClick={() => setOpenRoom(room)}
                 className="flex w-full items-center gap-3 rounded-2xl border border-[#e6ebeb] bg-white p-3.5 text-left shadow-sm active:bg-[#f6f8f8]"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e6f4f2] text-lg">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--nu-primary-bg)] text-lg">
                   🏢
                 </span>
                 <div className="min-w-0 flex-1">
@@ -64,7 +64,7 @@ export default function NewChatPage() {
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <p className="truncate text-xs text-slate-500">{room.lastMessage}</p>
                     {room.unreadCount > 0 && (
-                      <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[#0d9488] px-1.5 text-[11px] font-bold text-white">
+                      <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-[var(--nu-primary)] px-1.5 text-[11px] font-bold text-white">
                         {room.unreadCount}
                       </span>
                     )}
@@ -90,7 +90,7 @@ function ChatThread({ room, onBack }: { room: ChatRoom; onBack: () => void }) {
         right={
           <button
             onClick={onBack}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-[#0d9488] active:bg-[#f1f5f5]"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-[var(--nu-primary)] active:bg-[#f1f5f5]"
           >
             ← 戻る
           </button>
@@ -127,7 +127,7 @@ function ChatThread({ room, onBack }: { room: ChatRoom; onBack: () => void }) {
                   <div
                     className={`rounded-2xl px-3 py-2 text-sm ${
                       m.from === "self"
-                        ? "bg-[#0d9488] text-white"
+                        ? "bg-[var(--nu-primary)] text-white"
                         : "border border-[#e6ebeb] bg-white text-[#1f2a2e]"
                     }`}
                   >

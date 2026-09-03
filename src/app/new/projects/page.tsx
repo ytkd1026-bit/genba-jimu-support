@@ -105,7 +105,7 @@ function ProjectsInner() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="案件名・物件・部屋番号・元請・住所・ID"
-            className="w-full rounded-xl border border-[#e6ebeb] bg-white py-2.5 pl-9 pr-3 text-sm text-[#1f2a2e] outline-none focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/20"
+            className="w-full rounded-xl border border-[#e6ebeb] bg-white py-2.5 pl-9 pr-3 text-sm text-[#1f2a2e] outline-none focus:border-[var(--nu-primary)] focus:ring-2 focus:ring-[var(--nu-primary-bg)]"
           />
         </div>
 
@@ -125,7 +125,7 @@ function ProjectsInner() {
                 onClick={() => setFilter(f)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                   filter === f
-                    ? "bg-[#0d9488] text-white"
+                    ? "bg-[var(--nu-primary)] text-white"
                     : "border border-[#e6ebeb] bg-white text-slate-600 active:bg-[#f6f8f8]"
                 }`}
               >
@@ -152,7 +152,7 @@ function ProjectsInner() {
             </p>
             <Link
               href="/projects/new"
-              className="mt-3 inline-flex items-center gap-1 rounded-xl bg-[#0d9488] px-4 py-2 text-sm font-semibold text-white active:bg-[#0f766e]"
+              className="mt-3 inline-flex items-center gap-1 rounded-xl bg-[var(--nu-primary)] px-4 py-2 text-sm font-semibold text-white active:bg-[var(--nu-primary-dk)]"
             >
               ＋ 新しい案件を登録
             </Link>
@@ -164,7 +164,7 @@ function ProjectsInner() {
               {filtered.map((p) => (
                 <li key={p.projectId}>
                   <Link
-                    href={`/projects/${encodeURIComponent(p.projectId)}`}
+                    href={`/new/projects/${encodeURIComponent(p.projectId)}`}
                     className="block rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm active:bg-[#f6f8f8]"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -211,7 +211,7 @@ function SummaryTile({
 }) {
   return (
     <div className="rounded-2xl border border-[#e6ebeb] bg-white px-2 py-2.5 text-center shadow-sm">
-      <p className={`text-xl font-bold ${accent ? "text-rose-600" : "text-[#0f766e]"}`}>
+      <p className={`text-xl font-bold ${accent ? "text-rose-600" : "text-[var(--nu-primary-dk)]"}`}>
         {value}
       </p>
       <p className="mt-0.5 text-[11px] text-slate-500">{label}</p>

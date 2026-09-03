@@ -20,7 +20,7 @@ import { PROJECT_STATUS_LABELS } from "@/app/utils/projects";
 // 作成メニュー（既存ルートへの導線）
 const CREATE_MENU = [
   { title: "新規案件",   desc: "現場・元請・住所を登録",   icon: "📝", href: "/projects/new",                    primary: true },
-  { title: "見積書",     desc: "工事内容から見積を作成",   icon: "📋", href: "/estimates",                       primary: true },
+  { title: "見積書",     desc: "案件を選んで見積・原価入力", icon: "📋", href: "/new/projects",                     primary: true },
   { title: "請求書",     desc: "完了案件の請求書を作成",   icon: "📄", href: "/invoices",                        primary: true },
   { title: "発注書",     desc: "材料計算・発注書を作成",   icon: "📦", href: "/materials",                       primary: false },
   { title: "完了報告書", desc: "案件を選んで報告書を作成", icon: "✅", href: "/new/projects?from=report",       primary: false },
@@ -82,7 +82,7 @@ export default function NewCreatePage() {
                 href={m.href}
                 className={`flex flex-col rounded-2xl border p-4 shadow-sm active:scale-[0.98] ${
                   m.primary
-                    ? "border-transparent bg-[#0d9488] text-white"
+                    ? "border-transparent bg-[var(--nu-primary)] text-white"
                     : "border-[#e6ebeb] bg-white text-[#1f2a2e]"
                 }`}
               >
@@ -115,10 +115,10 @@ export default function NewCreatePage() {
               {recentProjects.map((p) => (
                 <li key={p.projectId}>
                   <Link
-                    href={`/projects/${encodeURIComponent(p.projectId)}`}
+                    href={`/new/projects/${encodeURIComponent(p.projectId)}`}
                     className="flex items-center gap-3 rounded-2xl border border-[#e6ebeb] bg-white p-3 shadow-sm active:bg-[#f6f8f8]"
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e6f4f2] text-lg">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--nu-primary-bg)] text-lg">
                       📁
                     </span>
                     <div className="min-w-0 flex-1">
@@ -170,7 +170,7 @@ export default function NewCreatePage() {
                     <p className="min-w-0 flex-1 truncate text-sm font-medium text-[#1f2a2e]">
                       {d.title}
                     </p>
-                    <span className="shrink-0 text-sm font-bold text-[#0f766e]">
+                    <span className="shrink-0 text-sm font-bold text-[var(--nu-primary-dk)]">
                       {formatYen(d.amount)}
                     </span>
                   </Link>

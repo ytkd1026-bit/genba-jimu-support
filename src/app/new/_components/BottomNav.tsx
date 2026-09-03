@@ -50,14 +50,14 @@ export default function BottomNav() {
                 >
                   <span
                     className={`flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-light text-white shadow-lg transition-transform active:scale-95 ${
-                      active ? "bg-[#0f766e]" : "bg-[#0d9488]"
+                      active ? "bg-[var(--nu-primary-dk)]" : "bg-[var(--nu-primary)]"
                     }`}
                   >
                     {tab.icon}
                   </span>
                   <span
                     className={`text-[11px] font-semibold ${
-                      active ? "text-[#0f766e]" : "text-[#0d9488]"
+                      active ? "text-[var(--nu-primary-dk)]" : "text-[var(--nu-primary)]"
                     }`}
                   >
                     {tab.label}
@@ -79,7 +79,7 @@ export default function BottomNav() {
                 </span>
                 <span
                   className={`text-[11px] ${
-                    active ? "font-bold text-[#0f766e]" : "font-medium text-slate-500"
+                    active ? "font-bold text-[var(--nu-primary-dk)]" : "font-medium text-slate-500"
                   }`}
                 >
                   {tab.label}

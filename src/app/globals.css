@@ -18,3 +18,79 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===================================================================
+   新UI（/new）デザインシステム
+   - すべて .nu-root 配下にスコープし、旧UIには一切影響させない。
+   - アクセント色は CSS 変数化し、テーマ切替（data-nu-theme）で差し替える。
+   - 中立色（背景/面/境界/文字）はテーマ間で共通（白基調を維持）。
+   =================================================================== */
+.nu-root {
+  /* 中立色（全テーマ共通・白基調） */
+  --nu-bg: #f6f8f8;
+  --nu-surface: #ffffff;
+  --nu-border: #e6ebeb;
+  --nu-border-soft: #f0f3f3;
+  --nu-text: #1f2a2e;
+  --nu-muted: #64748b;
+
+  /* アクセント色（標準：青緑 teal） */
+  --nu-primary: #0d9488;
+  --nu-primary-dk: #0f766e;
+  --nu-primary-bg: #e6f4f2;
+  --nu-primary-bg-active: #d6ece9;
+  --nu-on-primary: #ffffff;
+  --nu-header-from: #0d9488;
+  --nu-header-to: #0f766e;
+}
+
+/* ネイビー */
+.nu-root[data-nu-theme="navy"] {
+  --nu-primary: #2563eb;
+  --nu-primary-dk: #1d4ed8;
+  --nu-primary-bg: #e7eefc;
+  --nu-primary-bg-active: #d5e2fb;
+  --nu-header-from: #1d4ed8;
+  --nu-header-to: #1e3a8a;
+}
+
+/* グリーン */
+.nu-root[data-nu-theme="green"] {
+  --nu-primary: #16a34a;
+  --nu-primary-dk: #15803d;
+  --nu-primary-bg: #e6f5ec;
+  --nu-primary-bg-active: #d3ecdd;
+  --nu-header-from: #16a34a;
+  --nu-header-to: #15803d;
+}
+
+/* グレー / モノトーン寄り */
+.nu-root[data-nu-theme="gray"] {
+  --nu-primary: #475569;
+  --nu-primary-dk: #334155;
+  --nu-primary-bg: #eef1f5;
+  --nu-primary-bg-active: #e2e8f0;
+  --nu-header-from: #475569;
+  --nu-header-to: #334155;
+}
+
+/* 新UI共通の面・背景 */
+.nu-root {
+  background: var(--nu-bg);
+  color: var(--nu-text);
+}
+
+/* iOS Safari 対策：
+   - タップ可能要素はダブルタップ拡大待ちを無効化しシングルタップを即時反映。
+   - タップ時のグレーハイライトを抑制（自前の :active 表現を使うため）。 */
+.nu-root a,
+.nu-root button,
+.nu-root [role="button"],
+.nu-root label,
+.nu-root summary,
+.nu-root input,
+.nu-root select,
+.nu-root textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}

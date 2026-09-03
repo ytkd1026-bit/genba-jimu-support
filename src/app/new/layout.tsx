@@ -2,9 +2,13 @@
 // 既存の RootLayout（src/app/layout.tsx）の内側に入り、フォント等は共通のまま、
 // ここで新UIの背景・最大幅・下部ナビ（Safe Area 対応）を付与する。
 // 旧UIには一切影響しない。
+//
+// テーマカラーは .nu-root の data-nu-theme を ThemeProvider が切り替える。
+// 色そのものは globals.css の CSS 変数（--nu-*）で定義する。
 
 import type { Metadata } from "next";
 import BottomNav from "./_components/BottomNav";
+import ThemeProvider, { themeNoFlashScript } from "./_components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "現場の事務サポ（新UI）",
@@ -17,15 +21,19 @@ export default function NewUiLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#f6f8f8] text-[#1f2a2e]">
-      {/* 下部ナビの高さ分（約64px）＋Safe Area を確保 */}
-      <div
-        className="mx-auto max-w-md"
-        style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
-      >
-        {children}
-      </div>
-      <BottomNav />
+    <div id="nu-root" className="nu-root min-h-screen">
+      {/* ちらつき防止：保存済みテーマをハイドレーション前に適用 */}
+      <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript }} />
+      <ThemeProvider>
+        {/* 下部ナビの高さ分（約72px）＋Safe Area を確保 */}
+        <div
+          className="mx-auto max-w-md"
+          style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
+        >
+          {children}
+        </div>
+        <BottomNav />
+      </ThemeProvider>
     </div>
   );
 }

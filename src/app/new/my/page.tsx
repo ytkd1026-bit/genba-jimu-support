@@ -7,6 +7,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PageHeader from "../_components/PageHeader";
+import { useTheme } from "../_components/ThemeProvider";
+import { THEME_OPTIONS } from "../_lib/themeColors";
 import { loadCustomers, loadInvoices, monthlyIssuedTotal, formatYen } from "../_lib/data";
 import {
   getCompanySettings,
@@ -35,6 +37,9 @@ export default function NewMyPage() {
       <PageHeader title="My" subtitle="自社情報・取引先・帳票・経営・設定" />
 
       <div className="space-y-5 px-4 py-4">
+        {/* 表示テーマ */}
+        <ThemeSection />
+
         {/* 自社情報 */}
         <Section title="自社情報" actionLabel="編集" actionHref="/settings/company">
           {!ready || !company ? (
@@ -114,6 +119,59 @@ export default function NewMyPage() {
   );
 }
 
+// ─── テーマカラー選択 ────────────────────────────────────────
+function ThemeSection() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h2 className="text-sm font-bold text-[#1f2a2e]">表示テーマ</h2>
+        <span className="text-[11px] text-slate-400">この端末に保存</span>
+      </div>
+      <div className="rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm">
+        <div className="grid grid-cols-2 gap-2">
+          {THEME_OPTIONS.map((opt) => {
+            const active = theme === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setTheme(opt.id)}
+                className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left active:scale-[0.98] ${
+                  active
+                    ? "border-[var(--nu-primary)] bg-[var(--nu-primary-bg)]"
+                    : "border-[#e6ebeb] bg-white"
+                }`}
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-black/5"
+                  style={{
+                    background: `linear-gradient(135deg, ${opt.swatch.primary}, ${opt.swatch.primaryDk})`,
+                  }}
+                >
+                  {active && <span className="text-xs font-bold text-white">✓</span>}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-[#1f2a2e]">
+                    {opt.label}
+                  </span>
+                  <span className="block truncate text-[11px] text-slate-500">
+                    {opt.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          ヘッダー・ボタン・タブ・バッジなどのアクセント色が切り替わります。
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // ─── 部品 ────────────────────────────────────────────────────
 function Section({
   title,
@@ -131,7 +189,7 @@ function Section({
       <div className="mb-2 flex items-center justify-between px-1">
         <h2 className="text-sm font-bold text-[#1f2a2e]">{title}</h2>
         {actionLabel && actionHref && (
-          <Link href={actionHref} className="text-xs font-medium text-[#0d9488]">
+          <Link href={actionHref} className="text-xs font-medium text-[var(--nu-primary)]">
             {actionLabel} ›
           </Link>
         )}
@@ -173,7 +231,7 @@ function LinkRow({
     <Link href={href} className="flex items-center gap-3 py-1 active:opacity-75">
       <span className="text-lg">{icon}</span>
       <span className="flex-1 text-sm text-[#1f2a2e]">{label}</span>
-      <span className="text-sm font-semibold text-[#0f766e]">{children}</span>
+      <span className="text-sm font-semibold text-[var(--nu-primary-dk)]">{children}</span>
       <span className="text-slate-300">›</span>
     </Link>
   );
@@ -194,7 +252,7 @@ function Metric({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="rounded-xl bg-[#f6f8f8] px-3 py-2.5">
       <p className="text-[11px] text-slate-500">{label}</p>
-      <p className="mt-0.5 text-base font-bold text-[#0f766e]">
+      <p className="mt-0.5 text-base font-bold text-[var(--nu-primary-dk)]">
         {value === null ? <span className="text-sm font-medium text-slate-400">未集計</span> : value}
       </p>
     </div>

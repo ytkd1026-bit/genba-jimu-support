@@ -36,7 +36,7 @@ export default function ProjectCard({
 
       <Link
         href={href}
-        className="mt-3 flex w-full items-center justify-center rounded-xl bg-[#e6f4f2] py-2 text-sm font-semibold text-[#0f766e] active:bg-[#d6ece9]"
+        className="mt-3 flex w-full items-center justify-center rounded-xl bg-[var(--nu-primary-bg)] py-2 text-sm font-semibold text-[var(--nu-primary-dk)] active:bg-[var(--nu-primary-bg-active)]"
       >
         案件を見る
       </Link>

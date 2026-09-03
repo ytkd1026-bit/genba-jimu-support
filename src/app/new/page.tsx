@@ -54,8 +54,12 @@ export default function NewHome() {
     <div>
       {/* ── 挨拶・日付 ── */}
       <header
-        className="bg-gradient-to-b from-[#0d9488] to-[#0f766e] px-5 pb-6 pt-5 text-white"
-        style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top))" }}
+        className="px-5 pb-6 pt-5 text-white"
+        style={{
+          paddingTop: "calc(1.25rem + env(safe-area-inset-top))",
+          background:
+            "linear-gradient(to bottom, var(--nu-header-from), var(--nu-header-to))",
+        }}
       >
         <p className="text-xs text-teal-100">現場の事務サポ</p>
         <h1 className="mt-1 text-xl font-bold">今日のダッシュボード</h1>
@@ -109,7 +113,7 @@ export default function NewHome() {
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="text-sm font-bold text-[#1f2a2e]">進行中の案件</h2>
-            <Link href="/new/projects" className="text-xs font-medium text-[#0d9488]">
+            <Link href="/new/projects" className="text-xs font-medium text-[var(--nu-primary)]">
               すべて見る ›
             </Link>
           </div>
@@ -127,7 +131,7 @@ export default function NewHome() {
               {activeProjects.slice(0, 4).map((p) => (
                 <li key={p.projectId}>
                   <Link
-                    href={`/projects/${encodeURIComponent(p.projectId)}`}
+                    href={`/new/projects/${encodeURIComponent(p.projectId)}`}
                     className="block rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm active:bg-[#f6f8f8]"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -163,7 +167,7 @@ export default function NewHome() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-slate-500">発行済み請求（今月）</p>
-              <p className="mt-0.5 text-lg font-bold text-[#0f766e]">
+              <p className="mt-0.5 text-lg font-bold text-[var(--nu-primary-dk)]">
                 {monthTotal === null ? (
                   <span className="text-sm font-medium text-slate-400">未集計</span>
                 ) : (
@@ -173,7 +177,7 @@ export default function NewHome() {
             </div>
             <div>
               <p className="text-xs text-slate-500">進行中の案件</p>
-              <p className="mt-0.5 text-lg font-bold text-[#0f766e]">
+              <p className="mt-0.5 text-lg font-bold text-[var(--nu-primary-dk)]">
                 {ready ? `${activeProjects.length}件` : "…"}
               </p>
             </div>
@@ -230,7 +234,7 @@ function EmptyState({ text, cta, href }: { text: string; cta: string; href: stri
       <p className="text-sm text-slate-500">{text}</p>
       <Link
         href={href}
-        className="mt-3 inline-flex items-center gap-1 rounded-xl bg-[#0d9488] px-4 py-2 text-sm font-semibold text-white active:bg-[#0f766e]"
+        className="mt-3 inline-flex items-center gap-1 rounded-xl bg-[var(--nu-primary)] px-4 py-2 text-sm font-semibold text-white active:bg-[var(--nu-primary-dk)]"
       >
         {cta}
       </Link>
