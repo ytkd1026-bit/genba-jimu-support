@@ -8,7 +8,7 @@
 
 import type { Metadata } from "next";
 import BottomNav from "./_components/BottomNav";
-import ThemeProvider, { themeNoFlashScript } from "./_components/ThemeProvider";
+import ThemeProvider from "./_components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "現場の事務サポ（新UI）",
@@ -22,8 +22,6 @@ export default function NewUiLayout({
 }) {
   return (
     <div id="nu-root" className="nu-root min-h-screen">
-      {/* ちらつき防止：保存済みテーマをハイドレーション前に適用 */}
-      <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript }} />
       <ThemeProvider>
         {/* 下部ナビの高さ分（約72px）＋Safe Area を確保 */}
         <div

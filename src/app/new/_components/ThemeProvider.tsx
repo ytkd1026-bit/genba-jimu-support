@@ -9,7 +9,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useState,
 } from "react";
 import {
@@ -40,9 +40,6 @@ function applyTheme(el: HTMLElement | null, theme: ThemeId) {
   else el.setAttribute("data-nu-theme", theme);
 }
 
-// ちらつき防止：ハイドレーション前に localStorage の値を即適用するスクリプト。
-export const themeNoFlashScript = `(function(){try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');var r=document.getElementById('nu-root');if(r&&t&&t!=='${DEFAULT_THEME}'){r.setAttribute('data-nu-theme',t);}}catch(e){}})();`;
-
 export default function ThemeProvider({
   children,
 }: {
@@ -50,8 +47,9 @@ export default function ThemeProvider({
 }) {
   const [theme, setThemeState] = useState<ThemeId>(DEFAULT_THEME);
 
-  // マウント時に保存済みテーマを読み込む
-  useEffect(() => {
+  // マウント時に保存済みテーマを読み込む（useLayoutEffect＝ハイドレーション後の初回ペイント前に適用）。
+  // 生の<script>をJSX内に置く方式はReactのconsoleエラーとhydration不整合の原因になるため廃止した。
+  useLayoutEffect(() => {
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (isThemeId(saved)) {
