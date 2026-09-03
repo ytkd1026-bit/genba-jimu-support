@@ -3,7 +3,8 @@
 - **期間**: 2026-09-03 〜 2026-09-04
 - **対象**: `ytkd1026-bit/genba-jimu-support` / branch `claude/new-mobile-ui-development-8ukgy3`
 - **作業場所**: git worktree `/Users/yo/Projects/genba-newui-preview`（main copy `review/draft-save` のWIPとは完全分離）
-- **最終commit**: `02b6f1d`（push済み）
+- **最終実装SHA**: `02b6f1d`（push済み）
+- **作業記録SHA**: `2ec275e`
 
 ---
 
@@ -12,11 +13,12 @@
 | 項目 | 状態 |
 |---|---|
 | 新UI（/new 5タブ）デザイン統一・テーマ切替 | ✅ 完了（cacf858） |
-| 拾い出し機能MVP（音声＋6工種＋決定論計算エンジン） | ✅ 完了（368a50d） |
+| 拾い出しMVP（6工種・手入力・計算・見積/発注反映） | ✅ 完了（368a50d） |
+| 音声入力 | 実装済み／iPhone HTTPS実機検証待ち |
 | iPhone実機タップ不具合の根本解決 | ✅ 完了（20937c2〜02b6f1d） |
 | 見積・発注・請求の新UI入口 | ✅ 完了（9df032e） |
 | シート発注単位 m 化 | ✅ 完了（9df032e） |
-| iPhone実機での全機能動作 | ✅ 本人確認済み（本番ビルド :3001） |
+| iPhone実機で今回の検証対象機能が動作 | ✅ 本人確認済み（本番ビルド :3001） |
 
 ---
 
