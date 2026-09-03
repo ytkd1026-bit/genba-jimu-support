@@ -27,7 +27,7 @@ export default function PageHeader({
             <Link
               href={back}
               aria-label="戻る"
-              className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg text-[var(--nu-primary-dk)] active:bg-[var(--nu-primary-bg)]"
+              className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg text-[var(--nu-primary-dk)] active:bg-[var(--nu-primary-bg)]"
             >
               ‹
             </Link>

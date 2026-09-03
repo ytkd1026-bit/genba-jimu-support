@@ -1,4 +1,4 @@
-# 拾い出し発話パーサ 単体テスト（コンパイル後 import を ./engine.js に補正して実行）
+// 拾い出し発話パーサ 単体テスト（コンパイル後 import を ./engine.js に補正して実行）
 
 import { parseUtterance } from "./parseUtterance.js";
 let pass = 0, fail = 0; const out = [];

@@ -1,7 +1,7 @@
-# 拾い出し計算エンジン 単体テスト
-# 実行方法:
-#   npx tsc src/app/new/_lib/takeoff/engine.ts --outDir /tmp/tk --rootDir src/app/new/_lib/takeoff --target es2020 --module es2020 --moduleResolution node --skipLibCheck
-#   cp verification/takeoff-engine.test.mjs /tmp/tk/run.mjs && node /tmp/tk/run.mjs
+// 拾い出し計算エンジン 単体テスト
+// 実行方法:
+//   npx tsc src/app/new/_lib/takeoff/engine.ts --outDir /tmp/tk --rootDir src/app/new/_lib/takeoff --target es2020 --module es2020 --moduleResolution node --skipLibCheck
+//   cp verification/takeoff-engine.test.mjs /tmp/tk/run.mjs && node /tmp/tk/run.mjs
 
 import * as E from "./engine.js";
 

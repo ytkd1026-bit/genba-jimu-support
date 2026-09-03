@@ -584,7 +584,7 @@ function TakeoffInner() {
                     else if (s === "confirm" && takeoffType) setStep(s);
                     else if (s === "summary" && entries.length > 0) setStep(s);
                   }}
-                  className={`w-full rounded-xl px-1 py-1.5 text-center text-[11px] font-semibold ${
+                  className={`flex min-h-[44px] w-full items-center justify-center rounded-xl px-1 py-1.5 text-center text-[11px] font-semibold ${
                     active
                       ? "bg-[var(--nu-primary)] text-[var(--nu-on-primary)]"
                       : done
@@ -673,7 +673,7 @@ function TakeoffInner() {
                 <button
                   type="button"
                   onClick={() => setShowProjectPicker((v) => !v)}
-                  className="rounded-xl bg-[var(--nu-primary-bg)] px-3 py-2 text-xs font-semibold text-[var(--nu-primary-dk)] active:opacity-80"
+                  className="flex min-h-[44px] items-center rounded-xl bg-[var(--nu-primary-bg)] px-4 py-2 text-xs font-semibold text-[var(--nu-primary-dk)] active:opacity-80"
                 >
                   {projectId ? "変更" : "案件を選ぶ"}
                 </button>
@@ -883,7 +883,7 @@ function TakeoffInner() {
                 <button
                   type="button"
                   onClick={() => setShowProjectPicker((v) => !v)}
-                  className="rounded-xl bg-[var(--nu-primary-bg)] px-3 py-2 text-xs font-semibold text-[var(--nu-primary-dk)] active:opacity-80"
+                  className="flex min-h-[44px] items-center rounded-xl bg-[var(--nu-primary-bg)] px-4 py-2 text-xs font-semibold text-[var(--nu-primary-dk)] active:opacity-80"
                 >
                   {projectId ? "変更" : "案件を選ぶ"}
                 </button>
