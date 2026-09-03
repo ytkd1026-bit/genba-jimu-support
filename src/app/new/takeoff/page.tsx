@@ -102,8 +102,16 @@ type VoiceLogItem = { id: string; text: string; note: string; ok: boolean };
 function TakeoffInner() {
   const searchParams = useSearchParams();
 
-  const [step, setStep] = useState<Step>("type");
-  const [takeoffType, setTakeoffType] = useState<TakeoffType | null>(null);
+  // ?type= はSSR時に読める（useSearchParamsはSuspense内でサーバーでも解決される）。
+  // 初期stateをURLから導出することで、hydration前・JS無効でも
+  // 「工種タップ→STEP2表示」がサーバーHTMLだけで成立する。
+  const initialTypeParam = searchParams.get("type");
+  const initialType: TakeoffType | null =
+    initialTypeParam && initialTypeParam in TAKEOFF_CONFIGS
+      ? (initialTypeParam as TakeoffType)
+      : null;
+  const [step, setStep] = useState<Step>(initialType ? "input" : "type");
+  const [takeoffType, setTakeoffType] = useState<TakeoffType | null>(initialType);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
