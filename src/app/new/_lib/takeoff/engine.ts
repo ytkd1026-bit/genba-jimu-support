@@ -30,6 +30,9 @@ export interface TakeoffTypeConfig {
   estimateRoundStep: number; // 見積の丸め単位（㎡/m）
   orderRoundStep: number;    // 発注の丸め単位（m）
   lossApplies: boolean;
+  /** 発注数量の算出基準。省略時は calcKind に従う。
+      "flow_length" = 流し方向長さ(m)を発注量とする（シート等・割付ロジック導入までの暫定） */
+  orderBasis?: "flow_length";
   parts?: string[];          // 部位（クロス：壁/天井/梁/下がり天井）
   pieceAreaM2?: number;      // 1枚面積（タイルカーペット将来用）
   piecesPerCase?: number;    // ケース枚数（将来用）
@@ -80,9 +83,11 @@ export const TAKEOFF_CONFIGS: Record<TakeoffType, TakeoffTypeConfig> = {
     // 将来：pieceAreaM2 / piecesPerCase を材料マスタから取得
   },
   decorative_sheet: {
+    // シートは m 発注・㎡ 見積（発注と見積の単位を分離）。
+    // 発注mは暫定で「流し方向長さ×(1+ロス)」（扉・枠・巻込み等の専用割付は今後の工程）。
     type: "decorative_sheet", label: "シート", calcKind: "area",
-    orderUnit: "㎡", estimateUnit: "㎡",
-    estimateRoundStep: 0.01, orderRoundStep: 0.01,
+    orderUnit: "m", estimateUnit: "㎡", orderBasis: "flow_length",
+    estimateRoundStep: 0.01, orderRoundStep: 0.1,
     lossApplies: true, mvp: "later",
   },
 };
@@ -341,6 +346,10 @@ export function computeAreaEntry(
     rollCount = calculateRollCount(widthM, matMm / 1000);
     // 発注 m = 流し方向 × 本数（ロスは発注へ加算）
     orderRaw = calculateLoss(flowM * rollCount, lossRate);
+    orderUnit = "m";
+  } else if (config.orderBasis === "flow_length") {
+    // シート等：発注は流し方向長さ(m)（暫定・専用割付は今後）
+    orderRaw = calculateLoss(flowM, lossRate);
     orderUnit = "m";
   } else {
     // area：発注も面積（ロス加算）

@@ -57,6 +57,8 @@ function matchQuery(p: Project, q: string): boolean {
 function ProjectsInner() {
   const searchParams = useSearchParams();
   const initialFilter = (searchParams.get("filter") as ProjectFilter) || "all";
+  // 作成画面「見積書」からの遷移: 案件タップで直接 見積・原価入力 を開く
+  const fromEstimate = searchParams.get("from") === "estimate";
 
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -91,7 +93,11 @@ function ProjectsInner() {
 
   return (
     <div>
-      <PageHeader title="案件" subtitle="現場・元請・住所・案件IDで探す" />
+      <PageHeader
+        title={fromEstimate ? "見積する案件を選ぶ" : "案件"}
+        subtitle={fromEstimate ? "案件をタップすると見積・原価入力が開きます" : "現場・元請・住所・案件IDで探す"}
+        back={fromEstimate ? "/new/create" : undefined}
+      />
 
       <div className="px-4 py-3">
         {/* 検索欄 */}
@@ -164,7 +170,7 @@ function ProjectsInner() {
               {filtered.map((p) => (
                 <li key={p.projectId}>
                   <Link
-                    href={`/new/projects/${encodeURIComponent(p.projectId)}`}
+                    href={`/new/projects/${encodeURIComponent(p.projectId)}${fromEstimate ? "/estimate" : ""}`}
                     className="block rounded-2xl border border-[#e6ebeb] bg-white p-3.5 shadow-sm active:bg-[#f6f8f8]"
                   >
                     <div className="flex items-start justify-between gap-2">

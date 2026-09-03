@@ -90,6 +90,15 @@ const tc = E.computeAreaEntry({ id: "t", room: "事務所", product: "TC", flowM
 ok("4.2×3.6 = 15.12㎡", approx(tc.estimateValue, 15.12), tc.estimateValue, 15.12);
 
 out.push("");
+out.push("=== シート（m発注・㎡見積の単位分離） ===");
+const sh = E.computeAreaEntry({ id: "d", room: "建具", product: "SHT", flowM: 4.2, widthM: 3.6, lossRate: 0 }, E.TAKEOFF_CONFIGS.decorative_sheet);
+ok("見積 4.2×3.6 = 15.12㎡", approx(sh.estimateValue, 15.12), sh.estimateValue, 15.12);
+ok("発注単位が m", sh.orderUnit === "m", sh.orderUnit, "m");
+ok("発注 = 流し4.2m（暫定基準・0.1m刻み）", approx(sh.orderValue, 4.2), sh.orderValue, 4.2);
+const sh2 = E.computeAreaEntry({ id: "d2", room: "建具", product: "SHT", flowM: 2.45, widthM: 1.2, lossRate: 5 }, E.TAKEOFF_CONFIGS.decorative_sheet);
+ok("ロス5%: 2.45×1.05=2.5725 → 発注2.6m", approx(sh2.orderValue, 2.6), sh2.orderValue, 2.6);
+
+out.push("");
 out.push(`===== 合計 ${pass} pass / ${fail} fail =====`);
 console.log(out.join("\n"));
 process.exit(fail > 0 ? 1 : 0);

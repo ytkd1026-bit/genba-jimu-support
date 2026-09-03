@@ -158,6 +158,17 @@ function TakeoffInner() {
     window.setTimeout(() => setNotice(null), 4000);
   }
 
+  // ── ?type=（工種選択Linkからの遷移）をstateへ反映 ────────────
+  // STEP1はネイティブ<a>遷移（iPhone Safariで最も確実）。URLが正なのでここで同期する。
+  const typeParam = searchParams.get("type");
+  useEffect(() => {
+    if (typeParam && typeParam in TAKEOFF_CONFIGS) {
+      const t = typeParam as TakeoffType;
+      setTakeoffType(t);
+      setStep((s) => (s === "type" ? "input" : s));
+    }
+  }, [typeParam]);
+
   // ── 初期化：案件リスト＋?projectId=＋下書き ──────────────────
   useEffect(() => {
     const ps = loadProjects();
@@ -636,21 +647,20 @@ function TakeoffInner() {
               <div className="grid grid-cols-2 gap-3">
                 {TAKEOFF_ORDER.map((t) => {
                   const c = TAKEOFF_CONFIGS[t];
+                  // iPhone Safari実機でReact onClickが届かない事例があったため、
+                  // 工種選択は<a>（Link）にする。アンカーはhydration完了前でも
+                  // ネイティブ遷移で確実に動く（?type= を効果で拾ってSTEP2へ）。
                   return (
-                    <button
+                    <Link
                       key={t}
-                      type="button"
-                      onClick={() => {
-                        setTakeoffType(t);
-                        setStep("input");
-                      }}
+                      href={`/new/takeoff?type=${t}`}
                       className="flex min-h-[76px] flex-col items-start rounded-2xl border border-[var(--nu-border)] bg-white p-4 text-left shadow-sm active:bg-[var(--nu-primary-bg)]"
                     >
                       <span className="text-base font-bold text-[var(--nu-text)]">{c.label}</span>
                       <span className="mt-1 text-[11px] text-slate-500">
                         発注 {c.orderUnit}／見積 {c.estimateUnit}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>

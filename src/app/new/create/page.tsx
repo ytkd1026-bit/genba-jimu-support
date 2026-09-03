@@ -20,9 +20,9 @@ import { PROJECT_STATUS_LABELS } from "@/app/utils/projects";
 // 作成メニュー（既存ルートへの導線）
 const CREATE_MENU = [
   { title: "新規案件",   desc: "現場・元請・住所を登録",   icon: "📝", href: "/projects/new",                    primary: true },
-  { title: "見積書",     desc: "案件を選んで見積・原価入力", icon: "📋", href: "/new/projects",                     primary: true },
-  { title: "請求書",     desc: "完了案件の請求書を作成",   icon: "📄", href: "/invoices",                        primary: true },
-  { title: "発注書",     desc: "材料計算・発注書を作成",   icon: "📦", href: "/materials",                       primary: false },
+  { title: "見積書",     desc: "案件を選んで見積・原価入力", icon: "📋", href: "/new/projects?from=estimate",       primary: true },
+  { title: "請求書",     desc: "完了案件の請求書を作成",   icon: "📄", href: "/new/invoices",                    primary: true },
+  { title: "発注書",     desc: "材料計算・発注候補を管理", icon: "📦", href: "/new/materials",                   primary: false },
   { title: "完了報告書", desc: "案件を選んで報告書を作成", icon: "✅", href: "/new/projects?from=report",       primary: false },
   { title: "施工記録",   desc: "案件を選んで写真・記録",   icon: "📷", href: "/new/projects?from=log",           primary: false },
   { title: "拾い出し",   desc: "音声で採寸→数量を自動計算", icon: "🎙", href: "/new/takeoff",                     primary: false },
