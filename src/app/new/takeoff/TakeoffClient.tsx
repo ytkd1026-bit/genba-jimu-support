@@ -29,6 +29,11 @@ import {
 import { parseUtterance, type UtteranceAction } from "../_lib/takeoff/parseUtterance";
 import { useVoice } from "../_lib/takeoff/useVoice";
 import {
+  CROSS_METHODS,
+  DEFAULT_LABOR_QUANTITY,
+  type CrossMethodId,
+} from "../_lib/crossEstimate";
+import {
   workItemsStore,
   issueWorkItemId,
   createEmptyWorkItem,
@@ -111,6 +116,8 @@ function TakeoffInner({ initialType }: { initialType: TakeoffType | null }) {
   const [projectName, setProjectName] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  // クロスは方式をREVOが自動判別せず職人が選ぶ（見積反映の直前に確認する）
+  const [showCrossPicker, setShowCrossPicker] = useState(false);
 
   const [entries, setEntries] = useState<TakeoffEntry[]>([]);
   const [lossByProduct, setLossByProduct] = useState<Record<string, number>>({});
@@ -432,37 +439,48 @@ function TakeoffInner({ initialType }: { initialType: TakeoffType | null }) {
   );
 
   // ── 反映：見積（既存 WorkItem を再利用） ─────────────────────
-  function applyToEstimate() {
+  function applyToEstimate(crossMethodId?: CrossMethodId) {
     if (!config) return;
     if (!projectId) {
       setShowProjectPicker(true);
       flash(false, "反映先の案件を選択してください。");
       return;
     }
+    // クロスは3方式のどれで見積を作るかを職人が選んでから反映する
+    if (isWallpaper && !crossMethodId) {
+      setShowCrossPicker(true);
+      return;
+    }
+    setShowCrossPicker(false);
     const now = new Date().toISOString();
     let count = 0;
     if (isWallpaper && wallpaperSummary) {
+      const method = CROSS_METHODS.find((m) => m.id === crossMethodId);
+      if (!method) return;
       for (const p of wallpaperSummary.byProduct) {
-        const w = createEmptyWorkItem(projectId, issueWorkItemId(projectId));
         const rooms = [...new Set(p.breakdown.map((b) => b.room))].join("・");
-        const quantity = p.orderQty;
-        const filled = {
-          ...w,
-          category: "内装工事",
-          workName: `クロス貼り ${p.product}`,
-          workDescription: `拾い出しより（${rooms}）`,
-          location1: rooms,
-          quantity,
-          unit: "m",
-          note: p.lossRate > 0 ? `ロス${p.lossRate}%込み` : "",
-          createdAt: now,
-          updatedAt: now,
-        };
-        const amounts = computeWorkItemAmounts({
-          quantity, sellingUnitPrice: 0,
-          materialCost: 0, laborCost: 0, subcontractCost: 0, expenseCost: 0, otherCost: 0,
-        });
-        if (workItemsStore.upsert({ ...filled, ...amounts })) count++;
+        // 方式1は1行、方式2・3は2行（材料費＋施工費／施工人工費）。DB構造は変えない。
+        for (const tpl of method.rows) {
+          const w = createEmptyWorkItem(projectId, issueWorkItemId(projectId));
+          const quantity = tpl.usesLengthQuantity ? p.orderQty : DEFAULT_LABOR_QUANTITY;
+          const filled = {
+            ...w,
+            category: tpl.category,
+            workName: tpl.workName,
+            workDescription: `${p.product}（拾い出しより：${rooms}）`,
+            location1: rooms,
+            quantity,
+            unit: tpl.unit,
+            note: tpl.usesLengthQuantity && p.lossRate > 0 ? `ロス${p.lossRate}%込み` : "",
+            createdAt: now,
+            updatedAt: now,
+          };
+          const amounts = computeWorkItemAmounts({
+            quantity, sellingUnitPrice: 0,
+            materialCost: 0, laborCost: 0, subcontractCost: 0, expenseCost: 0, otherCost: 0,
+          });
+          if (workItemsStore.upsert({ ...filled, ...amounts })) count++;
+        }
       }
     } else if (areaSummary) {
       for (const p of areaSummary.byProduct) {
@@ -901,11 +919,39 @@ function TakeoffInner({ initialType }: { initialType: TakeoffType | null }) {
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={applyToEstimate}
+                onClick={() => applyToEstimate()}
                 className="min-h-[52px] w-full rounded-2xl bg-[var(--nu-primary)] text-sm font-bold text-[var(--nu-on-primary)] shadow-sm active:bg-[var(--nu-primary-dk)]"
               >
                 {applied.estimate ? "✅ 見積へ反映済み（再反映で行追加）" : "見積へ反映（工事項目を作成）"}
               </button>
+              {showCrossPicker && (
+                <div className="rounded-2xl border border-[var(--nu-border)] bg-white p-3 shadow-sm">
+                  <p className="text-xs font-bold text-[var(--nu-text)]">クロス見積の方式を選んでください</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    方式はアプリが自動で決めません。案件ごとに選択します。
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {CROSS_METHODS.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => applyToEstimate(m.id)}
+                        className="block min-h-[52px] w-full rounded-xl border border-[var(--nu-border)] bg-[var(--nu-bg)] px-3 py-2 text-left active:opacity-80"
+                      >
+                        <span className="block text-sm font-bold text-[var(--nu-text)]">{m.label}</span>
+                        <span className="block text-[11px] text-slate-500">{m.formula}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCrossPicker(false)}
+                    className="mt-2 min-h-[44px] w-full rounded-xl text-xs font-semibold text-slate-400 active:bg-[var(--nu-bg)]"
+                  >
+                    やめる
+                  </button>
+                </div>
+              )}
               {applied.estimate && projectId && (
                 <Link
                   href={`/new/projects/${encodeURIComponent(projectId)}/estimate`}

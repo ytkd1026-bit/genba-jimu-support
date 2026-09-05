@@ -37,7 +37,7 @@ export default async function NewUiLayout({
     <ThemeProvider initialTheme={initialTheme}>
       {/* 下部ナビの高さ分（約72px）＋Safe Area を確保 */}
       <div
-        className="mx-auto max-w-md"
+        className="nu-shell mx-auto w-full"
         style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}
       >
         {children}

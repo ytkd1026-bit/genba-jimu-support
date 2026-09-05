@@ -94,3 +94,16 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* /new のシェル幅。
+   既定はモバイル幅（従来の max-w-md と同値）。
+   見積・原価入力のようにPCで横表を出す画面だけ data-nu-wide を置き、
+   lg 以上でシェルを広げる。他の /new 画面の見た目は変わらない。 */
+.nu-shell {
+  max-width: 28rem;
+}
+@media (min-width: 1024px) {
+  .nu-shell:has([data-nu-wide]) {
+    max-width: 100%;
+  }
+}
