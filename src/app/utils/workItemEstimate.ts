@@ -76,6 +76,79 @@ export function snapshotsToSellingLines(snaps: LineSnapshot[]): SellingLine[] {
   }));
 }
 
+/**
+ * 保存済み見積（1つの版）を提出用明細（SellingLine）へ復元する。
+ *
+ * 金額・税は lineSnapshots が正本（保存時点の税区分・税率を保持している）。
+ * 分類・工事内容・施工箇所・備考は lineSnapshots に無いため、同じ保存時点に作られた
+ * estimateItems（同じ WorkItem 配列から同じ並びで作られる）から補う。
+ * どちらも保存済みデータで、現在の WorkItem は読まない＝過去版の内容は変わらない。
+ *
+ * lineSnapshots を持たない旧データは estimateItems だけから復元する（後方互換）。
+ */
+export function savedEstimateToSellingLines(est: SavedEstimate): SellingLine[] {
+  const items = est.estimateItems ?? [];
+  const snaps = est.lineSnapshots;
+
+  if (!snaps || snaps.length === 0) {
+    // 旧形式：税区分の概念が無いため課税10%として扱う（既存の取り込みと同じ考え方）
+    return items.map((item, i) => {
+      const quantity = toNum(item.qty);
+      const sellingUnitPrice = toNum(item.unitPrice);
+      return {
+        workItemId: `L-${i + 1}`,
+        category: item.category,
+        workName: item.koujiName,
+        workDescription: item.koujiContent,
+        location1: item.location1,
+        location2: item.location2,
+        quantity,
+        unit: item.unit,
+        sellingUnitPrice,
+        sellingAmount: quantity * sellingUnitPrice,
+        note: item.note,
+        taxType: "taxable" as TaxType,
+        taxRate: 10 as TaxRate,
+      };
+    });
+  }
+
+  return snaps.map((s, i) => {
+    // 並びは保存時点で一致している。件数がずれている場合だけ説明欄を空にする。
+    const item = snaps.length === items.length ? items[i] : undefined;
+    return {
+      workItemId: s.workItemId,
+      category: item?.category ?? "",
+      workName: s.workName,
+      workDescription: item?.koujiContent ?? "",
+      location1: item?.location1 ?? "",
+      location2: item?.location2 ?? "",
+      quantity: s.quantity,
+      unit: s.unit,
+      sellingUnitPrice: s.unitPrice,
+      sellingAmount: s.amount,
+      note: item?.note ?? "",
+      taxType: normalizeTaxType(s.taxType),
+      taxRate: normalizeTaxRate(s.taxRate),
+    };
+  });
+}
+
+/** 保存済み見積の税内訳を取り出す（保存時点の内訳が最優先・無ければスナップショットから再計算） */
+export function savedEstimateBreakdown(est: SavedEstimate): TaxBreakdown {
+  if (est.taxBreakdown) return est.taxBreakdown;
+  if (est.lineSnapshots && est.lineSnapshots.length > 0) {
+    return taxBreakdownFromSnapshots(est.lineSnapshots);
+  }
+  return taxBreakdownOf(savedEstimateToSellingLines(est));
+}
+
+/** 旧見積明細の文字列数値（qty / unitPrice）を数値へ変換する */
+function toNum(v: string): number {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+
 /** スナップショットから税率別の内訳を計算する（保存時点の税額を再現） */
 export function taxBreakdownFromSnapshots(snaps: LineSnapshot[]): TaxBreakdown {
   return calculateTaxBreakdown(

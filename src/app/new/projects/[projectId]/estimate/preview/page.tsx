@@ -1,10 +1,13 @@
 "use client";
 
-// 見積書プレビュー（/new/projects/[projectId]/estimate/preview）
+// 見積書プレビュー（/new/projects/[projectId]/estimate/preview?v=<estimateId>）
 //
-// 操作順： 見積・原価入力 →「保存して見積書を確認」→ 本保存 → このプレビュー → PDF発行。
-// この画面は保存済みの WorkItem だけを読む。未保存の下書きは読まない。
-//   → 保存していない内容がPDFになることは無い（保存前のPDF発行を構造的に防ぐ）。
+// 操作順： 見積・原価入力 →「保存して見積書を確認」→ WorkItem本保存 → 見積(SavedEstimate)本保存
+//          → 明細・税内訳スナップショット → 見積番号・version確定 → このプレビュー → PDF発行。
+//
+// この画面は保存済みの SavedEstimate（版）だけを読む。現在の WorkItem は読まない。
+//   → 保存後に工事項目を変更しても、その版の内容・金額・税内訳は変わらない。
+//   → 保存していない内容がPDFになることは無い。
 //
 // プレビューとPDFは同じ EstimateDocument を消費する。帳票の内容定義は
 // src/app/utils/estimateDocument.ts の1か所だけ。原価・粗利はその型に存在しない。
@@ -14,14 +17,20 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "../../../../_components/PageHeader";
 import { projectsStore, type Project } from "@/app/utils/projects";
-import { workItemsStore, type WorkItem } from "@/app/utils/workItems";
-import { workItemsToSellingLines, projectDocumentNumber, nextEstimateSeq } from "@/app/utils/workItemEstimate";
-import { getSavedEstimates } from "@/app/utils/savedEstimates";
+import { getSavedEstimates, type SavedEstimate } from "@/app/utils/savedEstimates";
+import {
+  savedEstimateToSellingLines,
+  savedEstimateBreakdown,
+} from "@/app/utils/workItemEstimate";
 import { getCompanyInfoForPdf, type CompanyInfoForPdf } from "@/app/utils/companySettings";
-import { buildEstimateDocument, type EstimateDocument } from "@/app/utils/estimateDocument";
+import {
+  buildEstimateDocument,
+  formatDocumentDate,
+  type EstimateDocument,
+} from "@/app/utils/estimateDocument";
 import { isMultiTax } from "@/app/utils/taxCalculation";
 import { estimatePdfFileName } from "@/app/utils/pdfFileName";
-import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
+import { renderAndDownloadPdf, todayDash } from "@/app/utils/pdfDownload";
 
 const MIN_ROWS = 9;
 
@@ -35,42 +44,52 @@ export default function EstimatePreviewPage() {
 
   const [loaded, setLoaded] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
-  const [items, setItems] = useState<WorkItem[]>([]);
+  const [versions, setVersions] = useState<SavedEstimate[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [company, setCompany] = useState<CompanyInfoForPdf | null>(null);
-  const [estimateNo, setEstimateNo] = useState("");
-  const [createdDate, setCreatedDate] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
 
   /* eslint-disable react-hooks/set-state-in-effect --
      localStorage はマウント後にしか読めない（SSR結果との不一致を避けるため）。
      新UIの他画面と同じ読み込み方に揃えている。 */
   useEffect(() => {
-    const p = projectsStore.getById(projectId);
-    setProject(p ?? null);
-    setItems(workItemsStore.getByProjectId(projectId));
+    setProject(projectsStore.getById(projectId) ?? null);
+    const list = getSavedEstimates()
+      .filter((e) => e.projectId === projectId)
+      .sort((a, b) => a.version - b.version);
+    setVersions(list);
+    // ?v= で版を指定（保存直後はその版）。未指定なら最新版を表示する。
+    const q = new URLSearchParams(window.location.search).get("v");
+    const picked = (q && list.find((e) => e.id === q)) || list[list.length - 1] || null;
+    setSelectedId(picked?.id ?? null);
     setCompany(getCompanyInfoForPdf());
-    setEstimateNo(projectDocumentNumber(projectId, "EST", nextEstimateSeq(getSavedEstimates(), projectId)));
-    setCreatedDate(todaySlash());
     setLoaded(true);
   }, [projectId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // プレビューとPDFで完全に同じ帳票モデルを使う
+  const selected = useMemo(
+    () => versions.find((e) => e.id === selectedId) ?? null,
+    [versions, selectedId],
+  );
+
+  // プレビューとPDFで完全に同じ帳票モデルを使う。明細・税内訳は版のスナップショットが正本。
   const doc = useMemo<EstimateDocument | null>(() => {
-    if (!project || !company || !createdDate) return null;
+    if (!selected || !company) return null;
+    const createdDate = formatDocumentDate(selected.createdAt);
     return buildEstimateDocument({
-      title: project.projectType === "insurance" ? "御見積書（損害復旧工事）" : "御見積書",
-      estimateNo,
+      title: project?.projectType === "insurance" ? "御見積書（損害復旧工事）" : "御見積書",
+      estimateNo: selected.estimateNo,
       createdDate,
-      submitTo: project.submitTo || project.clientName || "",
-      projectName: project.projectName,
-      siteAddress: project.siteAddress,
-      projectId: project.projectId,
+      submitTo: selected.clientName || "",
+      projectName: selected.projectName,
+      siteAddress: selected.siteAddress,
+      projectId: selected.projectId,
       company,
-      // 原価を持たない SellingLine へ変換してから渡す（データ段階で原価を遮断）
-      lines: workItemsToSellingLines(items),
+      // 原価を持たない SellingLine へ復元してから渡す（データ段階で原価を遮断）
+      lines: savedEstimateToSellingLines(selected),
+      breakdown: savedEstimateBreakdown(selected),
     });
-  }, [project, company, items, estimateNo, createdDate]);
+  }, [selected, company, project]);
 
   async function handlePdf() {
     if (!doc || pdfLoading) return;
@@ -80,7 +99,7 @@ export default function EstimatePreviewPage() {
       await renderAndDownloadPdf(
         makeRevoEstimatePDF(doc),
         estimatePdfFileName({
-          clientName: project?.clientName || project?.submitTo || "",
+          clientName: doc.submitTo,
           projectName: doc.projectName,
           workContent: doc.lines[0]?.workName ?? "",
           date: todayDash(),
@@ -96,22 +115,28 @@ export default function EstimatePreviewPage() {
 
   const backHref = `/new/projects/${encodeURIComponent(projectId)}/estimate`;
 
-  if (loaded && (!project || !doc)) {
-    return (
-      <div>
-        <PageHeader title="見積書プレビュー" back={backHref} />
-        <div className="px-4 py-10 text-center">
-          <p className="text-sm font-bold text-[var(--nu-text)]">案件が見つかりません。</p>
-          <p className="mt-1 font-mono text-xs text-slate-400">{projectId}</p>
-        </div>
-      </div>
-    );
-  }
-  if (!loaded || !doc) {
+  if (!loaded) {
     return (
       <div>
         <PageHeader title="見積書プレビュー" back={backHref} />
         <div className="px-4 py-4"><div className="h-40 animate-pulse rounded-2xl bg-white" /></div>
+      </div>
+    );
+  }
+  if (!doc || !selected) {
+    return (
+      <div>
+        <PageHeader title="見積書プレビュー" back={backHref} />
+        <div className="px-4 py-10 text-center">
+          <p className="text-sm font-bold text-[var(--nu-text)]">保存された見積がまだありません。</p>
+          <p className="mt-1 text-xs text-slate-500">
+            見積・原価入力で「保存して見積書を確認」を押すと、見積書として保存されます。
+          </p>
+          <Link href={backHref}
+            className="mt-4 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[#1b365d] px-6 text-sm font-bold text-white active:bg-[#16294a]">
+            見積・原価入力へ戻る
+          </Link>
+        </div>
       </div>
     );
   }
@@ -140,11 +165,30 @@ export default function EstimatePreviewPage() {
     <div data-nu-wide>
       <PageHeader
         title="見積書プレビュー"
-        subtitle={`${doc.estimateNo}・保存済みの内容です`}
+        subtitle={`${doc.estimateNo}・v${selected.version}（保存済みの内容）`}
         back={backHref}
       />
 
       <div className="px-4 py-4 lg:px-8">
+        {/* 版の切り替え。過去版はスナップショットのまま表示され、変更されない。 */}
+        {versions.length > 1 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">版：</span>
+            {versions.map((v) => (
+              <button key={v.id} type="button" onClick={() => setSelectedId(v.id)}
+                className={`min-h-[36px] rounded-lg border px-3 py-1.5 font-mono text-xs font-bold ${
+                  v.id === selected.id
+                    ? "border-[#1b365d] bg-[#1b365d] text-white"
+                    : "border-slate-200 bg-white text-slate-600 active:bg-slate-50"
+                }`}>
+                {v.estimateNo}（v{v.version}）
+              </button>
+            ))}
+          </div>
+        )}
+        {selected.revisionReason && (
+          <p className="mb-2 text-xs text-slate-500">修正理由：{selected.revisionReason}</p>
+        )}
         <p className="mb-3 text-xs text-slate-500">
           このプレビューと発行されるPDFは同じ内容です。原価・粗利などの内部管理情報は含まれません。
         </p>
@@ -264,8 +308,7 @@ export default function EstimatePreviewPage() {
               </div>
             </div>
 
-            {/* フッター */}
-            {/* ページ番号はPDF側が実ページ数で描画する。ここで固定値を出すと不一致になるため出さない。 */}
+            {/* フッター（ページ番号はPDF側が実ページ数で描画する） */}
             <div className="mt-4 border-t border-[#c8cdd4] pt-1 text-[9px] text-[#404040]">
               案件ID：{doc.projectId}　書類番号：{doc.estimateNo}
             </div>

@@ -85,6 +85,18 @@ function joinLocation(line: SellingLine): string {
   return line.location1 || line.location2 || "";
 }
 
+/**
+ * 保存済み見積の createdAt（toLocaleString("ja-JP") 形式：例 "2026/9/6 4:30:00"）を
+ * 帳票の作成日表記 "YYYY/MM/DD" へ整える。保存時点の日付をそのまま使うため、
+ * 同じ版を後から再発行しても作成日は変わらない。
+ */
+export function formatDocumentDate(raw: string): string {
+  const datePart = (raw || "").trim().split(/[\s\u3000]/)[0];
+  const m = datePart.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (!m) return datePart;
+  return `${m[1]}/${m[2].padStart(2, "0")}/${m[3].padStart(2, "0")}`;
+}
+
 /** 作成日（YYYY/MM/DD）から有効期限（既定30日後）を求める */
 export function defaultValidUntil(createdSlash: string, days = 30): string {
   const [y, m, d] = createdSlash.split("/").map((v) => parseInt(v, 10));
@@ -117,6 +129,8 @@ export function buildEstimateDocument(input: {
   projectId: string;
   company: CompanyInfoForPdf;
   lines: SellingLine[];
+  /** 保存済みの税内訳（版のスナップショット）。渡された場合はそれを正本とする */
+  breakdown?: TaxBreakdown;
   remarks?: string[];
 }): EstimateDocument {
   const lines: EstimateDocumentLine[] = input.lines.map((l, i) => ({
@@ -133,13 +147,15 @@ export function buildEstimateDocument(input: {
     note: [l.note, taxNoteMark(l)].filter(Boolean).join(" / "),
   }));
 
-  const breakdown = calculateTaxBreakdown(
-    input.lines.map((l) => ({
-      amount: l.sellingAmount,
-      taxType: normalizeTaxType(l.taxType),
-      taxRate: normalizeTaxRate(l.taxRate),
-    })),
-  );
+  const breakdown =
+    input.breakdown ??
+    calculateTaxBreakdown(
+      input.lines.map((l) => ({
+        amount: l.sellingAmount,
+        taxType: normalizeTaxType(l.taxType),
+        taxRate: normalizeTaxRate(l.taxRate),
+      })),
+    );
 
   return {
     title: input.title,

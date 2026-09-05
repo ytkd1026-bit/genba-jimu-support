@@ -29,7 +29,20 @@ import {
   migrateLegacyEstimateToWorkItems,
   type WorkItem,
 } from "@/app/utils/workItems";
-import { getSavedEstimates, type SavedEstimate } from "@/app/utils/savedEstimates";
+import {
+  getSavedEstimates,
+  upsertEstimate,
+  setSelectedEstimateId,
+  type SavedEstimate,
+} from "@/app/utils/savedEstimates";
+import {
+  workItemsToEstimateItems,
+  workItemsToSnapshots,
+  workItemsToSellingLines,
+  computeEstimateTotals,
+  projectDocumentNumber,
+  nextEstimateSeq,
+} from "@/app/utils/workItemEstimate";
 import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
 import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
 import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
@@ -55,6 +68,16 @@ const UNITS = ["m", "㎡", "枚", "式", "人工", "箇所", "本", "ケース",
 const LOCATION2_OPTIONS = ["", "天井", "壁", "床", "共通"];
 const CATEGORY_PRESETS = [
   "クロス工事", "内装工事", "床工事", "天井工事", "壁工事", "建具工事", "塗装工事", "解体工事", "諸経費",
+];
+
+// 修正理由の選択肢は既存の見積画面（src/app/projects/[projectId]/estimate/page.tsx）と同一にする
+const REVISION_REASONS = [
+  "保険会社査定指摘による数量修正",
+  "解体後の追加被害反映",
+  "施主希望による工事項目変更",
+  "材料変更",
+  "単価見直し",
+  "その他",
 ];
 
 const TAX_COMBO: Record<string, { taxType: TaxType; taxRate: TaxRate }> = {
@@ -237,6 +260,11 @@ export default function NewEstimatePage() {
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [goingPreview, setGoingPreview] = useState(false);
   const [legacyEstimates, setLegacyEstimates] = useState<SavedEstimate[]>([]);
+  // この案件の保存済み見積（版）。版管理は既存 SavedEstimate の仕組みをそのまま使う。
+  const [savedVersions, setSavedVersions] = useState<SavedEstimate[]>([]);
+  const [showVersionChoice, setShowVersionChoice] = useState(false);
+  const [revisionReason, setRevisionReason] = useState(REVISION_REASONS[0]);
+  const [revisionReasonFree, setRevisionReasonFree] = useState("");
   const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
@@ -250,7 +278,12 @@ export default function NewEstimatePage() {
     const loadedRows = workItemsStore.getByProjectId(projectId).map(toEditable);
     setRows(loadedRows);
     setSelectedId(loadedRows[0]?.workItemId ?? null);
-    setLegacyEstimates(getSavedEstimates());
+    const allEstimates = getSavedEstimates();
+    // 取り込み候補は他案件の見積のみ（自分の版を自分に取り込むと二重になるため）
+    setLegacyEstimates(allEstimates.filter((e) => e.projectId !== projectId));
+    setSavedVersions(
+      allEstimates.filter((e) => e.projectId === projectId).sort((a, b) => a.version - b.version),
+    );
     setLoaded(true);
   }, [projectId]);
 
@@ -438,9 +471,109 @@ export default function NewEstimatePage() {
     );
   }
 
+  // ── 見積の本保存（既存 SavedEstimate の版管理をそのまま利用） ──────────
+  const effectiveRevisionReason = revisionReason === "その他" ? revisionReasonFree : revisionReason;
+
+  function reloadVersions(): SavedEstimate[] {
+    const list = getSavedEstimates()
+      .filter((e) => e.projectId === projectId)
+      .sort((a, b) => a.version - b.version);
+    setSavedVersions(list);
+    return list;
+  }
+
+  /**
+   * 保存済み WorkItem から SavedEstimate（1つの版）を組み立てる。
+   * 明細スナップショット（lineSnapshots）と税内訳（taxBreakdown）を保存時点で固定する。
+   * 組み立て方は既存の見積画面と同一で、新しい仕組みは作らない。
+   */
+  function buildEstimateVersion(
+    items: WorkItem[],
+    base: {
+      id: string;
+      createdAt: string;
+      estimateNo: string;
+      version: number;
+      previousEstimateId?: string;
+      revisionReason?: string;
+    },
+  ): SavedEstimate {
+    const totals = computeEstimateTotals(workItemsToSellingLines(items));
+    return {
+      id: base.id,
+      createdAt: base.createdAt,
+      updatedAt: new Date().toLocaleString("ja-JP"),
+      estimateNo: base.estimateNo,
+      projectId,
+      projectName: project!.projectName,
+      clientName: project!.submitTo || project!.clientName,
+      siteAddress: project!.siteAddress,
+      workDescription: items.map((w) => w.workName).filter(Boolean).join("、"),
+      estimateItems: workItemsToEstimateItems(items),
+      subtotal: totals.subtotal,
+      tax: totals.tax,
+      total: totals.total,
+      status: "saved",
+      version: base.version,
+      memo: "",
+      taxBreakdown: totals.breakdown,
+      lineSnapshots: workItemsToSnapshots(items),
+      previousEstimateId: base.previousEstimateId,
+      revisionReason: base.revisionReason,
+    };
+  }
+
+  /**
+   * 見積の本保存。
+   * "overwrite" は最新版だけを上書きする。過去版（それより前の版）は触らない。
+   * "new" は前版を残したまま新しい版を作る（初回もこちらで v1 / EST-01 になる）。
+   */
+  function persistEstimateVersion(kind: "overwrite" | "new"): SavedEstimate | null {
+    if (!project) return null;
+    const items = workItemsStore.getByProjectId(projectId); // 本保存済みの WorkItem を正本にする
+    if (items.length === 0) return null;
+
+    const all = getSavedEstimates();
+    const mine = all.filter((e) => e.projectId === projectId).sort((a, b) => a.version - b.version);
+    const latest = mine.length > 0 ? mine[mine.length - 1] : null;
+
+    const est =
+      kind === "overwrite" && latest
+        ? buildEstimateVersion(items, {
+            id: latest.id,
+            createdAt: latest.createdAt,
+            estimateNo: latest.estimateNo,
+            version: latest.version,
+            previousEstimateId: latest.previousEstimateId,
+            revisionReason: latest.revisionReason,
+          })
+        : buildEstimateVersion(items, {
+            id: `est-${Date.now()}`,
+            createdAt: new Date().toLocaleString("ja-JP"),
+            estimateNo: projectDocumentNumber(projectId, "EST", nextEstimateSeq(all, projectId)),
+            version: (latest?.version ?? 0) + 1,
+            previousEstimateId: latest?.id,
+            revisionReason: latest ? effectiveRevisionReason : undefined,
+          });
+
+    upsertEstimate(est);
+    setSelectedEstimateId(est.id);
+    reloadVersions();
+    return est;
+  }
+
+  function gotoPreview(estimateId: string) {
+    router.push(
+      `/new/projects/${encodeURIComponent(projectId)}/estimate/preview?v=${encodeURIComponent(estimateId)}`,
+    );
+  }
+
   /**
    * 「保存して見積書を確認」
-   * 本保存 → 成功時のみ見積書プレビューへ。保存前のPDF発行は行わない。
+   *   WorkItem本保存 → 見積(SavedEstimate)本保存 → 明細・税内訳スナップショット
+   *   → 見積番号・version確定 → プレビュー → PDF発行
+   * 保存前のPDF発行は行わない。保存済みの版が既にある場合は、勝手に新版を作らず
+   * 「上書き保存」か「新しい版」かを選んでもらう。
    */
   function handleSaveAndPreview() {
     if (goingPreview) return;
@@ -454,7 +587,46 @@ export default function NewEstimatePage() {
       alert("本保存に失敗しました。見積書は発行できません。入力内容は下書きに残っています。");
       return;
     }
-    router.push(`/new/projects/${encodeURIComponent(projectId)}/estimate/preview`);
+    const list = reloadVersions();
+    if (list.length > 0) {
+      // 既存の版がある。上書きか新版かは職人が選ぶ（毎回新版を作らない）。
+      setGoingPreview(false);
+      setShowVersionChoice(true);
+      return;
+    }
+    const est = persistEstimateVersion("new"); // 初回 = v1 / EST-01
+    if (!est) {
+      setGoingPreview(false);
+      alert("見積の保存に失敗しました。見積書は発行できません。");
+      return;
+    }
+    gotoPreview(est.id);
+  }
+
+  function handleChooseOverwrite() {
+    const est = persistEstimateVersion("overwrite");
+    if (!est) {
+      alert("見積の保存に失敗しました。見積書は発行できません。");
+      return;
+    }
+    setShowVersionChoice(false);
+    setGoingPreview(true);
+    gotoPreview(est.id);
+  }
+
+  function handleChooseNewVersion() {
+    if (revisionReason === "その他" && revisionReasonFree.trim() === "") {
+      alert("修正理由（その他）を入力してください。");
+      return;
+    }
+    const est = persistEstimateVersion("new");
+    if (!est) {
+      alert("見積の保存に失敗しました。見積書は発行できません。");
+      return;
+    }
+    setShowVersionChoice(false);
+    setGoingPreview(true);
+    gotoPreview(est.id);
   }
 
   // 請求書PDF（既存の見積→請求連携。今回デザイン変更の対象外）
@@ -779,6 +951,8 @@ export default function NewEstimatePage() {
                 </button>
               </div>
             )}
+
+            <VersionList versions={savedVersions} projectId={projectId} />
           </aside>
         </div>
 
@@ -1037,6 +1211,8 @@ export default function NewEstimatePage() {
           </div>
         )}
 
+        <VersionList versions={savedVersions} projectId={projectId} />
+
         {rows.length > 0 && (
           <div className="space-y-2">
             <button type="button" onClick={handleSaveAndPreview} disabled={goingPreview}
@@ -1056,6 +1232,82 @@ export default function NewEstimatePage() {
           </div>
         )}
       </div>
+
+      {/* 見積の本保存：上書き保存 か 新しい版 かを選ぶ（PC・モバイル共通） */}
+      {showVersionChoice && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-base font-bold text-[var(--nu-text)]">見積の保存方法を選んでください</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              工事項目は保存しました。見積書として残す版を選びます。過去の版は変更されません。
+            </p>
+
+            {savedVersions.length > 0 && (
+              <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                現在の最新版：<span className="font-bold">{savedVersions[savedVersions.length - 1].estimateNo}</span>
+                （v{savedVersions[savedVersions.length - 1].version}）
+              </p>
+            )}
+
+            <button type="button" onClick={handleChooseOverwrite}
+              className="mt-4 min-h-[52px] w-full rounded-xl border border-[#1b365d] bg-white px-4 text-sm font-bold text-[#1b365d] active:bg-[#eef4fb]">
+              現在の版を上書き保存
+              {savedVersions.length > 0 && `（${savedVersions[savedVersions.length - 1].estimateNo}）`}
+            </button>
+
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <label className="mb-1 block text-xs font-medium text-slate-500">修正理由（新しい版として保存する場合）</label>
+              <select value={revisionReason} onChange={(e) => setRevisionReason(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#1b365d] focus:ring-1 focus:ring-[#1b365d]">
+                {REVISION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              {revisionReason === "その他" && (
+                <input type="text" value={revisionReasonFree} onChange={(e) => setRevisionReasonFree(e.target.value)}
+                  placeholder="修正理由を入力"
+                  className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#1b365d] focus:ring-1 focus:ring-[#1b365d]" />
+              )}
+              <button type="button" onClick={handleChooseNewVersion}
+                className="mt-2 min-h-[52px] w-full rounded-xl bg-[#1b365d] px-4 text-sm font-bold text-white active:bg-[#16294a]">
+                新しい版として保存（v{(savedVersions[savedVersions.length - 1]?.version ?? 0) + 1}）
+              </button>
+            </div>
+
+            <button type="button" onClick={() => setShowVersionChoice(false)}
+              className="mt-3 min-h-[44px] w-full rounded-xl text-xs font-semibold text-slate-400 active:bg-slate-50">
+              やめる（工事項目の保存は完了しています）
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 保存済みの見積（版）一覧 ─────────────────────────────────
+function VersionList({ versions, projectId }: { versions: SavedEstimate[]; projectId: string }) {
+  if (versions.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 className="mb-2 text-sm font-bold text-[var(--nu-text)]">保存済みの見積（版）</h2>
+      <ul className="space-y-1.5">
+        {versions.map((v) => (
+          <li key={v.id}>
+            <Link
+              href={`/new/projects/${encodeURIComponent(projectId)}/estimate/preview?v=${encodeURIComponent(v.id)}`}
+              className="flex min-h-[44px] items-center justify-between rounded-lg border border-slate-200 px-3 py-2 active:bg-slate-50"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-mono text-xs font-bold text-[var(--nu-text)]">{v.estimateNo}</span>
+                <span className="block text-[11px] text-slate-400">
+                  v{v.version}・{v.createdAt}
+                  {v.revisionReason ? `・${v.revisionReason}` : ""}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-bold text-[#1b365d]">見る ›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
