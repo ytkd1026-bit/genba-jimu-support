@@ -18,7 +18,8 @@ import {
   issueWorkItemId,
   migrateLegacyEstimateToWorkItems,
 } from "@/app/utils/workItems";
-import { ensureUnitPriceMasterSeeded, unitPriceMasterStore, type UnitPriceMasterItem } from "@/app/utils/unitPriceMaster";
+import { type UnitPriceMasterItem } from "@/app/utils/unitPriceMaster";
+import { unitPriceRepository } from "@/app/repositories/unitPriceRepository";
 import { damageRecordsStore } from "@/app/utils/damageRecords";
 import { getSavedEstimates, type SavedEstimate } from "@/app/utils/savedEstimates";
 import { draftKey } from "@/app/utils/draftStorage";
@@ -69,7 +70,6 @@ export default function WorkItemsPage() {
       setNotFound(true);
       return;
     }
-    ensureUnitPriceMasterSeeded();
     setProject(p);
     const loadedRows = workItemsStore.getByProjectId(projectId).map(toEditable);
     // 保存済みが無ければ空欄5行を表示（仕様12）。空行は一時IDで持ち、保存時に採番する。
@@ -79,7 +79,7 @@ export default function WorkItemsPage() {
         : Array.from({ length: INITIAL_EMPTY_ROWS }, (_, i) => emptyEditableRow(`tmp-${Date.now()}-${i}`));
     setRows(initial);
     setSelectedId(initial[0]?.workItemId ?? null);
-    setMasters(unitPriceMasterStore.getActive());
+    void unitPriceRepository.listActive().then(setMasters);
     setDamageOptions(
       damageRecordsStore.getByProjectId(projectId).map((d) => ({
         id: d.damageId,

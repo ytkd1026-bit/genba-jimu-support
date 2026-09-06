@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { companyRepository } from "@/app/repositories/companyRepository";
 
 // ─── 定数 ────────────────────────────────────────────────────
 const ACCOUNT_TYPES = ["普通", "当座"] as const;
@@ -69,34 +70,25 @@ export default function CompanySettingsPage() {
   const [saveMsg, setSaveMsg] = useState("");
   const [pdfInfo, setPdfInfo] = useState(false);
 
-  // 起動時にlocalStorageから読み込む
+  // 起動時に会社設定を読み込む（クラウド接続時は Supabase、未接続時は localStorage）
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      setCompany({
-        businessName:   saved.businessName   ?? DEFAULT_COMPANY.businessName,
-        representative: saved.representative ?? DEFAULT_COMPANY.representative,
-        postalCode:     saved.postalCode     ?? DEFAULT_COMPANY.postalCode,
-        address:        saved.address        ?? DEFAULT_COMPANY.address,
-        tel:            saved.tel            ?? DEFAULT_COMPANY.tel,
-        email:          saved.email          ?? DEFAULT_COMPANY.email,
-        invoiceNumber:  saved.invoiceNumber  ?? DEFAULT_COMPANY.invoiceNumber,
-      });
-      setBank({
-        bankName:      saved.bankName      ?? DEFAULT_BANK.bankName,
-        branchName:    saved.branchName    ?? DEFAULT_BANK.branchName,
-        accountType:   saved.accountType   ?? DEFAULT_BANK.accountType,
-        accountNumber: saved.accountNumber ?? DEFAULT_BANK.accountNumber,
-        accountHolder: saved.accountHolder ?? DEFAULT_BANK.accountHolder,
-      });
-      if (typeof saved.standardProfitRate === "number") {
-        setStandardProfitRatePct(String(Math.round(saved.standardProfitRate * 1000) / 10));
+    void (async () => {
+      try {
+        const p = await companyRepository.get();
+        setCompany({
+          businessName: p.businessName, representative: p.representative, postalCode: p.postalCode,
+          address: p.address, tel: p.tel, email: p.email, invoiceNumber: p.invoiceNumber,
+        });
+        setBank({
+          bankName: p.bankName, branchName: p.branchName,
+          accountType: (p.accountType === "当座" ? "当座" : "普通") as AccountType,
+          accountNumber: p.accountNumber, accountHolder: p.accountHolder,
+        });
+        setStandardProfitRatePct(String(Math.round(p.standardProfitRate * 1000) / 10));
+      } catch {
+        // 読み込み失敗時はデフォルトのまま
       }
-    } catch {
-      // localStorage読み込み失敗時はデフォルトのまま
-    }
+    })();
   }, []);
 
   function handleCompanyChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -109,25 +101,17 @@ export default function CompanySettingsPage() {
     setBank((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSave() {
-    try {
-      // 既存キー（他機能が保存した値）を保持したままマージする
-      let existing: Record<string, unknown> = {};
-      try {
-        existing = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
-      } catch {
-        existing = {};
-      }
-      const ratePct = parseFloat(standardProfitRatePct.replace(/[^0-9.]/g, ""));
-      const standardProfitRate = !isNaN(ratePct) && ratePct >= 0 && ratePct < 100 ? ratePct / 100 : 0.25;
-      const payload = { ...existing, ...company, ...bank, standardProfitRate };
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  async function handleSave() {
+    const ratePct = parseFloat(standardProfitRatePct.replace(/[^0-9.]/g, ""));
+    const standardProfitRate = !isNaN(ratePct) && ratePct >= 0 && ratePct < 100 ? ratePct / 100 : 0.25;
+    setSaveMsg("保存中…");
+    const res = await companyRepository.save({ ...company, ...bank, standardProfitRate });
+    if (res.ok) {
       setSaveMsg("事業者設定を保存しました。");
-      setTimeout(() => setSaveMsg(""), 4000);
-    } catch {
-      setSaveMsg("保存に失敗しました。ブラウザの設定を確認してください。");
-      setTimeout(() => setSaveMsg(""), 6000);
+    } else {
+      setSaveMsg(`保存できませんでした（通信エラー）：${res.error ?? ""}`);
     }
+    setTimeout(() => setSaveMsg(""), 5000);
   }
 
   function handleReset() {

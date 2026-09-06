@@ -8,7 +8,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTestMode, TEST_MODE_LABELS, type TestMode } from "@/app/utils/testMode";
-import { isSetupCompleted } from "@/app/utils/appSetup";
+import { isSetupCompleted, migrateLegacySetupState } from "@/app/utils/appSetup";
+import { isSupabaseConfigured } from "@/app/lib/supabase/client";
+import { activeBackend } from "@/app/lib/supabase/backend";
+import { authRepository } from "@/app/lib/supabase/authRepository";
+import { companyRepository } from "@/app/repositories/companyRepository";
+import { countLocalBusinessData, migrateLocalToCloud } from "@/app/repositories/migrationRepository";
+import type { Phase1MigrationProgress } from "@/app/lib/supabase/migrationState";
 
 // ─── よく使う作業（作業名で案内） ─────────────────────────────
 const primaryActions = [
@@ -70,15 +76,85 @@ const STATUS_STYLE: Record<string, string> = {
   入金済み: "bg-stone-100 text-stone-600",
 };
 
+function MigrationStatusRow({
+  label,
+  local,
+  cloud,
+  completed,
+}: {
+  label: string;
+  local: number;
+  cloud: number;
+  completed: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span>{label}：local {local} / cloud {cloud}</span>
+      <span className={completed ? "font-bold text-teal-600" : "font-bold text-amber-700"}>
+        {completed ? "移行済" : "未移行"}
+      </span>
+    </div>
+  );
+}
+
 // ─── コンポーネント ───────────────────────────────────────────
 export default function Home() {
   const [mode,    setMode]    = useState<TestMode>("normal");
   const [infoMsg, setInfoMsg] = useState("");
-  const [setupDone, setSetupDone] = useState(true); // 初期は非表示（判定後に出す）
+  const [setupDone, setSetupDone] = useState(false); // 判定失敗時も未設定として入口を残す
+  const [cloudConfigured, setCloudConfigured] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false); // 表示がクラウド正本か（緑チップ）
+  const [showMigrate, setShowMigrate] = useState(false);
+  const [localCounts, setLocalCounts] = useState<{ contractors: number; masters: number; company: number }>({ contractors: 0, masters: 0, company: 0 });
+  const [migrationProgress, setMigrationProgress] = useState<Phase1MigrationProgress | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateMsg, setMigrateMsg] = useState<string | null>(null);
+
+  async function refreshHomeState() {
+    // 非同期判定の途中失敗やhydration停止でも、設定済み扱いにしない。
+    setSetupDone(false);
+    try {
+      const configured = isSupabaseConfigured();
+      setCloudConfigured(configured);
+      let signedIn = false;
+      if (configured) {
+        const user = await authRepository.getUser();
+        setSignedInEmail(user?.email ?? null);
+        signedIn = !!user;
+      }
+      const be = await activeBackend();
+      setSyncing(be.mode === "supabase" && signedIn);
+      setMigrationProgress(be.migrationProgress);
+
+      const companySetup = await companyRepository.cloudSetupStatus();
+      const scopeExists = !!companySetup.userId && !!companySetup.organizationId;
+      const companyComplete =
+        companySetup.organizationExists &&
+        companySetup.companySettingsExists &&
+        companySetup.companyNameExists;
+      let scopedSetupCompleted = false;
+      if (scopeExists && companyComplete) {
+        scopedSetupCompleted = isSetupCompleted(companySetup.userId!, companySetup.organizationId!);
+        if (!scopedSetupCompleted) {
+          scopedSetupCompleted = migrateLegacySetupState(companySetup.userId!, companySetup.organizationId!);
+        }
+      }
+      setSetupDone(scopeExists && companyComplete && scopedSetupCompleted);
+
+      const counts = countLocalBusinessData();
+      setLocalCounts(counts);
+      setShowMigrate(signedIn && be.needsMigration && be.migrationProgress?.allCompleted !== true);
+    } catch {
+      setSetupDone(false);
+    }
+  }
 
   useEffect(() => {
+    // localStorage由来のためSSR初期値にはできない。マウント後に現在モードへ同期する。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMode(getTestMode());
-    setSetupDone(isSetupCompleted());
+    void refreshHomeState();
   }, []);
 
   const isDemo = mode === "demo";
@@ -88,9 +164,58 @@ export default function Home() {
     setTimeout(() => setInfoMsg(""), 4000);
   }
 
+  async function handleMigrate() {
+    if (migrating) return;
+    setMigrating(true);
+    setMigrateMsg("クラウドへ移行中…");
+    const res = await migrateLocalToCloud();
+    setMigrating(false);
+    if (res.ok) {
+      setMigrateMsg(`クラウドへ移行しました（会社情報${res.migrated.company ? "1件" : "0件"}・元請${res.migrated.contractors}件・単価${res.migrated.masters}件）。`);
+      setShowMigrate(false);
+      await refreshHomeState(); // 正本をクラウドへ切替後の状態を再表示
+    } else {
+      setMigrateMsg(`移行はまだ完了していません：${res.errors[0] ?? "クラウド状態を確認してください。"}`);
+      setMigrationProgress(res.progress);
+    }
+    setTimeout(() => setMigrateMsg(null), 8000);
+  }
+
   return (
     <div className="min-h-screen bg-[#fdf8f2]">
       <div className="mx-auto max-w-md px-4 py-3 sm:max-w-lg">
+
+        {/* アカウント状態（端末間共有） */}
+        <div className="mb-2 flex justify-end">
+          <Link href="/auth" className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 active:opacity-80">
+            {cloudConfigured
+              ? signedInEmail
+                ? syncing
+                  ? <><span className="h-2 w-2 rounded-full bg-green-500" />クラウド同期中</>
+                  : <><span className="h-2 w-2 rounded-full bg-amber-500" />ログイン中（未移行）</>
+                : <><span className="h-2 w-2 rounded-full bg-stone-300" />ログイン</>
+              : <><span className="h-2 w-2 rounded-full bg-stone-300" />この端末のみ</>}
+          </Link>
+        </div>
+
+        {/* クラウド移行バナー（この端末に既存データがあり未移行のとき。移行するまで既存データは消さない） */}
+        {showMigrate && (
+          <div className="mb-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-amber-300">
+            <p className="text-sm font-bold text-stone-800">この端末に既存データがあります。クラウドへ移行してください</p>
+            <p className="mt-0.5 text-xs text-stone-500">移行するまで、この端末の自社情報・元請・単価はこれまで通り表示されます。移行すると他の端末（iPhone等）と共有できます。テスト用データの区分は保持されます。</p>
+            <div className="mt-2 space-y-1 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-600">
+              <MigrationStatusRow label="自社情報" local={migrationProgress?.categories.company.localCount ?? localCounts.company} cloud={migrationProgress?.categories.company.cloudCount ?? 0} completed={migrationProgress?.categories.company.completed ?? false} />
+              <MigrationStatusRow label="元請" local={migrationProgress?.categories.contractors.localCount ?? localCounts.contractors} cloud={migrationProgress?.categories.contractors.cloudCount ?? 0} completed={migrationProgress?.categories.contractors.completed ?? false} />
+              <MigrationStatusRow label="単価マスタ" local={migrationProgress?.categories.unitPrice.localCount ?? localCounts.masters} cloud={migrationProgress?.categories.unitPrice.cloudCount ?? 0} completed={migrationProgress?.categories.unitPrice.completed ?? false} />
+              {migrationProgress && !migrationProgress.cloudLoaded && <p className="pt-1 font-bold text-red-600">クラウド件数を取得できませんでした。接続を確認してください。</p>}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button type="button" onClick={handleMigrate} disabled={migrating} className="min-h-[44px] flex-1 rounded-xl bg-[#8B4A3C] px-3 py-2 text-xs font-bold text-white active:opacity-80 disabled:opacity-50">{migrating ? "移行中…" : "クラウドへ移行する"}</button>
+              <button type="button" onClick={() => setShowMigrate(false)} className="min-h-[44px] rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-bold text-stone-500 active:opacity-80">後で</button>
+            </div>
+          </div>
+        )}
+        {migrateMsg && <div className="mb-3 rounded-xl bg-stone-50 px-3 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200">{migrateMsg}</div>}
 
         {/* ヘッダー */}
         <header className="mb-3 text-center">
@@ -274,7 +399,7 @@ export default function Home() {
             <div className="space-y-1">
               <Link href="/setup" className="flex items-center justify-between rounded-xl px-2 py-2.5 active:bg-stone-50">
                 <div>
-                  <p className="text-sm font-bold text-stone-700">🚀 初期設定</p>
+                  <p className="text-sm font-bold text-stone-700">🚀 初期設定・基本設定</p>
                   <p className="text-xs text-stone-400">自社情報・元請・単価をまとめて登録</p>
                 </div>
                 <span className="text-stone-300">›</span>

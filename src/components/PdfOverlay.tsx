@@ -85,7 +85,7 @@ function CompletedDialog({
       ? "共有画面から「ファイルに保存」を選ぶと本体に保存できます。"
       : result.kind === "opened"
         ? "新しいタブでPDFを開きました。共有ボタンから保存できます。"
-        : "ダウンロードフォルダに保存しました。";
+        : "PDFファイルを保存しました。ブラウザの保存先（ダウンロード等）をご確認ください。";
 
   return (
     <div className={BACKDROP} role="dialog" aria-modal="true" aria-label="PDF作成完了">

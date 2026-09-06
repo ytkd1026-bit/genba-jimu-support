@@ -7,8 +7,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { contractorStore, type Contractor } from "@/app/utils/contractorMaster";
+import { type Contractor } from "@/app/utils/contractorMaster";
 import { newRecordIsTestData } from "@/app/utils/devData";
+import { contractorRepository } from "@/app/repositories/contractorRepository";
 
 const inputCls =
   "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
@@ -45,11 +46,18 @@ export default function ContractorsPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [msg, setMsg] = useState<string | null>(null);
 
-  function reload() {
-    setItems(contractorStore.getAll());
+  const [saving, setSaving] = useState(false);
+
+  async function reload() {
+    try {
+      setItems(await contractorRepository.list());
+    } catch {
+      setMsg("読み込みに失敗しました（通信エラー）。");
+      setTimeout(() => setMsg(null), 4000);
+    }
   }
   useEffect(() => {
-    reload();
+    void reload();
   }, []);
 
   const editing = form.id !== null;
@@ -60,16 +68,18 @@ export default function ContractorsPage() {
     setForm(EMPTY);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name.trim()) {
       setMsg("元請名は必須です。");
       setTimeout(() => setMsg(null), 4000);
       return;
     }
-    let ok = false;
+    setSaving(true);
+    setMsg("保存中…");
+    let res: { ok: boolean; error?: string };
     if (form.id) {
-      const existing = contractorStore.getById(form.id);
-      ok = contractorStore.upsert({
+      const existing = items.find((c) => c.id === form.id);
+      res = await contractorRepository.upsert({
         id: form.id,
         name: form.name.trim(),
         contactName: form.contactName.trim(),
@@ -86,7 +96,7 @@ export default function ContractorsPage() {
         updatedAt: new Date().toISOString(),
       });
     } else {
-      ok = contractorStore.create({
+      res = await contractorRepository.create({
         name: form.name.trim(),
         contactName: form.contactName.trim(),
         postalCode: form.postalCode.trim(),
@@ -98,28 +108,34 @@ export default function ContractorsPage() {
         note: form.note.trim(),
         active: form.active,
         isTestData: newRecordIsTestData(),
-      }) !== null;
+      });
     }
-    if (ok) {
-      reload();
+    setSaving(false);
+    if (res.ok) {
+      await reload();
       resetForm();
       setMsg(form.id ? "元請を更新しました。" : "元請を追加しました。");
     } else {
-      setMsg("保存に失敗しました。");
+      setMsg(`保存できませんでした（通信エラー）：${res.error ?? ""}`);
     }
-    setTimeout(() => setMsg(null), 4000);
+    setTimeout(() => setMsg(null), 5000);
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm("この元請を削除しますか？（過去に発行した見積の提出先情報は保持されます）")) return;
-    contractorStore.remove(id);
-    reload();
+    const res = await contractorRepository.remove(id);
+    if (!res.ok) {
+      setMsg(`削除できませんでした（通信エラー）：${res.error ?? ""}`);
+      setTimeout(() => setMsg(null), 5000);
+      return;
+    }
+    await reload();
     if (form.id === id) resetForm();
   }
 
-  function toggleActive(c: Contractor) {
-    contractorStore.upsert({ ...c, active: !c.active });
-    reload();
+  async function toggleActive(c: Contractor) {
+    await contractorRepository.upsert({ ...c, active: !c.active });
+    await reload();
   }
 
   const sorted = useMemo(() => items.slice().sort((a, b) => a.name.localeCompare(b.name, "ja")), [items]);
@@ -182,7 +198,7 @@ export default function ContractorsPage() {
             </div>
           </div>
           <div className="mt-3 flex gap-2">
-            <button type="button" onClick={handleSave} className="min-h-[48px] flex-1 rounded-xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white active:opacity-80">{editing ? "更新する" : "追加する"}</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="min-h-[48px] flex-1 rounded-xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white active:opacity-80 disabled:opacity-50">{editing ? "更新する" : "追加する"}</button>
             {editing && <button type="button" onClick={resetForm} className="min-h-[48px] rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-600 active:opacity-80">新規に戻す</button>}
           </div>
         </div>

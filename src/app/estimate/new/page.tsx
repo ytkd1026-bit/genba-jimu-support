@@ -18,16 +18,10 @@ import {
   type Project,
 } from "@/app/utils/projects";
 import { workItemsStore, issueWorkItemId, type WorkItem } from "@/app/utils/workItems";
-import {
-  ensureUnitPriceMasterSeeded,
-  unitPriceMasterStore,
-  type UnitPriceMasterItem,
-} from "@/app/utils/unitPriceMaster";
-import {
-  contractorStore,
-  contractorToSnapshot,
-  type Contractor,
-} from "@/app/utils/contractorMaster";
+import { type UnitPriceMasterItem } from "@/app/utils/unitPriceMaster";
+import { contractorToSnapshot, type Contractor } from "@/app/utils/contractorMaster";
+import { unitPriceRepository } from "@/app/repositories/unitPriceRepository";
+import { contractorRepository } from "@/app/repositories/contractorRepository";
 import {
   getSavedEstimates,
   upsertEstimate,
@@ -112,14 +106,15 @@ export default function NewEstimatePage() {
   const [newContractor, setNewContractor] = useState({ name: "", contactName: "", tel: "", email: "", postalCode: "", address: "" });
 
   useEffect(() => {
-    ensureUnitPriceMasterSeeded();
-    setMasters(unitPriceMasterStore.getActive());
-    setContractors(contractorStore.getActive());
-    setProjects(projectsStore.getAll());
-    const initial = Array.from({ length: INITIAL_EMPTY_ROWS }, (_, i) => emptyEditableRow(`tmp-${Date.now()}-${i}`));
-    setRows(initial);
-    setSelectedId(initial[0]?.workItemId ?? null);
-    setLoaded(true);
+    void (async () => {
+      setMasters(await unitPriceRepository.listActive());
+      setContractors(await contractorRepository.listActive());
+      setProjects(projectsStore.getAll());
+      const initial = Array.from({ length: INITIAL_EMPTY_ROWS }, (_, i) => emptyEditableRow(`tmp-${Date.now()}-${i}`));
+      setRows(initial);
+      setSelectedId(initial[0]?.workItemId ?? null);
+      setLoaded(true);
+    })();
   }, []);
 
   const DRAFT_KEY = draftKey("estimate", "new");
@@ -167,13 +162,13 @@ export default function NewEstimatePage() {
     }
   }
 
-  function handleAddContractor() {
+  async function handleAddContractor() {
     if (!newContractor.name.trim()) {
       setErrMsg("元請名を入力してください。");
       setTimeout(() => setErrMsg(null), 4000);
       return;
     }
-    const created = contractorStore.create({
+    const res = await contractorRepository.create({
       name: newContractor.name.trim(),
       contactName: newContractor.contactName.trim(),
       postalCode: newContractor.postalCode.trim(),
@@ -186,14 +181,14 @@ export default function NewEstimatePage() {
       active: true,
       isTestData: newRecordIsTestData(),
     });
-    if (created) {
-      setContractors(contractorStore.getActive());
-      setH("contractorId", created.id);
+    if (res.ok) {
+      setContractors(await contractorRepository.listActive());
+      setH("contractorId", res.data.id);
       setShowAddContractor(false);
       setNewContractor({ name: "", contactName: "", tel: "", email: "", postalCode: "", address: "" });
     } else {
-      setErrMsg("元請の保存に失敗しました。");
-      setTimeout(() => setErrMsg(null), 4000);
+      setErrMsg(`元請を保存できませんでした（通信エラー）：${res.error ?? ""}`);
+      setTimeout(() => setErrMsg(null), 5000);
     }
   }
 
@@ -252,7 +247,7 @@ export default function NewEstimatePage() {
 
     setSaving(true);
     try {
-      const contractor = header.contractorId ? contractorStore.getById(header.contractorId) : null;
+      const contractor = header.contractorId ? contractors.find((c) => c.id === header.contractorId) ?? null : null;
 
       // Project: 既存選択があれば再利用（重複作成しない）。無ければ自動生成（仕様11）。
       let projectId = header.existingProjectId;

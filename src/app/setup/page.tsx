@@ -9,19 +9,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  getCompanySettings,
-  getBankSettings,
-  getStandardProfitRate,
-  DEFAULT_STANDARD_PROFIT_RATE,
-} from "@/app/utils/companySettings";
-import { contractorStore } from "@/app/utils/contractorMaster";
-import { ensureUnitPriceMasterSeeded, unitPriceMasterStore } from "@/app/utils/unitPriceMaster";
+import { DEFAULT_STANDARD_PROFIT_RATE } from "@/app/utils/companySettings";
 import { setSetupCompleted, isSetupCompleted } from "@/app/utils/appSetup";
 import { newRecordIsTestData } from "@/app/utils/devData";
 import { normalizeNumericString, parseNumericInput } from "@/app/utils/numberInput";
-
-const SETTINGS_STORAGE_KEY = "genba_settings";
+import { companyRepository, type CompanyProfile } from "@/app/repositories/companyRepository";
+import { contractorRepository } from "@/app/repositories/contractorRepository";
+import { unitPriceRepository } from "@/app/repositories/unitPriceRepository";
+import { resolveSupabaseContext } from "@/app/lib/supabase/backend";
 
 const inputCls =
   "w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-base text-stone-800 placeholder:text-stone-300 focus:border-[#8B4A3C] focus:outline-none focus:ring-2 focus:ring-[#8B4A3C]/20";
@@ -34,36 +29,25 @@ type CompanyForm = {
   standardProfitRatePct: string;
 };
 
-function readCompanyForm(): CompanyForm {
-  const c = getCompanySettings();
-  const b = getBankSettings();
+function profileToForm(p: CompanyProfile): CompanyForm {
   return {
-    businessName: c.businessName, representative: c.representative, postalCode: c.postalCode,
-    address: c.address, tel: c.tel, email: c.email, invoiceNumber: c.invoiceNumber,
-    bankName: b.bankName, branchName: b.branchName, accountType: b.accountType,
-    accountNumber: b.accountNumber, accountHolder: b.accountHolder,
-    standardProfitRatePct: String(Math.round(getStandardProfitRate() * 1000) / 10),
+    businessName: p.businessName, representative: p.representative, postalCode: p.postalCode,
+    address: p.address, tel: p.tel, email: p.email, invoiceNumber: p.invoiceNumber,
+    bankName: p.bankName, branchName: p.branchName, accountType: p.accountType,
+    accountNumber: p.accountNumber, accountHolder: p.accountHolder,
+    standardProfitRatePct: String(Math.round(p.standardProfitRate * 1000) / 10),
   };
 }
 
-function saveCompanyForm(f: CompanyForm) {
-  let raw: Record<string, unknown> = {};
-  try {
-    raw = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? "{}");
-  } catch {
-    raw = {};
-  }
+function formToProfile(f: CompanyForm): CompanyProfile {
   const ratePct = parseNumericInput(f.standardProfitRatePct);
-  const rate = ratePct >= 0 && ratePct < 100 ? ratePct / 100 : DEFAULT_STANDARD_PROFIT_RATE;
-  const merged = {
-    ...raw,
+  return {
     businessName: f.businessName, representative: f.representative, postalCode: f.postalCode,
     address: f.address, tel: f.tel, email: f.email, invoiceNumber: f.invoiceNumber,
     bankName: f.bankName, branchName: f.branchName, accountType: f.accountType,
     accountNumber: f.accountNumber, accountHolder: f.accountHolder,
-    standardProfitRate: rate,
+    standardProfitRate: ratePct >= 0 && ratePct < 100 ? ratePct / 100 : DEFAULT_STANDARD_PROFIT_RATE,
   };
-  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(merged));
 }
 
 export default function SetupPage() {
@@ -78,46 +62,63 @@ export default function SetupPage() {
   // 元請クイック追加
   const [quick, setQuick] = useState({ name: "", contactName: "" });
 
-  function refreshCounts() {
-    setContractorCount(contractorStore.getActive().length);
-    setMasterCount(unitPriceMasterStore.getActive().length);
+  async function refreshCounts() {
+    setContractorCount((await contractorRepository.listActive()).length);
+    setMasterCount((await unitPriceRepository.listActive()).length);
   }
 
   useEffect(() => {
-    ensureUnitPriceMasterSeeded();
-    setCompany(readCompanyForm());
-    setAlreadyDone(isSetupCompleted());
-    refreshCounts();
+    void (async () => {
+      setCompany(profileToForm(await companyRepository.get()));
+      const ctx = await resolveSupabaseContext();
+      setAlreadyDone(ctx ? isSetupCompleted(ctx.userId, ctx.organizationId) : false);
+      await refreshCounts();
+    })();
   }, []);
 
   function setC<K extends keyof CompanyForm>(key: K, value: CompanyForm[K]) {
     setCompany((c) => (c ? { ...c, [key]: value } : c));
   }
 
-  function handleSaveCompanyAndNext() {
+  async function handleSaveCompanyAndNext() {
     if (!company) return;
     if (!company.businessName.trim()) {
       setMsg("屋号・会社名を入力してください。");
       setTimeout(() => setMsg(null), 4000);
       return;
     }
-    saveCompanyForm(company);
+    setMsg("保存中…");
+    const res = await companyRepository.save(formToProfile(company));
+    if (!res.ok) {
+      setMsg(`保存できませんでした（通信エラー）：${res.error ?? ""}`);
+      setTimeout(() => setMsg(null), 5000);
+      return;
+    }
+    setMsg(null);
     setStep(2);
   }
 
-  function handleQuickAddContractor() {
+  async function handleQuickAddContractor() {
     if (!quick.name.trim()) return;
-    contractorStore.create({
+    await contractorRepository.create({
       name: quick.name.trim(), contactName: quick.contactName.trim(),
       postalCode: "", address: "", tel: "", email: "", closingDay: "", paymentTerms: "", note: "",
       active: true, isTestData: newRecordIsTestData(),
     });
     setQuick({ name: "", contactName: "" });
-    refreshCounts();
+    await refreshCounts();
   }
 
-  function handleComplete() {
-    setSetupCompleted(true);
+  async function handleComplete() {
+    const ctx = await resolveSupabaseContext();
+    if (!ctx) {
+      setMsg("初期設定の完了状態を保存できません。ログインとクラウド接続を確認してください。");
+      return;
+    }
+    if (!setSetupCompleted(ctx.userId, ctx.organizationId, true)) {
+      setMsg("初期設定の完了状態を保存できません。Safariのサイトデータ設定を確認してください。");
+      return;
+    }
     router.push("/");
   }
 

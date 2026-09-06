@@ -161,12 +161,43 @@ const CROSS_SEEDS: Array<Omit<UnitPriceMasterInput, "id">> = [
     active: true,
   },
   {
+    // クロス施工費 / m（労務450 → 参考売価600）。仕様4A
     workCategory: "クロス工事",
     itemName: "クロス施工費",
     materialName: "",
     unit: "m",
     materialUnitCost: 0,
     laborUnitCost: 450,
+    subcontractUnitCost: 0,
+    otherUnitCost: 0,
+    targetProfitRate: 0.25,
+    taxType: "taxable",
+    taxRate: 10,
+    active: true,
+  },
+  {
+    // クロス施工費 / 人工（労務21,750 → 参考売価29,000）。仕様4B。0.5/1.5人工にも対応
+    workCategory: "クロス工事",
+    itemName: "クロス施工費",
+    materialName: "",
+    unit: "人工",
+    materialUnitCost: 0,
+    laborUnitCost: 21750,
+    subcontractUnitCost: 0,
+    otherUnitCost: 0,
+    targetProfitRate: 0.25,
+    taxType: "taxable",
+    taxRate: 10,
+    active: true,
+  },
+  {
+    // クロス施工費 / 式（売価は案件ごとに手入力）。仕様4C
+    workCategory: "クロス工事",
+    itemName: "クロス施工費",
+    materialName: "",
+    unit: "式",
+    materialUnitCost: 0,
+    laborUnitCost: 0,
     subcontractUnitCost: 0,
     otherUnitCost: 0,
     targetProfitRate: 0.25,
@@ -205,12 +236,13 @@ export function ensureUnitPriceMasterSeeded(): void {
   const list = read();
   const now = new Date().toISOString();
   for (const seed of CROSS_SEEDS) {
-    // 同じ工種・項目名・材料名が既にあれば重複追加しない
+    // 同じ工種・項目名・材料名・単位が既にあれば重複追加しない（単位別レコードは許容・仕様6）
     const dup = list.some(
       (m) =>
         m.workCategory === seed.workCategory &&
         m.itemName === seed.itemName &&
-        m.materialName === seed.materialName,
+        m.materialName === seed.materialName &&
+        m.unit === seed.unit,
     );
     if (dup) continue;
     const id = issueMasterId(list);

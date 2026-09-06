@@ -56,6 +56,11 @@ export const LOCATION_PRESETS = [
   "洗面室", "脱衣室", "トイレ", "浴室", "階段", "クローゼット", "WIC", "収納", "共通", "その他",
 ];
 
+// ── 単位プリセット（候補＋自由入力。仕様3） ──
+export const UNIT_PRESETS = [
+  "m", "㎡", "枚", "本", "個", "箇所", "台", "セット", "人工", "式",
+];
+
 // 税区分・税率の1択マッピング
 export const TAX_COMBO: Record<string, { taxType: TaxType; taxRate: TaxRate }> = {
   taxable_10: { taxType: "taxable", taxRate: 10 },
@@ -342,6 +347,46 @@ export function resolveMaster(
     masters.find((m) => m.workCategory === category && m.itemName === itemName) ??
     null
   );
+}
+
+/**
+ * 単位まで含めて単価マスタを引く（仕様6・7）。
+ * 識別条件: 工種 + 項目名 + 単位（材料名があれば優先的に一致を試す）。
+ * 同じ項目名でも単位別に別レコードを持てる（クロス施工費 m / 人工 / 式）。
+ */
+export function resolveMasterByUnit(
+  masters: UnitPriceMasterItem[],
+  category: string,
+  itemName: string,
+  materialName: string,
+  unit: string,
+): UnitPriceMasterItem | null {
+  return (
+    masters.find(
+      (m) =>
+        m.workCategory === category &&
+        m.itemName === itemName &&
+        m.unit === unit &&
+        m.materialName === materialName,
+    ) ??
+    masters.find(
+      (m) => m.workCategory === category && m.itemName === itemName && m.unit === unit,
+    ) ??
+    null
+  );
+}
+
+/** ある工種・項目名でマスタに登録されている単位候補＋プリセット（重複除去） */
+export function unitOptionsOf(
+  masters: UnitPriceMasterItem[],
+  category: string,
+  itemName: string,
+): string[] {
+  const fromMaster = masters
+    .filter((m) => m.workCategory === category && m.itemName === itemName)
+    .map((m) => m.unit)
+    .filter(Boolean);
+  return uniq([...fromMaster, ...UNIT_PRESETS]);
 }
 
 /** マスタ1件を行へ適用するためのパッチ（数量が空なら1を補う） */

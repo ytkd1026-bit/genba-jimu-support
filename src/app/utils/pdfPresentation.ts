@@ -12,6 +12,21 @@
 // 破棄は呼び出し元が releasePdfUrl() で明示的に行う。
 
 import type React from "react";
+import { savePdfBlob } from "./pdfDownload";
+
+/**
+ * タッチ端末（iPhone/iPad）かどうか。Mac は false。
+ * Mac では「PDF保存」= ファイル保存（<a download>）を優先し、共有シートを自動表示しない。
+ * iPhone/iPad では OS の共有・ファイル保存導線（Web Share）を使う。
+ */
+export function isTouchDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const noHover = window.matchMedia?.("(hover: none)")?.matches ?? false;
+  const touchPoints = (navigator.maxTouchPoints ?? 0) > 0;
+  // iPhone/iPad は coarse pointer かつ hover 不可。Mac(トラックパッド/マウス)は fine + hover。
+  return (coarse || noHover) && touchPoints;
+}
 
 /** 提示方法の結果。cancelled はユーザーが共有シートを閉じた場合で、失敗ではない。 */
 export type PresentKind = "shared" | "opened" | "downloaded" | "cancelled";
@@ -82,7 +97,15 @@ function classifyShareError(err: unknown): ShareFailure {
  * Web Share はユーザー操作を伴わない呼び出しをブラウザが拒否する。
  */
 export async function presentPdf(blob: Blob, filename: string): Promise<PresentResult> {
-  // ── 第1候補：Web Share ──────────────────────────────
+  // ── Mac/PC：ファイル保存を優先（共有シートを自動表示しない・仕様B） ──
+  // 請求書と同じ <a download> 経路（savePdfBlob）でファイル保存へ統一する。
+  // Finder の任意フォルダ（ブラウザの保存設定）へ保存できる。
+  if (!isTouchDevice()) {
+    savePdfBlob(blob, filename);
+    return { kind: "downloaded", filename, url: null };
+  }
+
+  // ── iPhone/iPad：第1候補は Web Share（OSの保存・共有導線） ──
   if (canSharePdf(blob, filename)) {
     const file = new File([blob], filename, { type: "application/pdf" });
     try {

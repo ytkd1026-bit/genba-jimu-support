@@ -7,15 +7,19 @@
 // 変更は onRowsChange で通知する（保存・自動下書き・ヘッダ・集計は親が担当）。
 //
 // 入力（数量・採用売価）と自動計算欄を視覚的に区別する。採用売価のみ編集可。
-// 工種・項目名・材料名・施工場所は「候補選択＋自由入力」（datalist）で、クロス固定にしない。
+// 工種・項目名・材料名・施工場所・単位は「候補選択＋自由入力」。Safari では native datalist の
+// 候補が白背景＋薄字で読めないため、独自の暗色ドロップダウン（Combo）で表示する（仕様A）。
 
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   applyMasterPatch,
   emptyEditableRow,
   itemNamesOf,
   materialsOf,
   resolveMaster,
+  resolveMasterByUnit,
+  unitOptionsOf,
   rowMetrics,
   taxComboValue,
   workCategoryOptions,
@@ -91,6 +95,13 @@ export function EstimateEditor({
     const m = resolveMaster(masters, row.category, row.workName, materialName);
     if (m) applyMaster(row.workItemId, m, row.quantity);
     else updateRow(row.workItemId, { materialName });
+  }
+  // 単位変更（仕様7・9）: 同じ工種・項目名で該当単位の単価マスタがあれば、その単位の
+  // 原価単価・目標粗利率・標準売価を取得する。無ければ単位だけ変え、価格は手入力を維持。
+  function handleUnitChange(row: EditableWorkItem, unit: string) {
+    const m = resolveMasterByUnit(masters, row.category, row.workName, row.materialName, unit);
+    if (m) applyMaster(row.workItemId, m, row.quantity);
+    else updateRow(row.workItemId, { unit });
   }
 
   function addRow() {
@@ -177,8 +188,17 @@ export function EstimateEditor({
                           placeholder="0"
                           className="w-16 rounded-md border border-blue-300 bg-white px-2 py-1.5 text-right text-sm font-bold text-stone-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300" />
                       </td>
-                      <td className="px-2 py-1.5 text-stone-600">{row.unit || "—"}</td>
-                      <td className="px-2 py-1.5 text-right text-stone-700">{m.sellingUnitPrice > 0 ? fmtYen(m.sellingUnitPrice) : "—"}</td>
+                      <td className="px-1.5 py-1.5">
+                        <Combo id={`${listBaseId}-unit-${row.workItemId}`} value={row.unit} options={unitOptionsOf(masters, row.category, row.workName)} onChange={(v) => handleUnitChange(row, v)} placeholder="単位" narrow />
+                      </td>
+                      <td className="px-1.5 py-1.5">
+                        <input inputMode="numeric" value={row.sellingUnitPrice}
+                          onChange={(e) => updateRow(row.workItemId, { sellingUnitPrice: e.target.value })}
+                          onBlur={(e) => normalizeField(row.workItemId, "sellingUnitPrice", e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="0"
+                          className="w-24 rounded-md border border-blue-300 bg-white px-2 py-1.5 text-right text-sm font-bold text-stone-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                      </td>
                       <td className="px-2 py-1.5 text-right font-bold text-stone-800">{fmtYen(m.sellingAmount)}</td>
                       <td className="px-1 py-1.5 text-center">
                         <button type="button" onClick={(e) => { e.stopPropagation(); removeRow(row.workItemId); }} className="px-1 text-xs text-stone-300 hover:text-red-500">✕</button>
@@ -225,9 +245,14 @@ export function EstimateEditor({
                     <label className="text-xs text-stone-500">数量
                       <input inputMode="decimal" value={row.quantity} onChange={(e) => updateRow(row.workItemId, { quantity: e.target.value })} onBlur={(e) => normalizeField(row.workItemId, "quantity", e.target.value)} placeholder="0" className="mt-0.5 w-full rounded-md border border-blue-300 bg-white px-2 py-2 text-right text-sm font-bold text-stone-800 focus:border-blue-500 focus:outline-none" />
                     </label>
-                    <div className="text-xs text-stone-500">単位・見積
-                      <div className="mt-0.5 flex items-center justify-between rounded-md bg-stone-100 px-2 py-2">
-                        <span className="text-stone-600">{row.unit || "—"}</span>
+                    <label className="text-xs text-stone-500">単位
+                      <Combo id={`${listBaseId}-munit-${row.workItemId}`} value={row.unit} options={unitOptionsOf(masters, row.category, row.workName)} onChange={(v) => handleUnitChange(row, v)} placeholder="単位" block />
+                    </label>
+                    <label className="text-xs text-stone-500">売価単価（円）
+                      <input inputMode="numeric" value={row.sellingUnitPrice} onChange={(e) => updateRow(row.workItemId, { sellingUnitPrice: e.target.value })} onBlur={(e) => normalizeField(row.workItemId, "sellingUnitPrice", e.target.value)} placeholder="0" className="mt-0.5 w-full rounded-md border border-blue-300 bg-white px-2 py-2 text-right text-sm font-bold text-stone-800 focus:border-blue-500 focus:outline-none" />
+                    </label>
+                    <div className="text-xs text-stone-500">見積金額
+                      <div className="mt-0.5 flex items-center justify-end rounded-md bg-stone-100 px-2 py-2">
                         <span className="font-bold text-stone-800">{fmtYen(m.sellingAmount)}</span>
                       </div>
                     </div>
@@ -311,9 +336,12 @@ export function EstimateEditor({
   );
 }
 
-// datalist ベースの入力（候補選択＋自由入力・仕様17〜20）
+// 独自コンボボックス（候補選択＋自由入力・仕様3/17〜20/A）
+// 入力欄は白背景のまま。候補リストは暗色（黒背景×白文字）でSafariでも確実に読める。
+// datalist と違い CSS で完全に制御できる。候補はポータルで body 直下に fixed 配置し、
+// 表のはみ出し（overflow:hidden）で切れないようにする。
 function Combo({
-  id, value, options, onChange, placeholder, block,
+  id, value, options, onChange, placeholder, block, narrow,
 }: {
   id: string;
   value: string;
@@ -321,21 +349,99 @@ function Combo({
   onChange: (v: string) => void;
   placeholder: string;
   block?: boolean;
+  narrow?: boolean;
 }) {
+  const width = block ? "mt-0.5 w-full" : narrow ? "w-full min-w-[64px]" : "w-full min-w-[92px]";
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [hi, setHi] = useState(-1);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // 候補の絞り込み。開いた直後（フォーカス/クリック）は全候補を出し、
+  // ユーザーが入力した時だけ入力値で絞り込む（既存値で勝手に絞らない＝単位変更を妨げない）。
+  const q = value.trim().toLowerCase();
+  const matched = typing && q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+  const list = matched.length > 0 ? matched : options;
+
+  function place() {
+    const r = inputRef.current?.getBoundingClientRect();
+    if (r) setRect({ top: r.bottom, left: r.left, width: r.width });
+  }
+  function openList() {
+    place();
+    setOpen(true);
+    setTyping(false); // 開いた直後は全候補を見せる
+    setHi(-1);
+  }
+  function close() {
+    setOpen(false);
+    setTyping(false);
+    setHi(-1);
+  }
+  function choose(v: string) {
+    onChange(v);
+    close();
+  }
+
+  // 開いている間はスクロール・リサイズに追従して位置を合わせる
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => place();
+    window.addEventListener("scroll", handler, true);
+    window.addEventListener("resize", handler);
+    return () => {
+      window.removeEventListener("scroll", handler, true);
+      window.removeEventListener("resize", handler);
+    };
+  }, [open]);
+
   return (
-    <>
+    <span className="relative block">
       <input
-        list={id}
+        ref={inputRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => { onChange(e.target.value); place(); setOpen(true); setTyping(true); setHi(-1); }}
+        onFocus={openList}
+        onClick={(e) => { e.stopPropagation(); openList(); }}
+        onBlur={() => window.setTimeout(close, 150)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") { e.preventDefault(); if (!open) openList(); setHi((h) => Math.min(h + 1, list.length - 1)); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+          else if (e.key === "Enter") { if (open && hi >= 0 && list[hi]) { e.preventDefault(); choose(list[hi]); } }
+          else if (e.key === "Escape") { close(); }
+        }}
         placeholder={placeholder}
-        className={`${block ? "mt-0.5 w-full" : "w-full min-w-[92px]"} rounded-md border border-stone-200 bg-white px-2 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-blue-400 focus:outline-none lg:py-1.5`}
+        autoComplete="off"
+        className={`${width} rounded-md border border-stone-200 bg-white px-2 py-2 text-sm text-stone-800 placeholder:text-stone-300 focus:border-blue-400 focus:outline-none lg:py-1.5`}
       />
-      <datalist id={id}>
-        {options.map((o) => <option key={o} value={o} />)}
-      </datalist>
-    </>
+      {mounted && open && list.length > 0 && rect && createPortal(
+        <ul
+          role="listbox"
+          aria-label={placeholder}
+          style={{ position: "fixed", top: rect.top + 2, left: rect.left, minWidth: Math.max(rect.width, 120), zIndex: 70 }}
+          className="max-h-60 overflow-auto rounded-lg border border-stone-600 bg-stone-800 py-1 shadow-xl"
+        >
+          {list.map((o, i) => (
+            <li
+              key={`${id}-${o}`}
+              role="option"
+              aria-selected={i === hi}
+              // onMouseDown（クリックより先）で選択し、input の blur による閉じを防ぐ
+              onMouseDown={(e) => { e.preventDefault(); choose(o); }}
+              onMouseEnter={() => setHi(i)}
+              className={`cursor-pointer px-3 py-2 text-sm ${i === hi ? "bg-blue-600 text-white" : "text-stone-100 hover:bg-stone-700"}`}
+            >
+              {o}
+            </li>
+          ))}
+        </ul>,
+        document.body,
+      )}
+    </span>
   );
 }
 

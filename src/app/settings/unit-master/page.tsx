@@ -10,11 +10,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  unitPriceMasterStore,
-  ensureUnitPriceMasterSeeded,
   withMasterDerived,
   type UnitPriceMasterItem,
 } from "@/app/utils/unitPriceMaster";
+import { unitPriceRepository } from "@/app/repositories/unitPriceRepository";
 import { parseNumericInput, normalizeNumericString } from "@/app/utils/numberInput";
 import { unitCostTotal, referenceSellingUnitPrice } from "@/app/utils/costCalc";
 import { newRecordIsTestData } from "@/app/utils/devData";
@@ -88,13 +87,19 @@ export default function UnitMasterPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [msg, setMsg] = useState<string | null>(null);
 
-  function reload() {
-    setItems(unitPriceMasterStore.getAll());
+  const [saving, setSaving] = useState(false);
+
+  async function reload() {
+    try {
+      setItems(await unitPriceRepository.list());
+    } catch {
+      setMsg("読み込みに失敗しました（通信エラー）。");
+      setTimeout(() => setMsg(null), 4000);
+    }
   }
 
   useEffect(() => {
-    ensureUnitPriceMasterSeeded();
-    reload();
+    void reload();
   }, []);
 
   const editing = form.id !== null;
@@ -120,7 +125,7 @@ export default function UnitMasterPage() {
     setForm(EMPTY_FORM);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.workCategory.trim() || !form.itemName.trim()) {
       setMsg("工種と項目名は必須です。");
       setTimeout(() => setMsg(null), 4000);
@@ -141,35 +146,43 @@ export default function UnitMasterPage() {
       taxRate: (form.taxType === "taxable" ? form.taxRate : 0) as TaxRate,
       active: form.active,
     };
-    let ok = false;
+    setSaving(true);
+    setMsg("保存中…");
+    let res: { ok: boolean; error?: string };
     if (form.id) {
-      const existing = unitPriceMasterStore.getById(form.id);
-      ok = unitPriceMasterStore.upsert(
+      const existing = items.find((m) => m.id === form.id);
+      res = await unitPriceRepository.upsert(
         withMasterDerived({ ...input, id: form.id, createdAt: existing?.createdAt, isTestData: existing?.isTestData ?? newRecordIsTestData() }),
       );
     } else {
-      ok = unitPriceMasterStore.create({ ...input, isTestData: newRecordIsTestData() }) !== null;
+      res = await unitPriceRepository.create({ ...input, isTestData: newRecordIsTestData() });
     }
-    if (ok) {
-      reload();
+    setSaving(false);
+    if (res.ok) {
+      await reload();
       resetForm();
       setMsg(form.id ? "単価マスタを更新しました。" : "単価マスタに追加しました。");
     } else {
-      setMsg("保存に失敗しました（容量超過の可能性）。");
+      setMsg(`保存できませんでした（通信エラー）：${res.error ?? ""}`);
     }
-    setTimeout(() => setMsg(null), 4000);
+    setTimeout(() => setMsg(null), 5000);
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm("この単価マスタを削除しますか？")) return;
-    unitPriceMasterStore.remove(id);
-    reload();
+    const res = await unitPriceRepository.remove(id);
+    if (!res.ok) {
+      setMsg(`削除できませんでした（通信エラー）：${res.error ?? ""}`);
+      setTimeout(() => setMsg(null), 5000);
+      return;
+    }
+    await reload();
     if (form.id === id) resetForm();
   }
 
-  function toggleActive(m: UnitPriceMasterItem) {
-    unitPriceMasterStore.upsert({ ...m, active: !m.active });
-    reload();
+  async function toggleActive(m: UnitPriceMasterItem) {
+    await unitPriceRepository.upsert({ ...m, active: !m.active });
+    await reload();
   }
 
   // 工種ごとにグループ表示
@@ -279,7 +292,7 @@ export default function UnitMasterPage() {
           </div>
 
           <div className="mt-3 flex gap-2">
-            <button type="button" onClick={handleSave} className="min-h-[48px] flex-1 rounded-xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white active:opacity-80">
+            <button type="button" onClick={handleSave} disabled={saving} className="min-h-[48px] flex-1 rounded-xl bg-[#8B4A3C] px-4 py-3 text-sm font-bold text-white active:opacity-80 disabled:opacity-50">
               {editing ? "更新する" : "追加する"}
             </button>
             {editing && (
