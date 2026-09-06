@@ -34,7 +34,8 @@ import {
   type EstimateFormType,
 } from "@/app/utils/estimateDocument";
 import { estimatePdfFileName } from "@/app/utils/pdfFileName";
-import { renderAndDownloadPdf, todayDash } from "@/app/utils/pdfDownload";
+import { todayDash } from "@/app/utils/pdfDownload";
+import PdfActionPanel from "../../../../_components/PdfActionPanel";
 
 const SINGLE_MIN_ROWS = 10;
 const DETAIL_MIN_ROWS = 2;
@@ -63,7 +64,6 @@ export default function EstimatePreviewPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [company, setCompany] = useState<CompanyInfoForPdf | null>(null);
   const [formType, setFormType] = useState<EstimateFormType | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   /* eslint-disable react-hooks/set-state-in-effect --
      localStorage はマウント後にしか読めない（SSR結果との不一致を避けるため）。
@@ -106,26 +106,23 @@ export default function EstimatePreviewPage() {
     });
   }, [selected, company, project]);
 
-  async function handlePdf() {
-    if (!doc || !formType || pdfLoading) return;
-    setPdfLoading(true);
-    try {
-      const { makeRevoEstimatePDF } = await import("@/components/pdf/RevoEstimatePDF");
-      await renderAndDownloadPdf(
-        makeRevoEstimatePDF(doc, formType),
-        estimatePdfFileName({
-          clientName: doc.submitTo,
-          projectName: doc.projectName,
-          workContent: doc.lines[0]?.workName ?? "",
-          date: todayDash(),
-        }),
-      );
-    } catch (err) {
-      console.error("見積書PDF生成エラー:", err);
-      alert("PDFの生成に失敗しました。もう一度お試しください。");
-    } finally {
-      setPdfLoading(false);
-    }
+  /**
+   * PDF操作パネルへ「何を作るか」だけを渡す。
+   * 生成・保存・印刷・共有の実装は pdfActions.ts / PdfActionPanel に集約している。
+   * 渡すのは EstimateDocument（原価・粗利のフィールドを持たない型）だけ。
+   */
+  async function buildPdf() {
+    if (!doc || !formType) throw new Error("見積書の種類が選ばれていません");
+    const { makeRevoEstimatePDF } = await import("@/components/pdf/RevoEstimatePDF");
+    return {
+      element: makeRevoEstimatePDF(doc, formType),
+      fileName: estimatePdfFileName({
+        clientName: doc.submitTo,
+        projectName: doc.projectName,
+        workContent: doc.lines[0]?.workName ?? "",
+        date: todayDash(),
+      }),
+    };
   }
 
   const backHref = `/new/projects/${encodeURIComponent(projectId)}/estimate`;
@@ -236,16 +233,19 @@ export default function EstimatePreviewPage() {
           </>
         )}
 
-        {/* 操作 */}
-        <div className="mt-4 space-y-2 lg:flex lg:justify-end lg:gap-3 lg:space-y-0">
+        {/* PDF操作（作成 → 保存 / 印刷 / 共有） */}
+        <div className="mx-auto mt-4 max-w-lg">
+          {/* 版・帳票種別を変えたら作り直すため key で作り直させる */}
+          <PdfActionPanel
+            key={`${selected.id}:${formType ?? "none"}`}
+            build={buildPdf}
+            disabled={formType === null}
+            disabledLabel="種類を選ぶとPDFを作成できます"
+          />
           <Link href={backHref}
-            className="flex min-h-[52px] w-full items-center justify-center rounded-xl border border-[var(--nu-border)] bg-white px-6 text-sm font-semibold text-slate-600 active:bg-[var(--nu-bg)] lg:min-h-0 lg:w-auto lg:py-3">
+            className="mt-2 flex min-h-[52px] w-full items-center justify-center rounded-xl border border-[var(--nu-border)] bg-white px-6 text-sm font-semibold text-slate-600 active:bg-[var(--nu-bg)]">
             見積・原価入力へ戻る
           </Link>
-          <button type="button" onClick={() => void handlePdf()} disabled={pdfLoading || formType === null}
-            className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#1b365d] px-8 text-sm font-bold text-white active:bg-[#16294a] disabled:opacity-40 lg:min-h-0 lg:w-auto lg:py-3">
-            {pdfLoading ? "PDF作成中…" : formType === null ? "種類を選ぶとPDFを発行できます" : "PDFを発行する"}
-          </button>
         </div>
       </div>
     </div>
