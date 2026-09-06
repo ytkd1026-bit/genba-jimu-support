@@ -32,6 +32,29 @@ export type EstimateDocumentLine = {
   note: string;
 };
 
+/**
+ * 見積書の書式。案件ごとに職人が選ぶ（REVOが自動で決めない）。
+ *  - "single"     原状回復・単票型：1枚で工事全体が分かる（賃貸原状回復・退去修繕など）
+ *  - "supervised" 工事監督・リノベーション型：表紙／工事内訳書／工種別内訳明細書の3部構成
+ */
+export type EstimateFormType = "single" | "supervised";
+
+export const ESTIMATE_FORM_LABELS: Record<EstimateFormType, string> = {
+  single: "原状回復・単票",
+  supervised: "工事監督・リノベーション",
+};
+
+/** 工種（大分類）ごとのまとまり。単票型の頭出しと、内訳書・内訳明細書の親行に使う */
+export type EstimateDocumentGroup = {
+  /** 大分類記号（A, B, C …）。先に現れた工種から順に振る */
+  code: string;
+  /** 工種名。未入力の明細は「その他」にまとめる */
+  label: string;
+  lines: EstimateDocumentLine[];
+  /** 税抜の小計 */
+  subtotal: number;
+};
+
 /** 帳票1枚ぶんの内容（提出用のみ） */
 export type EstimateDocument = {
   title: string;
@@ -42,8 +65,13 @@ export type EstimateDocument = {
   projectName: string;
   siteAddress: string;
   projectId: string;
+  /** 物件名・号室（単票型のヘッダーに出す。案件の識別情報） */
+  propertyName: string;
+  roomNumber: string;
   company: CompanyInfoForPdf;
   lines: EstimateDocumentLine[];
+  /** 工種（大分類）ごとのまとまり。lines と同じ明細を並べ替えずに束ねたもの */
+  groups: EstimateDocumentGroup[];
   breakdown: TaxBreakdown;
   remarks: string[];
 };
@@ -63,6 +91,17 @@ export function printableUnit(unit: string): string {
     .replace(/㎜/g, "mm")
     .replace(/㎏/g, "kg")
     .replace(/㍑/g, "L");
+}
+
+/** 大分類記号（A, B, … Z, AA, AB …） */
+function groupCode(index: number): string {
+  let n = index;
+  let out = "";
+  do {
+    out = String.fromCharCode(65 + (n % 26)) + out;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return out;
 }
 
 /** 明細の消費税（表示用・その行の税率のみ）。合計は breakdown 側で税率別に集計する */
@@ -127,6 +166,8 @@ export function buildEstimateDocument(input: {
   projectName: string;
   siteAddress: string;
   projectId: string;
+  propertyName?: string;
+  roomNumber?: string;
   company: CompanyInfoForPdf;
   lines: SellingLine[];
   /** 保存済みの税内訳（版のスナップショット）。渡された場合はそれを正本とする */
@@ -157,6 +198,20 @@ export function buildEstimateDocument(input: {
       })),
     );
 
+  // 工種（大分類）ごとに束ねる。並び順は明細に最初に現れた順（勝手に並べ替えない）。
+  const groupMap = new Map<string, EstimateDocumentGroup>();
+  for (const line of lines) {
+    const label = line.category.trim() || "その他";
+    let g = groupMap.get(label);
+    if (!g) {
+      g = { code: groupCode(groupMap.size), label, lines: [], subtotal: 0 };
+      groupMap.set(label, g);
+    }
+    g.lines.push(line);
+    g.subtotal += line.amount;
+  }
+  const groups = [...groupMap.values()];
+
   return {
     title: input.title,
     estimateNo: input.estimateNo,
@@ -166,8 +221,11 @@ export function buildEstimateDocument(input: {
     projectName: input.projectName,
     siteAddress: input.siteAddress,
     projectId: input.projectId,
+    propertyName: input.propertyName ?? "",
+    roomNumber: input.roomNumber ?? "",
     company: input.company,
     lines,
+    groups,
     breakdown,
     remarks: input.remarks ?? DEFAULT_ESTIMATE_REMARKS,
   };

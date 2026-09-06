@@ -43,10 +43,6 @@ import {
   projectDocumentNumber,
   nextEstimateSeq,
 } from "@/app/utils/workItemEstimate";
-import { getCompanyInfoForPdf, getBankSettings } from "@/app/utils/companySettings";
-import { singleInvoicePdfFileName } from "@/app/utils/pdfFileName";
-import { renderAndDownloadPdf, todaySlash, todayDash } from "@/app/utils/pdfDownload";
-import type { SellingLine } from "@/components/pdf/WorkEstimatePDF";
 import {
   calculateTaxBreakdown,
   normalizeTaxType,
@@ -257,7 +253,6 @@ export default function NewEstimatePage() {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showRestore, setShowRestore] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [goingPreview, setGoingPreview] = useState(false);
   const [legacyEstimates, setLegacyEstimates] = useState<SavedEstimate[]>([]);
   // この案件の保存済み見積（版）。版管理は既存 SavedEstimate の仕組みをそのまま使う。
@@ -452,19 +447,6 @@ export default function NewEstimatePage() {
     return { selling, tax: breakdown.taxTotal, totalWithTax: breakdown.total, breakdown, cost, grossProfit, grossProfitRate };
   }, [rows]);
 
-  // ── 提出用の明細（原価・粗利を含まない型へ変換） ──────────
-  function buildSellingLines(): SellingLine[] {
-    return rows.map((row) => {
-      const a = rowAmounts(row);
-      return {
-        workItemId: row.workItemId, category: row.category, workName: row.workName,
-        workDescription: row.workDescription, location1: row.location1, location2: row.location2,
-        quantity: toNum(row.quantity), unit: row.unit, sellingUnitPrice: toNum(row.sellingUnitPrice),
-        sellingAmount: a.sellingAmount, note: row.note,
-        taxType: row.taxType, taxRate: (row.taxType === "taxable" ? row.taxRate : 0) as TaxRate,
-      };
-    });
-  }
   function hasContent(): boolean {
     return rows.some(
       (r) => r.workName.trim() !== "" || r.workDescription.trim() !== "" || toNum(r.sellingUnitPrice) > 0,
@@ -627,41 +609,6 @@ export default function NewEstimatePage() {
     setShowVersionChoice(false);
     setGoingPreview(true);
     gotoPreview(est.id);
-  }
-
-  // 請求書PDF（既存の見積→請求連携。今回デザイン変更の対象外）
-  async function handleInvoicePdf() {
-    if (!project || invoiceLoading) return;
-    if (rows.length === 0 || !hasContent()) {
-      alert("工事項目を1件以上入力してからPDFを発行してください。");
-      return;
-    }
-    if (!saveAll()) {
-      alert("保存に失敗しました。PDFは発行していません。");
-      return;
-    }
-    setInvoiceLoading(true);
-    try {
-      const { makeProjectInvoicePDF } = await import("@/components/pdf/ProjectInvoicePDF");
-      const doc = makeProjectInvoicePDF({
-        documentTitle: "請求書", documentNumber: `INV-${project.projectId}`, createdDate: todaySlash(),
-        submitTo: project.submitTo || project.clientName || "", projectName: project.projectName,
-        siteAddress: project.siteAddress, companyInfo: getCompanyInfoForPdf(), projectId: project.projectId,
-        lines: buildSellingLines(), subtotalSum: totals.selling, taxSum: totals.tax,
-        totalWithTax: totals.totalWithTax, taxBreakdown: totals.breakdown,
-        invoiceDate: todaySlash(), dueDate: "", bank: getBankSettings(),
-        invoiceNote: "お振込み手数料はご負担ください。ご確認よろしくお願いいたします。",
-      });
-      await renderAndDownloadPdf(doc, singleInvoicePdfFileName({
-        clientName: project.clientName || project.submitTo, projectName: project.projectName,
-        workContent: rows[0]?.workName ?? "", invoiceDate: todayDash(),
-      }));
-    } catch (err) {
-      console.error("請求書PDF生成エラー:", err);
-      alert("PDFの生成に失敗しました。もう一度お試しください。");
-    } finally {
-      setInvoiceLoading(false);
-    }
   }
 
   const backHref = `/new/projects/${encodeURIComponent(projectId)}`;
@@ -889,14 +836,10 @@ export default function NewEstimatePage() {
               </div>
             )}
 
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4">
               <button type="button" onClick={handleSave}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
                 保存する
-              </button>
-              <button type="button" disabled={invoiceLoading} onClick={() => void handleInvoicePdf()}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
-                {invoiceLoading ? "PDF作成中…" : "請求書PDFを作成"}
               </button>
             </div>
           </div>
@@ -1222,10 +1165,6 @@ export default function NewEstimatePage() {
             <button type="button" onClick={handleSave}
               className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[var(--nu-border)] bg-white px-4 py-3 text-sm font-semibold text-slate-600 active:bg-[var(--nu-bg)]">
               保存する
-            </button>
-            <button type="button" disabled={invoiceLoading} onClick={() => void handleInvoicePdf()}
-              className="flex min-h-[52px] w-full items-center justify-center rounded-2xl border border-[var(--nu-border)] bg-white px-4 py-3 text-sm font-semibold text-slate-600 active:bg-[var(--nu-bg)] disabled:opacity-50">
-              {invoiceLoading ? "PDF作成中…" : "請求書PDFを作成"}
             </button>
             <p className="text-center text-[11px] text-slate-400">見積書PDFに原価・粗利は表示されません。</p>
             <Link href={backHref} className="block py-2 text-center text-xs font-medium text-[var(--nu-primary-dk)]">← 案件詳細へ戻る</Link>
